@@ -1,0 +1,67 @@
+.route-optimization-container {
+    max-width: 800px;
+    margin: auto;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.search-filter {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+    .search-filter input,
+    .search-filter select {
+        padding: 8px;
+        font-size: 14px;
+    }
+
+.route-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.route-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    transition: box-shadow 0.3s;
+}
+
+    .route-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+    form input,
+    form select,
+    form button {
+        padding: 10px;
+        font-size: 14px;
+    }
+
+    form button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+        form button:hover {
+            background-color: #0056b3;
+        }

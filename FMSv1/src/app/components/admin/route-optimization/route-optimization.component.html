@@ -1,0 +1,39 @@
+<div class="route-optimization-container">
+    <h2>Route Optimization</h2>
+
+    <!-- Search and Filter -->
+    <div class="search-filter">
+        <input [(ngModel)]="searchRoute" placeholder="Search route..." />
+        <select [(ngModel)]="filterType">
+            <option value="">All</option>
+            <option value="Shortest">Shortest</option>
+            <option value="Fastest">Fastest</option>
+        </select>
+    </div>
+
+    <!-- Route List -->
+    <div class="route-list">
+        <div *ngFor="let route of filteredRoutes()" class="route-card">
+            <h3>{{ route.name }}</h3>
+            <p><strong>Origin:</strong> {{ route.origin }}</p>
+            <p><strong>Destination:</strong> {{ route.destination }}</p>
+            <p><strong>Type:</strong> {{ route.type }}</p>
+            <p><strong>Distance:</strong> {{ route.distance }} km</p>
+            <p><strong>Estimated Time:</strong> {{ route.time }} mins</p>
+        </div>
+    </div>
+
+    <!-- Add Route Form -->
+    <form #routeForm="ngForm" (ngSubmit)="addRoute(routeForm.value)">
+        <input type="text" name="name" placeholder="Route Name" ngModel required />
+        <input type="text" name="origin" placeholder="Origin" ngModel required />
+        <input type="text" name="destination" placeholder="Destination" ngModel required />
+        <select name="type" ngModel required>
+            <option value="Shortest">Shortest</option>
+            <option value="Fastest">Fastest</option>
+        </select>
+        <input type="number" name="distance" placeholder="Distance (km)" ngModel required />
+        <input type="number" name="time" placeholder="Estimated Time (mins)" ngModel required />
+        <button type="submit">Add Route</button>
+    </form>
+</div>

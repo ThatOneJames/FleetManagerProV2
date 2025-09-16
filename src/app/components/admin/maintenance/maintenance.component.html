@@ -1,0 +1,27 @@
+<div class="maintenance-container">
+    <h2>Vehicle Maintenance</h2>
+
+    <!-- Form -->
+    <div class="maintenance-form">
+        <input [(ngModel)]="newRecord.vehicle" placeholder="Vehicle" />
+        <input [(ngModel)]="newRecord.date" type="date" />
+        <input [(ngModel)]="newRecord.type" placeholder="Maintenance Type" />
+        <select [(ngModel)]="newRecord.status">
+            <option value="Scheduled">Scheduled</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+        </select>
+        <button (click)="addRecord()">Add</button>
+    </div>
+
+    <!-- List -->
+    <div class="maintenance-list">
+        <h3>Maintenance Records</h3>
+        <div *ngFor="let record of records" class="maintenance-card">
+            <p><strong>Vehicle:</strong> {{ record.vehicle }}</p>
+            <p><strong>Date:</strong> {{ record.date }}</p>
+            <p><strong>Type:</strong> {{ record.type }}</p>
+            <p><strong>Status:</strong> {{ record.status }}</p>
+        </div>
+    </div>
+</div>

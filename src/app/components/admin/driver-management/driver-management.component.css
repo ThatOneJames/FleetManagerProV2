@@ -1,0 +1,85 @@
+.driver-management {
+    padding: 20px;
+    background-color: #f4f6f9;
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+}
+
+/* Search & Filter */
+.driver-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+    .driver-filters input,
+    .driver-filters select {
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        flex: 1;
+    }
+
+/* Form */
+form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+    form input,
+    form select {
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        flex: 1 1 200px;
+    }
+
+    form button {
+        padding: 8px 14px;
+        background: #007bff;
+        border: none;
+        border-radius: 4px;
+        color: #fff;
+        cursor: pointer;
+    }
+
+        form button:hover {
+            background: #0056b3;
+        }
+
+/* Table */
+.driver-list table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.driver-list th,
+.driver-list td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+}
+
+.driver-list th {
+    background: #f1f1f1;
+    font-weight: bold;
+}
+
+.driver-list tr:hover {
+    background: #fafafa;
+}
+
+/* Status colors */
+.driver-list td.active {
+    color: green;
+    font-weight: bold;
+}
+
+.driver-list td.inactive {
+    color: red;
+    font-weight: bold;
+}

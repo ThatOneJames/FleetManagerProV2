@@ -1,0 +1,37 @@
+﻿<div class="driver-management">
+    <h2>Driver Management</h2>
+
+    <!-- Controls -->
+    <div class="controls">
+        <input [(ngModel)]="searchText" placeholder="Search driver..." />
+        <select [(ngModel)]="filterStatus">
+            <option>All</option>
+            <option>Active</option>
+            <option>OnLeave</option>
+            <option>Suspended</option>
+        </select>
+        <button (click)="toggleAddDriverForm()">+ Add Driver</button>
+    </div>
+
+    <!-- Add Driver Form -->
+    <div class="add-form" *ngIf="showAddDriverForm">
+        <h3>Add Driver</h3>
+        <form #driverForm="ngForm" (ngSubmit)="addDriver(driverForm.value)">
+            <input name="licenseNumber" ngModel placeholder="License Number" required />
+            <input name="experienceYears" ngModel type="number" placeholder="Experience Years" required />
+            <button type="submit">Save</button>
+        </form>
+    </div>
+
+    <!-- Driver List -->
+    <div class="driver-list">
+        <div *ngFor="let driver of filteredDrivers" class="driver-card">
+            <h4>{{ driver.user?.name }}</h4>
+            <p>Status: {{ driver.user?.status }}</p>
+            <p>Email: {{ driver.user?.email }}</p>
+            <p>License: {{ driver.licenseNumber }}</p>
+            <p>Experience: {{ driver.experienceYears }} years</p>
+            <button (click)="deleteDriver(driver.userId)">Delete</button>
+        </div>
+    </div>
+</div>

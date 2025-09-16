@@ -1,0 +1,49 @@
+<div class="fleet-management">
+    <h2>Fleet Management</h2>
+
+    <!-- Search + Filter -->
+    <div class="controls">
+        <input [(ngModel)]="searchText" placeholder="Search driver..." />
+        <select [(ngModel)]="filterStatus">
+            <option value="">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+        </select>
+    </div>
+
+    <!-- Drivers Table -->
+    <table class="drivers-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Vehicle</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let driver of filteredDrivers">
+                <td>{{ driver.id }}</td>
+                <td>{{ driver.name }}</td>
+                <td>
+                    <span [ngClass]="driver.status === 'Active' ? 'badge active' : 'badge inactive'">
+                        {{ driver.status }}
+                    </span>
+                </td>
+                <td>{{ driver.vehicle }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Add Driver Form -->
+    <form #driverForm="ngForm" (ngSubmit)="addDriver(driverForm.value); driverForm.resetForm()">
+        <h3>Add New Driver</h3>
+        <input name="name" ngModel placeholder="Driver Name" required />
+        <select name="status" ngModel required>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+        </select>
+        <input name="vehicle" ngModel placeholder="Assigned Vehicle" required />
+        <button type="submit">Add Driver</button>
+    </form>
+</div>

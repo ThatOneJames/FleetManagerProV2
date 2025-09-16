@@ -1,0 +1,23 @@
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div *ngFor="let type of leaveTypes">
+        <div class="p-4 border rounded shadow space-y-2">
+            <div class="font-medium capitalize">{{ type }} Leave</div>
+            <div class="flex justify-between text-sm">
+                <span>Used</span>
+                <span class="font-medium">{{ leaveBalance[type].used }} days</span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span>Remaining</span>
+                <span class="font-medium">{{ leaveBalance[type].total - leaveBalance[type].used }} days</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="bg-blue-500 h-2 rounded-full"
+                     [style.width.%]="(leaveBalance[type].used / leaveBalance[type].total) * 100">
+                </div>
+            </div>
+            <div class="text-xs text-gray-500 text-center">
+                {{ leaveBalance[type].used }}/{{ leaveBalance[type].total }} days used
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,55 @@
+.fleet-management {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+input, select, button {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    border: none;
+}
+
+    button:hover {
+        background-color: #0056b3;
+    }
+
+.drivers-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+    .drivers-table th, .drivers-table td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: left;
+    }
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+}
+
+    .badge.active {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .badge.inactive {
+        background-color: #dc3545;
+        color: white;
+    }

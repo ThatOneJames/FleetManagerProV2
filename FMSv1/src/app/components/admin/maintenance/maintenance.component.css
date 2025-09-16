@@ -1,0 +1,45 @@
+.maintenance-container {
+    padding: 20px;
+    max-width: 700px;
+    margin: auto;
+}
+
+.maintenance-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+    .maintenance-form input,
+    .maintenance-form select {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+    }
+
+    .maintenance-form button {
+        padding: 8px 14px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+        .maintenance-form button:hover {
+            background-color: #0056b3;
+        }
+
+.maintenance-list {
+    margin-top: 20px;
+}
+
+.maintenance-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: #f9f9f9;
+}

@@ -1,0 +1,10 @@
+﻿<!-- profile.component.html -->
+<div>
+    <h1>Driver Profile</h1>
+    <p>ID: {{ driverDetails.id }}</p>
+    <p>Name: {{ driverDetails.name }}</p>
+    <p>Email: {{ driverDetails.email }}</p>
+    <button (click)="toggleEdit()">
+        {{ isEditing ? 'Cancel' : 'Edit' }}
+    </button>
+</div>

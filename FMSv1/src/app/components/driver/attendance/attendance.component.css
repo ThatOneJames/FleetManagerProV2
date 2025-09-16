@@ -1,0 +1,41 @@
+﻿/* attendance.component.css */
+
+/* Highlight selected day in the week overview */
+.week-day-selected {
+    @apply border-blue-500 bg-blue-100;
+}
+
+/* Status badge colors */
+.status-present {
+    @apply bg-green-100 text-green-700;
+}
+
+.status-absent {
+    @apply bg-red-100 text-red-700;
+}
+
+.status-late {
+    @apply bg-yellow-100 text-yellow-700;
+}
+
+.status-partial {
+    @apply bg-blue-100 text-blue-700;
+}
+
+/* Clock in/out button */
+.clock-button {
+    @apply w-full p-2 rounded text-white;
+}
+
+.clock-in {
+    @apply bg-blue-500;
+}
+
+.clock-out {
+    @apply bg-red-500;
+}
+
+/* Scrollable weekly overview if needed */
+.week-overview {
+    @apply overflow-x-auto;
+}
