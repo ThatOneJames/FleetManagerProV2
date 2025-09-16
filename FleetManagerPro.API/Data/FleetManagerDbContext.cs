@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using FleetManagerPro.API.Models;
 using Route = FleetManagerPro.API.Models.Route;
-
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace FleetManagerPro.API.Data
 {
@@ -12,7 +12,6 @@ namespace FleetManagerPro.API.Data
         {
         }
 
-        // 🔹 DbSets (tables)
         public DbSet<User> Users { get; set; } = null!;
         public DbSet<Driver> Drivers { get; set; } = null!;
         public DbSet<Vehicle> Vehicles { get; set; } = null!;
@@ -26,6 +25,27 @@ namespace FleetManagerPro.API.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // 🔹 Explicit column name mapping for User entity
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.ToTable("users");
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.Address).HasColumnName("address");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.DateOfBirth).HasColumnName("date_of_birth");
+                entity.Property(e => e.Email).HasColumnName("email");
+                entity.Property(e => e.EmergencyContact).HasColumnName("emergency_contact");
+                entity.Property(e => e.HireDate).HasColumnName("hire_date");
+                entity.Property(e => e.Name).HasColumnName("name");
+                entity.Property(e => e.PasswordHash).HasColumnName("password_hash");
+                entity.Property(e => e.Phone).HasColumnName("phone");
+                entity.Property(e => e.ProfileImageUrl).HasColumnName("profile_image_url");
+                entity.Property(e => e.Role).HasColumnName("role");
+                entity.Property(e => e.Status).HasColumnName("status")
+                .HasConversion<int>();
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            });
 
             // 🔹 User ↔ Driver (1-to-1)
             modelBuilder.Entity<User>()
@@ -78,7 +98,7 @@ namespace FleetManagerPro.API.Data
 
             modelBuilder.Entity<Vehicle>()
                 .HasMany(v => v.AssignedDrivers)
-                .WithOne(d => d.CurrentVehicle)  // assuming Driver has CurrentVehicle navigation property
+                .WithOne(d => d.CurrentVehicle)
                 .HasForeignKey(d => d.CurrentVehicleId);
 
             modelBuilder.Entity<Vehicle>()

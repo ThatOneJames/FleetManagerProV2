@@ -27,7 +27,7 @@ namespace FleetManagerPro.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Vehicle>> GetById(Guid id) // Changed 'int' to 'Guid'
+        public async Task<ActionResult<Vehicle>> GetById(string id) // Changed 'Guid' to 'string'
         {
             var vehicle = await _vehicleService.GetByIdAsync(id);
             if (vehicle == null) return NotFound();
@@ -42,7 +42,7 @@ namespace FleetManagerPro.API.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult<Vehicle>> Update(Guid id, Vehicle vehicle) // Changed 'int' to 'Guid'
+        public async Task<ActionResult<Vehicle>> Update(string id, Vehicle vehicle) // Changed 'Guid' to 'string'
         {
             var updated = await _vehicleService.UpdateAsync(id, vehicle);
             if (updated == null) return NotFound();
@@ -50,7 +50,7 @@ namespace FleetManagerPro.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult> Delete(Guid id) // Changed 'int' to 'Guid'
+        public async Task<ActionResult> Delete(string id) // Changed 'Guid' to 'string'
         {
             var deleted = await _vehicleService.DeleteAsync(id);
             if (!deleted) return NotFound();

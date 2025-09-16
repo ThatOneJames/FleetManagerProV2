@@ -2,7 +2,7 @@ using FleetManagerPro.API.Data.Repository;
 using FleetManagerPro.API.Models;
 using Microsoft.EntityFrameworkCore;
 using FleetManagerPro.API.Data;
-using System; // Required for Guid
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -22,7 +22,7 @@ namespace FleetManagerPro.API.Services
             return await _context.Vehicles.Include(v => v.Driver).ToListAsync();
         }
 
-        public async Task<Vehicle?> GetByIdAsync(Guid id) // Changed 'int id' to 'Guid id'
+        public async Task<Vehicle?> GetByIdAsync(string id) // Change Guid to string
         {
             return await _context.Vehicles.Include(v => v.Driver)
                                            .FirstOrDefaultAsync(v => v.Id == id);
@@ -35,7 +35,7 @@ namespace FleetManagerPro.API.Services
             return vehicle;
         }
 
-        public async Task<Vehicle?> UpdateAsync(Guid id, Vehicle vehicle)
+        public async Task<Vehicle?> UpdateAsync(string id, Vehicle vehicle) // Change Guid to string
         {
             var existing = await _context.Vehicles.FindAsync(id);
             if (existing == null) return null;
@@ -49,7 +49,7 @@ namespace FleetManagerPro.API.Services
             return existing;
         }
 
-        public async Task<bool> DeleteAsync(Guid id)
+        public async Task<bool> DeleteAsync(string id) // Change Guid to string
         {
             var existing = await _context.Vehicles.FindAsync(id);
             if (existing == null) return false;

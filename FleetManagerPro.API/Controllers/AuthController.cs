@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore; // Add this line
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using FleetManagerPro.API.Models;
 using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Services;
 using System.Threading.Tasks;
+// REMOVED: using FleetManagerPro.API.DTOs;
 
 namespace FleetManager.Controllers
 {
@@ -23,18 +24,23 @@ namespace FleetManager.Controllers
 
         // POST: api/auth/register
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] UserDto userDto)
+        public async Task<IActionResult> Register([FromBody] FleetManagerPro.API.DTOs.UserDto userDto) // UPDATED
         {
-            if (await _context.Users.AnyAsync(u => u.Username == userDto.Username))
+            if (await _context.Users.AnyAsync(u => u.Email == userDto.Email))
             {
-                return BadRequest(new { message = "Username already exists" });
+                return BadRequest(new { message = "Email already exists" });
             }
 
             var user = new User
             {
-                Username = userDto.Username,
+                Id = Guid.NewGuid().ToString(),
+                Email = userDto.Email,
+                Name = userDto.Name,
                 PasswordHash = await _authService.HashPassword(userDto.Password),
-                Role = UserRole.User // Assuming UserRole is an enum
+                Role = UserRole.Driver,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             await _context.Users.AddAsync(user);
@@ -45,9 +51,9 @@ namespace FleetManager.Controllers
 
         // POST: api/auth/login
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+        public async Task<IActionResult> Login([FromBody] FleetManagerPro.API.DTOs.LoginDto loginDto) // UPDATED
         {
-            var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == loginDto.Username);
+            var user = await _context.Users.SingleOrDefaultAsync(u => u.Email == loginDto.Email);
             if (user == null || !await _authService.VerifyPassword(loginDto.Password, user.PasswordHash))
             {
                 return Unauthorized(new { message = "Invalid credentials" });
@@ -58,22 +64,23 @@ namespace FleetManager.Controllers
             return Ok(new
             {
                 token,
-                username = user.Username,
+                email = user.Email,
                 role = user.Role.ToString()
             });
         }
     }
 
     // --- DTOs ---
+    // DO NOT REMOVE THESE
     public class UserDto
     {
-        public string Username { get; set; }
+        public string Email { get; set; }
         public string Password { get; set; }
     }
 
     public class LoginDto
     {
-        public string Username { get; set; }
+        public string Email { get; set; }
         public string Password { get; set; }
     }
 }

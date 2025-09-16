@@ -1,5 +1,6 @@
 using FleetManagerPro.API.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 
 namespace FleetManagerPro.API.Data.Repository
 {
@@ -12,9 +13,9 @@ namespace FleetManagerPro.API.Data.Repository
             _context = context;
         }
 
-        public async new Task<User?> GetByUsernameAsync(string username)
+        public async Task<User?> GetByEmailAsync(string email)
         {
-            return await _context.Set<User>().FirstOrDefaultAsync(u => u.Username == username);
+            return await _context.Set<User>().FirstOrDefaultAsync(u => u.Email == email);
         }
     }
 }

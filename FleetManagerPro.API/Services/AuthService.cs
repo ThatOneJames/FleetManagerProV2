@@ -3,37 +3,52 @@ using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using FleetManagerPro.API.Models;
 using BCrypt.Net;
+using FleetManagerPro.API.Data.Repository; // ADDED this using statement
+using FleetManagerPro.API.Services;
 
 namespace FleetManager.Services
 {
-    public interface IAuthService
-    {
-        string GenerateJwtToken(User user);
-        bool VerifyPassword(string enteredPassword, string storedHash);
-        string HashPassword(string password);
-    }
-
     public class AuthService : IAuthService
     {
         private readonly IConfiguration _config;
+        private readonly IUserRepository _userRepository;
 
-        public AuthService(IConfiguration config)
+        // UPDATED: Added IUserRepository to the constructor parameters
+        public AuthService(IConfiguration config, IUserRepository userRepository)
         {
             _config = config;
+            _userRepository = userRepository;
         }
 
-        public string GenerateJwtToken(User user)
+        // IMPLEMENTED: AuthenticateAsync using the repository and password verification
+        public async Task<User?> AuthenticateAsync(string email, string password)
         {
-            // Use the user's ID and role directly as strings
+            var user = await _userRepository.GetByEmailAsync(email);
+            if (user == null)
+            {
+                return null;
+            }
+
+            if (await VerifyPassword(password, user.PasswordHash))
+            {
+                return user;
+            }
+
+            return null;
+        }
+
+        public async Task<string> GenerateJwtToken(User user)
+        {
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()), // Changed from user.Id
-                new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
-                new Claim(ClaimTypes.Role, user.Role.ToString()) // Converted UserRole enum to string
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id), // Changed to user.Id
+                new Claim(JwtRegisteredClaimNames.UniqueName, user.Email), // UPDATED: Changed to user.Email
+                new Claim(ClaimTypes.Role, user.Role.ToString())
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
@@ -50,12 +65,18 @@ namespace FleetManager.Services
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        public bool VerifyPassword(string enteredPassword, string storedHash)
+        // RENAMED: from GetByEmailAsync to GetUserByEmailAsync to match the interface
+        public async Task<User?> GetUserByEmailAsync(string email)
+        {
+            return await _userRepository.GetByEmailAsync(email);
+        }
+
+        public async Task<bool> VerifyPassword(string enteredPassword, string storedHash)
         {
             return BCrypt.Net.BCrypt.Verify(enteredPassword, storedHash);
         }
 
-        public string HashPassword(string password)
+        public async Task<string> HashPassword(string password)
         {
             return BCrypt.Net.BCrypt.HashPassword(password);
         }

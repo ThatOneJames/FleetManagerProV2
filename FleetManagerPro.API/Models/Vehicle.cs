@@ -6,7 +6,7 @@ namespace FleetManagerPro.API.Models
     public class Vehicle
     {
         [Key]
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public string Id { get; set; }
 
         [Required]
         [ForeignKey(nameof(Category))]
