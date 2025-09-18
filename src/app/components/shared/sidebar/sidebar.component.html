@@ -1,54 +1,52 @@
 ﻿<div class="sidebar-content">
-  <!-- Sidebar Header -->
-  <div class="sidebar-header">
-    <div class="logo-container">
-      <div class="logo-icon">
-        <mat-icon>business</mat-icon>
-      </div>
-      <div class="logo-text">
-        <h2>FleetManager Pro</h2>
-        <p class="role-text">
-          {{ user?.role === 'admin' ? 'Admin Dashboard' : 'Driver Dashboard' }}
-        </p>
-      </div>
+    <!-- Sidebar Header -->
+    <div class="sidebar-header">
+        <div class="logo-container">
+            <div class="logo-icon">
+                <mat-icon>business</mat-icon>
+            </div>
+            <div class="logo-text">
+                <h2>FleetManager Pro</h2>
+                <p class="role-text">
+                    {{ user?.role === UserRole.Admin ? 'Admin Dashboard' : 'Driver Dashboard' }}
+                </p>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Navigation Menu -->
-  <div class="nav-content">
-    <div *ngFor="let group of navigationItems" class="nav-group">
-      <div class="nav-group-label">{{ group.title }}</div>
-      <mat-nav-list class="nav-list">
-        <mat-list-item 
-          *ngFor="let item of group.items"
-          [routerLink]="item.route"
-          routerLinkActive="active-link"
-          class="nav-item">
-          <mat-icon matListIcon>{{ item.icon }}</mat-icon>
-          <span matLine>{{ item.title }}</span>
-        </mat-list-item>
-      </mat-nav-list>
+    <!-- Navigation Menu -->
+    <div class="nav-content">
+        <div *ngFor="let group of navigationItems" class="nav-group">
+            <div class="nav-group-label">{{ group.title }}</div>
+            <mat-nav-list class="nav-list">
+                <mat-list-item *ngFor="let item of group.items"
+                               [routerLink]="item.route"
+                               routerLinkActive="active-link"
+                               class="nav-item">
+                    <mat-icon matListIcon>{{ item.icon }}</mat-icon>
+                    <span matLine>{{ item.title }}</span>
+                </mat-list-item>
+            </mat-nav-list>
+        </div>
     </div>
-  </div>
 
-  <!-- Sidebar Footer -->
-  <div class="sidebar-footer">
-    <mat-divider></mat-divider>
-    <div class="user-info">
-      <div class="user-avatar">
-        <mat-icon>person</mat-icon>
-      </div>
-      <div class="user-details" *ngIf="user">
-        <span class="user-name">{{ user.name }}</span>
-        <span class="user-email">{{ user.email }}</span>
-      </div>
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+        <mat-divider></mat-divider>
+        <div class="user-info">
+            <div class="user-avatar">
+                <mat-icon>person</mat-icon>
+            </div>
+            <div class="user-details" *ngIf="user">
+                <span class="user-name">{{ user.name }}</span>
+                <span class="user-email">{{ user.email }}</span>
+            </div>
+        </div>
+        <button mat-button
+                class="logout-button"
+                (click)="onLogout()">
+            <mat-icon>logout</mat-icon>
+            Logout
+        </button>
     </div>
-    <button 
-      mat-button 
-      class="logout-button"
-      (click)="onLogout()">
-      <mat-icon>logout</mat-icon>
-      Logout
-    </button>
-  </div>
 </div>

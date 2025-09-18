@@ -1,6 +1,6 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges } from '@angular/core';
 import { Router } from '@angular/router';
-import { User } from '../../../models/user.model';
+import { User, UserRole } from '../../../models/user.model';
 
 interface NavigationGroup {
     title: string;
@@ -18,11 +18,16 @@ interface NavigationItem {
     templateUrl: './sidebar.component.html',
     styleUrls: ['./sidebar.component.css']
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnChanges {
     @Input() user: User | null = null;
     @Output() logout = new EventEmitter<void>();
 
-    adminNavigationItems: NavigationGroup[] = [
+    // Make the UserRole enum available to the template
+    UserRole = UserRole;
+
+    navigationItems: NavigationGroup[] = [];
+
+    private adminNavigationItems: NavigationGroup[] = [
         {
             title: 'Overview',
             items: [
@@ -46,7 +51,7 @@ export class SidebarComponent {
         }
     ];
 
-    driverNavigationItems: NavigationGroup[] = [
+    private driverNavigationItems: NavigationGroup[] = [
         {
             title: 'Overview',
             items: [
@@ -72,11 +77,14 @@ export class SidebarComponent {
 
     constructor(private router: Router) { }
 
-    get navigationItems(): NavigationGroup[] {
-        if (!this.user) return [];
-        return this.user.role === 'admin'
-            ? this.adminNavigationItems
-            : this.driverNavigationItems;
+    ngOnChanges(): void {
+        if (this.user) {
+            this.navigationItems = this.user.role === UserRole.Admin
+                ? this.adminNavigationItems
+                : this.driverNavigationItems;
+        } else {
+            this.navigationItems = [];
+        }
     }
 
     onLogout(): void {

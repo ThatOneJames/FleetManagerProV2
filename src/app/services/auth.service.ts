@@ -1,10 +1,10 @@
 ﻿import { Injectable } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
-import { Observable, of, throwError } from 'rxjs';
-import { delay, map } from 'rxjs/operators';
-import { User, UserRole, UserStatus } from '../models/user.model';  
+import { HttpClient } from '@angular/common/http';
+import { Observable, of, throwError, BehaviorSubject } from 'rxjs';
+import { map, tap } from 'rxjs/operators';
+import { User, UserRole, UserStatus } from '../models/user.model';
 import firebase from 'firebase/compat/app';
-import { BehaviorSubject } from 'rxjs';
 
 
 @Injectable({ providedIn: 'root' })
@@ -13,50 +13,28 @@ export class AuthService {
     private userSubject = new BehaviorSubject<User | null>(null);
     user$ = this.userSubject.asObservable();
 
-    constructor(private afAuth: AngularFireAuth) {
-        // map Firebase user if using Firebase auth
-        this.afAuth.authState.subscribe((firebaseUser: firebase.User | null) => {
-            if (!firebaseUser) return;
-            const user: User = {
-                id: firebaseUser.uid,
-                name: firebaseUser.displayName ?? 'Unknown',
-                email: firebaseUser.email ?? '',
-                role: 'driver',
-                status: 'active'
-            };
-            this.setUser(user);
-        });
-    }
+    constructor(private afAuth: AngularFireAuth, private http: HttpClient) { }
 
-    // mock login for testing
-    login(email: string, password: string): Observable<User | null> {
-        if (email === 'admin@test.com' && password === '123456') {
-            const user: User = {
-                id: '1',
-                name: 'Admin User',
-                email,
-                role: UserRole.Admin,
-                status: UserStatus.Active
-            };
-            this.setUser(user);
-            return of(user).pipe(delay(500));
-        } else if (email === 'driver@test.com' && password === '123456') {
-            const user: User = {
-                id: '2',
-                name: 'Driver User',
-                email,
-                role: UserRole.Driver,
-                status: UserStatus.Active
-            };
-            this.setUser(user);
-            return of(user).pipe(delay(500));
-        } else {
-            return throwError(() => new Error('Invalid credentials'));
-        }
+    login(email: string, password: string): Observable<User> {
+        const credentials = { email, password };
+        return this.http.post<User>('http://localhost:5129/api/auth/login', credentials)
+            .pipe(
+                // FIX: Explicitly type the user parameter to User
+                tap((user: User) => {
+                    this.setUser(user);
+                }),
+                map(user => user)
+            );
     }
 
     // store user in memory (and optionally localStorage)
     private setUser(user: User) {
+        // FIX: The role received from the backend is a string, so we need to
+        // convert it to the UserRole enum before storing it.
+        if (typeof user.role === 'string') {
+            user.role = UserRole[user.role as keyof typeof UserRole];
+        }
+
         this.currentUser = user;
         this.userSubject.next(user);
         localStorage.setItem('currentUser', JSON.stringify(user));
@@ -74,10 +52,15 @@ export class AuthService {
         return this.currentUser;
     }
 
-    async logout(): Promise<void> {
+    // Add a new method to explicitly clear the user from local storage
+    clearUser(): void {
         this.currentUser = null;
         this.userSubject.next(null);
         localStorage.removeItem('currentUser');
+    }
+
+    async logout(): Promise<void> {
+        this.clearUser();
         return this.afAuth.signOut();
     }
 }

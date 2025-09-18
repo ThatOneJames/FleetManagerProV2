@@ -17,5 +17,10 @@ namespace FleetManagerPro.API.Data.Repository
         {
             return await _context.Set<User>().FirstOrDefaultAsync(u => u.Email == email);
         }
+
+        public async Task<User?> GetByIdAsync(string id)
+        {
+            return await _context.Set<User>().FirstOrDefaultAsync(u => u.Id == id);
+        }
     }
 }

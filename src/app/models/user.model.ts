@@ -1,46 +1,46 @@
 export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'driver';
-  phone?: string;
-  address?: string;
-  dateOfBirth?: Date;
-  hireDate?: Date;
-  emergencyContact?: string;
-  status: 'active' | 'inactive' | 'suspended';
-  
-  // Driver specific fields
-  vehicleId?: string;
-  licenseNumber?: string;
-  licenseClass?: string;
-  licenseExpiry?: Date;
-  experienceYears?: number;
-  safetyRating?: number;
-  
-  // Timestamps
-  createdAt?: Date;
-  updatedAt?: Date;
+    id: string;
+    name: string;
+    email: string;
+    role: UserRole; // Use the UserRole enum
+    phone?: string;
+    address?: string;
+    dateOfBirth?: Date;
+    hireDate?: Date;
+    emergencyContact?: string;
+    status: UserStatus;
+
+    // Driver specific fields
+    vehicleId?: string;
+    licenseNumber?: string;
+    licenseClass?: string;
+    licenseExpiry?: Date;
+    experienceYears?: number;
+    safetyRating?: number;
+
+    // Timestamps
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface LoginCredentials {
-  email: string;
-  password: string;
+    email: string;
+    password: string;
 }
 
 export interface AuthResponse {
-  user: User;
-  token: string;
-  refreshToken?: string;
+    user: User;
+    token: string;
+    refreshToken?: string;
 }
 
 export enum UserRole {
-  Admin = 'admin',
-  Driver = 'driver'
+    Admin = 0,
+    Driver = 1
 }
 
 export enum UserStatus {
-  Active = 'active',
-  Inactive = 'inactive',
-  Suspended = 'suspended'
+    Active = 0,
+    Inactive = 1,
+    Suspended = 2
 }

@@ -5,7 +5,6 @@ using FleetManagerPro.API.Models;
 using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Services;
 using System.Threading.Tasks;
-// REMOVED: using FleetManagerPro.API.DTOs;
 
 namespace FleetManager.Controllers
 {
@@ -24,20 +23,27 @@ namespace FleetManager.Controllers
 
         // POST: api/auth/register
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] FleetManagerPro.API.DTOs.UserDto userDto) // UPDATED
+        public async Task<IActionResult> Register([FromBody] FleetManagerPro.API.DTOs.UserDto userDto)
         {
             if (await _context.Users.AnyAsync(u => u.Email == userDto.Email))
             {
                 return BadRequest(new { message = "Email already exists" });
             }
 
+            if (!Enum.TryParse(userDto.Role, true, out UserRole userRole))
+            {
+                return BadRequest(new { message = "Invalid role specified" });
+            }
+
+            var hashedPassword = await _authService.HashPassword(userDto.Password);
+
             var user = new User
             {
                 Id = Guid.NewGuid().ToString(),
                 Email = userDto.Email,
                 Name = userDto.Name,
-                PasswordHash = await _authService.HashPassword(userDto.Password),
-                Role = UserRole.Driver,
+                PasswordHash = hashedPassword,
+                Role = userRole,
                 Status = UserStatus.Active,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -51,7 +57,7 @@ namespace FleetManager.Controllers
 
         // POST: api/auth/login
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] FleetManagerPro.API.DTOs.LoginDto loginDto) // UPDATED
+        public async Task<IActionResult> Login([FromBody] FleetManagerPro.API.DTOs.LoginDto loginDto)
         {
             var user = await _context.Users.SingleOrDefaultAsync(u => u.Email == loginDto.Email);
             if (user == null || !await _authService.VerifyPassword(loginDto.Password, user.PasswordHash))
@@ -68,19 +74,5 @@ namespace FleetManager.Controllers
                 role = user.Role.ToString()
             });
         }
-    }
-
-    // --- DTOs ---
-    // DO NOT REMOVE THESE
-    public class UserDto
-    {
-        public string Email { get; set; }
-        public string Password { get; set; }
-    }
-
-    public class LoginDto
-    {
-        public string Email { get; set; }
-        public string Password { get; set; }
     }
 }

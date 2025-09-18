@@ -2,7 +2,7 @@ using FleetManagerPro.API.Models;
 using FleetManagerPro.API.Services;
 using Microsoft.AspNetCore.Mvc;
 using FleetManagerPro.API.Data;
-using System; // Required for Guid
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

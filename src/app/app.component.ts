@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from './services/auth.service';
-import { User } from './models/user.model';
+import { User, UserRole } from './models/user.model';
 
 @Component({
     selector: 'app-root',
@@ -13,6 +13,7 @@ export class AppComponent implements OnInit {
     currentUser: User | null = null;
     isLoading = true;
     sidebarOpen = true;
+    UserRole = UserRole; // Make the UserRole enum available in the template
 
     // Admin navigation
     adminNavigationItems = [
@@ -75,7 +76,7 @@ export class AppComponent implements OnInit {
                 } else {
                     // Redirect to appropriate dashboard based on role
                     if (this.router.url === '/login' || this.router.url === '/') {
-                        const defaultRoute = user.role === 'admin' ? '/admin/dashboard' : '/driver/dashboard';
+                        const defaultRoute = user.role === UserRole.Admin ? '/admin/dashboard' : '/driver/dashboard';
                         this.router.navigate([defaultRoute]);
                     }
                 }
@@ -89,7 +90,7 @@ export class AppComponent implements OnInit {
     }
 
     get navigationItems() {
-        return this.currentUser?.role === 'admin'
+        return this.currentUser?.role === UserRole.Admin
             ? this.adminNavigationItems
             : this.driverNavigationItems;
     }

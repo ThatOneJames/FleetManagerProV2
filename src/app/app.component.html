@@ -1,109 +1,105 @@
 ﻿<!-- Loading Spinner -->
 <div *ngIf="isLoading" class="loading-container">
-  <mat-spinner diameter="50"></mat-spinner>
-  <p class="loading-text">Loading FleetManager Pro...</p>
+    <mat-spinner diameter="50"></mat-spinner>
+    <p class="loading-text">Loading FleetManager Pro...</p>
 </div>
 
 <!-- Main App Container -->
 <div *ngIf="!isLoading" class="app-container">
-  
-  <!-- Login Screen -->
-  <div *ngIf="!currentUser" class="login-container">
-    <router-outlet></router-outlet>
-  </div>
 
-  <!-- Authenticated App with Sidebar -->
-  <div *ngIf="currentUser" class="main-layout">
-    
-    <!-- Sidebar -->
-    <mat-sidenav-container class="sidenav-container">
-      <mat-sidenav
-        #sidenav
-        [opened]="sidebarOpen"
-        mode="side"
-        class="sidebar"
-        [fixedInViewport]="true">
-        
-        <!-- Sidebar Header -->
-        <div class="sidebar-header">
-          <div class="logo-container">
-            <mat-icon class="logo-icon">business</mat-icon>
-            <div class="logo-text">
-              <h2>FleetManager Pro</h2>
-              <p class="role-text">
-                  {{ currentUser?.role === 'admin' ? 'Admin Dashboard' : 'Driver Dashboard' }}
-              </p>
-            </div>
-          </div>
-        </div>
-        <!-- Navigation Menu -->
-        <div class="nav-content">
-          <div *ngFor="let group of navigationItems" class="nav-group">
-            <div class="nav-group-label">{{ group.title }}</div>
-            <mat-nav-list class="nav-list">
-              <mat-list-item
-                *ngFor="let item of group.items"
-                [routerLink]="item.route"
-                routerLinkActive="active-link"
-                class="nav-item">
-                <mat-icon matListIcon>{{ item.icon }}</mat-icon>
-                <span matLine>{{ item.title }}</span>
-              </mat-list-item>
-            </mat-nav-list>
-          </div>
-        </div>
-        <!-- Sidebar Footer -->
-        <div class="sidebar-footer">
-          <mat-divider></mat-divider>
-          <div class="user-info">
-            <div class="user-avatar">
-              <mat-icon>person</mat-icon>
-            </div>
-            <div class="user-details">
-                <span class="user-name">{{ currentUser?.name }}</span>
-                <span class="user-email">{{ currentUser?.email }}</span>
-            </div>
-          </div>
-          <button
-            mat-button
-            class="logout-button"
-            (click)="onLogout()">
-            <mat-icon>logout</mat-icon>
-            Logout
-          </button>
-        </div>
-      </mat-sidenav>
-      <!-- Main Content Area -->
-      <mat-sidenav-content class="main-content">
-        <!-- Top Toolbar -->
-        <mat-toolbar class="top-toolbar">
-          <button
-            mat-icon-button
-            (click)="toggleSidebar()"
-            class="menu-button">
-            <mat-icon>menu</mat-icon>
-          </button>
-          <span class="toolbar-spacer"></span>
-          <!-- User Actions -->
-          <button mat-icon-button [matMenuTriggerFor]="userMenu">
-            <mat-icon>account_circle</mat-icon>
-          </button>
-          <mat-menu #userMenu="matMenu">
-            <button mat-menu-item routerLink="/profile">
-              <mat-icon>person</mat-icon>
-              <span>Profile</span>
-            </button>
-            <button mat-menu-item (click)="onLogout()">
-              <mat-icon>logout</mat-icon>
-              <span>Logout</span>
-            </button>
-          </mat-menu>
-        </mat-toolbar>
-        <!-- Page Content -->
-        <div class="page-content">
-          <router-outlet></router-outlet>
-        </div>
-      </mat-sidenav-content>
-    </mat-sidenav-container>
-  </div>
+    <!-- Login Screen -->
+    <div *ngIf="!currentUser" class="login-container">
+        <router-outlet></router-outlet>
+    </div>
+
+    <!-- Authenticated App with Sidebar -->
+    <div *ngIf="currentUser" class="main-layout">
+
+        <!-- Sidebar -->
+        <mat-sidenav-container class="sidenav-container">
+            <mat-sidenav     #sidenav
+                             [opened]="sidebarOpen"
+                             mode="side"
+                             class="sidebar"
+                             [fixedInViewport]="true">
+
+                <!-- Sidebar Header -->
+                <div class="sidebar-header">
+                    <div class="logo-container">
+                        <mat-icon class="logo-icon">business</mat-icon>
+                        <div class="logo-text">
+                            <h2>FleetManager Pro</h2>
+                            <p class="role-text">
+                                {{ currentUser?.role === UserRole.Admin ? 'Admin Dashboard' : 'Driver Dashboard' }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Navigation Menu -->
+                <div class="nav-content">
+                    <div *ngFor="let group of navigationItems" class="nav-group">
+                        <div class="nav-group-label">{{ group.title }}</div>
+                        <mat-nav-list class="nav-list">
+                            <mat-list-item         *ngFor="let item of group.items"
+                                                   [routerLink]="item.route"
+                                                   routerLinkActive="active-link"
+                                                   class="nav-item">
+                                <mat-icon matListIcon>{{ item.icon }}</mat-icon>
+                                <span matLine>{{ item.title }}</span>
+                            </mat-list-item>
+                        </mat-nav-list>
+                    </div>
+                </div>
+                <!-- Sidebar Footer -->
+                <div class="sidebar-footer">
+                    <mat-divider></mat-divider>
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <mat-icon>person</mat-icon>
+                        </div>
+                        <div class="user-details">
+                            <span class="user-name">{{ currentUser?.name }}</span>
+                            <span class="user-email">{{ currentUser?.email }}</span>
+                        </div>
+                    </div>
+                    <button       mat-button
+                                  class="logout-button"
+                                  (click)="onLogout()">
+                        <mat-icon>logout</mat-icon>
+                        Logout
+                    </button>
+                </div>
+            </mat-sidenav>
+            <!-- Main Content Area -->
+            <mat-sidenav-content class="main-content">
+                <!-- Top Toolbar -->
+                <mat-toolbar class="top-toolbar">
+                    <button       mat-icon-button
+                                  (click)="toggleSidebar()"
+                                  class="menu-button">
+                        <mat-icon>menu</mat-icon>
+                    </button>
+                    <span class="toolbar-spacer"></span>
+                    <!-- User Actions -->
+                    <button mat-icon-button [matMenuTriggerFor]="userMenu">
+                        <mat-icon>account_circle</mat-icon>
+                    </button>
+                    <mat-menu #userMenu="matMenu">
+                        <button mat-menu-item routerLink="/profile">
+                            <mat-icon>person</mat-icon>
+                            <span>Profile</span>
+                        </button>
+                        <button mat-menu-item (click)="onLogout()">
+                            <mat-icon>logout</mat-icon>
+                            <span>Logout</span>
+                        </button>
+                    </mat-menu>
+                </mat-toolbar>
+                <!-- Page Content -->
+                <div class="page-content">
+                    <router-outlet></router-outlet>
+                </div>
+            </mat-sidenav-content>
+        </mat-sidenav-container>
+    </div>
 </div>

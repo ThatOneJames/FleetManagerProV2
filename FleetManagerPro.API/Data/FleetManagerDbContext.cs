@@ -105,6 +105,12 @@ namespace FleetManagerPro.API.Data
                 .HasMany(v => v.MaintenanceRecords)
                 .WithOne(m => m.Vehicle)
                 .HasForeignKey(m => m.VehicleId);
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.Role);
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.Status);
         }
     }
 }

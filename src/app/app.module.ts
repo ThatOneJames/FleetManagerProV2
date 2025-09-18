@@ -44,6 +44,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { LoginComponent } from './components/auth/login/login.component';
 import { SidebarComponent } from './components/shared/sidebar/sidebar.component';
+import { UserComponent } from './components/user/user.component';
 
 //Admin Components
 import { AdminDashboardComponent } from './components/admin/dashboard/dashboard.component';
@@ -91,7 +92,8 @@ const analytics = getAnalytics(app);
     DriverAttendanceComponent,
     LeaveRequestsComponent,
     DriverProfileComponent,
-    SidebarComponent
+    SidebarComponent,
+    UserComponent
     
   ],
   imports: [
