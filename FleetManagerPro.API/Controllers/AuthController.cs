@@ -12,6 +12,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using FleetManagerPro.API.Services;
+using FleetManagerPro.API.Data.Repository;
 
 namespace FleetManager.Controllers
 {
@@ -22,18 +23,20 @@ namespace FleetManager.Controllers
         private readonly FleetManagerDbContext _context;
         private readonly IConfiguration _config;
         private readonly IAuthService _authService;
+        private readonly IUserRepository _userRepository;
 
-        public AuthController(FleetManagerDbContext context, IConfiguration config, IAuthService authService)
+        public AuthController(FleetManagerDbContext context, IConfiguration config, IAuthService authService, IUserRepository userRepository)
         {
             _context = context;
             _config = config;
             _authService = authService;
+            _userRepository = userRepository;
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto loginDto)
         {
-            var user = await _context.Users.SingleOrDefaultAsync(x => x.Email == loginDto.Email);
+            var user = await _userRepository.GetByEmailAsync(loginDto.Email);
 
             if (user == null)
             {
@@ -47,10 +50,10 @@ namespace FleetManager.Controllers
 
             var claims = new[]
             {
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Name, user.Name),
-        new Claim(ClaimTypes.Role, user.Role.ToString())
-    };
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Role, user.Role.ToString())
+            };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
@@ -71,7 +74,8 @@ namespace FleetManager.Controllers
             {
                 token,
                 email = user.Email,
-                role = user.Role.ToString()
+                role = user.Role.ToString(),
+                driver = user.Driver // Added this line to include the Driver object
             });
         }
 
@@ -104,6 +108,33 @@ namespace FleetManager.Controllers
 
             await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
+
+            // Check if the user is a driver and create a new Driver record
+            if (user.Role == UserRole.Driver)
+            {
+                var driver = new Driver
+                {
+                    UserId = user.Id,
+                    FullName = user.Name,
+                    LicenseNumber = Guid.NewGuid().ToString(), // Corrected to generate a unique license number
+                    ExperienceYears = 0,
+                    IsActive = true,
+                    IsAvailable = true,
+                    // The rest of the properties can be set to default values
+                    ContactNumber = "N/A",
+                    LicenseClass = "N/A",
+                    LicenseExpiry = DateTime.MinValue,
+                    TotalMilesDriven = 0.0,
+                    SafetyRating = 0.0,
+                    LastLocationLat = null,
+                    LastLocationLng = null,
+                    LastLocationUpdated = null,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _context.Drivers.Add(driver);
+                await _context.SaveChangesAsync();
+            }
 
             return Ok(new { message = "User registered successfully" });
         }

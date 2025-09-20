@@ -2,9 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using FleetManagerPro.API.Models;
-using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Services;
-
+using FleetManagerPro.API.Data.Repository;
 
 namespace FleetManagerPro.API.Controllers
 {
@@ -12,24 +11,26 @@ namespace FleetManagerPro.API.Controllers
     [Route("api/[controller]")]
     public class DriverController : ControllerBase
     {
-        private readonly DriverService _driverService;
+        private readonly IDriverService _driverService;
+        private readonly IUserRepository _userRepository;
 
-        public DriverController(DriverService driverService)
+        public DriverController(IDriverService driverService, IUserRepository userRepository)
         {
             _driverService = driverService;
+            _userRepository = userRepository;
         }
 
         // GET: api/drivers
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Driver>>> GetAllDrivers()
+        public async Task<ActionResult<IEnumerable<User>>> GetAllDrivers()
         {
-            var drivers = await _driverService.GetAllAsync();
+            var drivers = await _userRepository.GetAllDriversWithUserAsync();
             return Ok(drivers);
         }
 
         // GET: api/drivers/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<Driver>> GetDriverById(int id)
+        public async Task<ActionResult<Driver>> GetDriverById(string id)
         {
             var driver = await _driverService.GetByIdAsync(id);
             if (driver == null)
@@ -62,7 +63,7 @@ namespace FleetManagerPro.API.Controllers
 
         // DELETE: api/drivers/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteDriver(int id)
+        public async Task<IActionResult> DeleteDriver(string id)
         {
             var success = await _driverService.DeleteAsync(id);
             if (!success)

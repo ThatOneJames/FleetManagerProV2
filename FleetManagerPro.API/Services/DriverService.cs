@@ -20,7 +20,7 @@ namespace FleetManagerPro.API.Services
             return await _driverRepository.GetAllAsync();
         }
 
-        public async Task<Driver?> GetByIdAsync(int id)
+        public async Task<Driver?> GetByIdAsync(string id)
         {
             return await _driverRepository.GetByIdAsync(id);
         }
@@ -35,7 +35,7 @@ namespace FleetManagerPro.API.Services
             return await _driverRepository.UpdateAsync(driver);
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(string id)
         {
             return await _driverRepository.DeleteAsync(id);
         }

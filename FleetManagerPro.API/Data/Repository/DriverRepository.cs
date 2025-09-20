@@ -31,6 +31,11 @@ namespace FleetManagerPro.API.Data.Repository
                 .ToListAsync();
         }
 
+        public async new Task<Driver?> GetByIdAsync(string id)
+        {
+            return await _context.Drivers.FindAsync(id);
+        }
+
         public async new Task<Driver> CreateAsync(Driver driver)
         {
             _context.Drivers.Add(driver);
@@ -44,7 +49,7 @@ namespace FleetManagerPro.API.Data.Repository
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(string id)
         {
             var driver = await GetByIdAsync(id);
             if (driver == null) return false;

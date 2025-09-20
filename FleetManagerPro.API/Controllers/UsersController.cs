@@ -1,6 +1,7 @@
 using FleetManagerPro.API.Data.Repository;
 using FleetManagerPro.API.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace FleetManagerPro.API.Controllers
@@ -16,10 +17,17 @@ namespace FleetManagerPro.API.Controllers
             _userRepository = userRepository;
         }
 
+        // GET: api/users
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<User>>> GetAllUsers()
+        {
+            var users = await _userRepository.GetAllAsync();
+            return Ok(users);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(string id)
         {
-            // Now passing the string ID directly to the repository, as the User ID is a string.
             var user = await _userRepository.GetByIdAsync(id);
             if (user == null)
             {
@@ -32,14 +40,12 @@ namespace FleetManagerPro.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
-            // Now passing the string ID directly to the repository.
-            var user = await _userRepository.GetByIdAsync(id);
-            if (user == null)
+            var success = await _userRepository.DeleteAsync(id);
+            if (!success)
             {
                 return NotFound();
             }
 
-            await _userRepository.DeleteAsync(id);
             return NoContent();
         }
     }
