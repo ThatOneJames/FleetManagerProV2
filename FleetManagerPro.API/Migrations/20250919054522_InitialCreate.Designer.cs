@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FleetManagerPro.API.Migrations
 {
     [DbContext(typeof(FleetManagerDbContext))]
-    [Migration("20250916050355_InitialSetupCorrected")]
-    partial class InitialSetupCorrected
+    [Migration("20250919054522_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -27,13 +27,13 @@ namespace FleetManagerPro.API.Migrations
 
             modelBuilder.Entity("DriverRoute", b =>
                 {
-                    b.Property<string>("AssignedDriversUserId")
-                        .HasColumnType("varchar(128)");
+                    b.Property<string>("AssignedDriversId")
+                        .HasColumnType("varchar(255)");
 
                     b.Property<int>("RoutesId")
                         .HasColumnType("int");
 
-                    b.HasKey("AssignedDriversUserId", "RoutesId");
+                    b.HasKey("AssignedDriversId", "RoutesId");
 
                     b.HasIndex("RoutesId");
 
@@ -42,51 +42,57 @@ namespace FleetManagerPro.API.Migrations
 
             modelBuilder.Entity("FleetManagerPro.API.Models.Driver", b =>
                 {
-                    b.Property<string>("UserId")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
+                    b.Property<string>("Id")
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("id");
 
                     b.Property<string>("ContactNumber")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("contact_number");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("created_at");
 
                     b.Property<string>("CurrentVehicleId")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("current_vehicle_id");
 
                     b.Property<int>("ExperienceYears")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("experience_years");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Id")
-                        .HasColumnType("int");
+                        .HasColumnType("longtext")
+                        .HasColumnName("full_name");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_active");
 
                     b.Property<bool>("IsAvailable")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_available");
 
                     b.Property<double?>("LastLocationLat")
-                        .HasColumnType("double");
+                        .HasColumnType("double")
+                        .HasColumnName("last_location_lat");
 
                     b.Property<double?>("LastLocationLng")
-                        .HasColumnType("double");
+                        .HasColumnType("double")
+                        .HasColumnName("last_location_lng");
 
                     b.Property<DateTime?>("LastLocationUpdated")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("last_location_updated");
 
                     b.Property<string>("LicenseClass")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("license_class");
 
                     b.Property<DateTime>("LicenseExpiry")
                         .HasColumnType("datetime(6)")
@@ -95,23 +101,34 @@ namespace FleetManagerPro.API.Migrations
                     b.Property<string>("LicenseNumber")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("license_number");
 
                     b.Property<double>("SafetyRating")
-                        .HasColumnType("double");
+                        .HasColumnType("double")
+                        .HasColumnName("safety_rating");
 
                     b.Property<double>("TotalMilesDriven")
-                        .HasColumnType("double");
+                        .HasColumnType("double")
+                        .HasColumnName("total_miles_driven");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("UserId");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
 
                     b.HasIndex("CurrentVehicleId");
 
-                    b.ToTable("drivers");
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("drivers", (string)null);
                 });
 
             modelBuilder.Entity("FleetManagerPro.API.Models.DriverAttendance", b =>
@@ -174,7 +191,7 @@ namespace FleetManagerPro.API.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<string>("ApproverUserId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
@@ -225,7 +242,8 @@ namespace FleetManagerPro.API.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
@@ -238,11 +256,13 @@ namespace FleetManagerPro.API.Migrations
                         .HasColumnName("created_at");
 
                     b.Property<DateTime>("Date")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("date");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("description");
 
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("datetime(6)")
@@ -261,13 +281,16 @@ namespace FleetManagerPro.API.Migrations
                         .HasColumnType("varchar(100)")
                         .HasColumnName("performed_by");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("status");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("type");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)")
@@ -276,17 +299,19 @@ namespace FleetManagerPro.API.Migrations
                     b.Property<string>("VehicleId")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("vehicle_id");
 
                     b.Property<string>("VehiclePlate")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("vehicle_plate");
 
                     b.HasKey("Id");
 
                     b.HasIndex("VehicleId");
 
-                    b.ToTable("maintenance_records");
+                    b.ToTable("maintenance_records", (string)null);
                 });
 
             modelBuilder.Entity("FleetManagerPro.API.Models.Route", b =>
@@ -329,7 +354,7 @@ namespace FleetManagerPro.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("routes");
+                    b.ToTable("routes", (string)null);
                 });
 
             modelBuilder.Entity("FleetManagerPro.API.Models.RouteOptimization", b =>
@@ -360,7 +385,6 @@ namespace FleetManagerPro.API.Migrations
 
                     b.Property<string>("OptimizedBy")
                         .IsRequired()
-                        .HasMaxLength(128)
                         .HasColumnType("varchar(128)")
                         .HasColumnName("optimized_by");
 
@@ -486,11 +510,11 @@ namespace FleetManagerPro.API.Migrations
             modelBuilder.Entity("FleetManagerPro.API.Models.User", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
                         .HasColumnName("id");
 
                     b.Property<string>("Address")
-                        .IsRequired()
                         .HasColumnType("longtext")
                         .HasColumnName("address");
 
@@ -508,7 +532,6 @@ namespace FleetManagerPro.API.Migrations
                         .HasColumnName("email");
 
                     b.Property<string>("EmergencyContact")
-                        .IsRequired()
                         .HasColumnType("longtext")
                         .HasColumnName("emergency_contact");
 
@@ -527,21 +550,32 @@ namespace FleetManagerPro.API.Migrations
                         .HasColumnName("password_hash");
 
                     b.Property<string>("Phone")
-                        .IsRequired()
                         .HasColumnType("longtext")
                         .HasColumnName("phone");
 
                     b.Property<string>("ProfileImageUrl")
-                        .IsRequired()
                         .HasColumnType("longtext")
                         .HasColumnName("profile_image_url");
 
                     b.Property<int>("Role")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Status")
                         .HasColumnType("int")
+                        .HasColumnName("role");
+
+                    b.Property<string>("RoleString")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("Role");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("longtext")
                         .HasColumnName("status");
+
+                    b.Property<string>("StatusString")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("Status");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)")
@@ -555,7 +589,9 @@ namespace FleetManagerPro.API.Migrations
             modelBuilder.Entity("FleetManagerPro.API.Models.Vehicle", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("id");
 
                     b.Property<int>("CategoryId")
                         .HasColumnType("int")
@@ -563,18 +599,16 @@ namespace FleetManagerPro.API.Migrations
 
                     b.Property<string>("Color")
                         .HasMaxLength(30)
-                        .HasColumnType("varchar(30)");
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("color");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("created_at");
 
-                    b.Property<Guid?>("CurrentDriverId")
-                        .HasColumnType("char(36)")
+                    b.Property<string>("CurrentDriverId")
+                        .HasColumnType("varchar(255)")
                         .HasColumnName("current_driver_id");
-
-                    b.Property<string>("CurrentDriverUserId")
-                        .HasColumnType("varchar(128)");
 
                     b.Property<decimal?>("CurrentLocationLat")
                         .HasColumnType("decimal(65,30)")
@@ -588,12 +622,6 @@ namespace FleetManagerPro.API.Migrations
                         .HasColumnType("decimal(65,30)")
                         .HasColumnName("current_mileage");
 
-                    b.Property<int?>("DriverId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("DriverUserId")
-                        .HasColumnType("varchar(128)");
-
                     b.Property<decimal?>("FuelCapacity")
                         .HasColumnType("decimal(65,30)")
                         .HasColumnName("fuel_capacity");
@@ -602,8 +630,9 @@ namespace FleetManagerPro.API.Migrations
                         .HasColumnType("decimal(65,30)")
                         .HasColumnName("fuel_level");
 
-                    b.Property<int>("FuelType")
-                        .HasColumnType("int")
+                    b.Property<string>("FuelType")
+                        .IsRequired()
+                        .HasColumnType("longtext")
                         .HasColumnName("fuel_type");
 
                     b.Property<DateTime>("InsuranceExpiry")
@@ -628,16 +657,14 @@ namespace FleetManagerPro.API.Migrations
                     b.Property<string>("Make")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("make");
 
                     b.Property<string>("Model")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<string>("PlateNumber")
-                        .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("model");
 
                     b.Property<DateTime?>("PurchaseDate")
                         .HasColumnType("datetime(6)")
@@ -651,8 +678,10 @@ namespace FleetManagerPro.API.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("registration_expiry");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("status");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)")
@@ -661,20 +690,20 @@ namespace FleetManagerPro.API.Migrations
                     b.Property<string>("Vin")
                         .IsRequired()
                         .HasMaxLength(17)
-                        .HasColumnType("varchar(17)");
+                        .HasColumnType("varchar(17)")
+                        .HasColumnName("vin");
 
                     b.Property<int>("Year")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("year");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
 
-                    b.HasIndex("CurrentDriverUserId");
+                    b.HasIndex("CurrentDriverId");
 
-                    b.HasIndex("DriverUserId");
-
-                    b.ToTable("Vehicles");
+                    b.ToTable("vehicles", (string)null);
                 });
 
             modelBuilder.Entity("FleetManagerPro.API.Models.VehicleCategory", b =>
@@ -705,7 +734,7 @@ namespace FleetManagerPro.API.Migrations
             modelBuilder.Entity("RouteVehicle", b =>
                 {
                     b.Property<string>("AssignedVehiclesId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(128)");
 
                     b.Property<int>("RoutesId")
                         .HasColumnType("int");
@@ -721,7 +750,7 @@ namespace FleetManagerPro.API.Migrations
                 {
                     b.HasOne("FleetManagerPro.API.Models.Driver", null)
                         .WithMany()
-                        .HasForeignKey("AssignedDriversUserId")
+                        .HasForeignKey("AssignedDriversId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -735,9 +764,8 @@ namespace FleetManagerPro.API.Migrations
             modelBuilder.Entity("FleetManagerPro.API.Models.Driver", b =>
                 {
                     b.HasOne("FleetManagerPro.API.Models.Vehicle", "CurrentVehicle")
-                        .WithMany("AssignedDrivers")
-                        .HasForeignKey("CurrentVehicleId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .WithMany()
+                        .HasForeignKey("CurrentVehicleId");
 
                     b.HasOne("FleetManagerPro.API.Models.User", "User")
                         .WithOne("Driver")
@@ -828,18 +856,12 @@ namespace FleetManagerPro.API.Migrations
                         .IsRequired();
 
                     b.HasOne("FleetManagerPro.API.Models.Driver", "CurrentDriver")
-                        .WithMany()
-                        .HasForeignKey("CurrentDriverUserId");
-
-                    b.HasOne("FleetManagerPro.API.Models.Driver", "Driver")
-                        .WithMany()
-                        .HasForeignKey("DriverUserId");
+                        .WithMany("Vehicles")
+                        .HasForeignKey("CurrentDriverId");
 
                     b.Navigation("Category");
 
                     b.Navigation("CurrentDriver");
-
-                    b.Navigation("Driver");
                 });
 
             modelBuilder.Entity("RouteVehicle", b =>
@@ -862,6 +884,8 @@ namespace FleetManagerPro.API.Migrations
                     b.Navigation("AttendanceRecords");
 
                     b.Navigation("LeaveRequests");
+
+                    b.Navigation("Vehicles");
                 });
 
             modelBuilder.Entity("FleetManagerPro.API.Models.Route", b =>
@@ -873,14 +897,11 @@ namespace FleetManagerPro.API.Migrations
 
             modelBuilder.Entity("FleetManagerPro.API.Models.User", b =>
                 {
-                    b.Navigation("Driver")
-                        .IsRequired();
+                    b.Navigation("Driver");
                 });
 
             modelBuilder.Entity("FleetManagerPro.API.Models.Vehicle", b =>
                 {
-                    b.Navigation("AssignedDrivers");
-
                     b.Navigation("MaintenanceRecords");
                 });
 

@@ -1,32 +1,39 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { Vehicle } from '../models/vehicle.model';
 
 @Injectable({
     providedIn: 'root'
 })
 export class VehicleService {
-    private apiUrl = 'http://localhost:5000/api/vehicles';
+    // FIX: Updated the API URL to match the one in the user's provided file
+    private apiUrl = 'http://localhost:5129/api/vehicles';
 
     constructor(private http: HttpClient) { }
 
-    getAllVehicles(): Observable<any[]> {
-        return this.http.get<any[]>(this.apiUrl);
+    // FIX: Use the Vehicle interface for type safety
+    getAllVehicles(): Observable<Vehicle[]> {
+        return this.http.get<Vehicle[]>(this.apiUrl);
     }
 
-    getVehicleById(id: number): Observable<any> {
-        return this.http.get<any>(`${this.apiUrl}/${id}`);
+    // FIX: Use the Vehicle interface for type safety
+    getVehicleById(id: string): Observable<Vehicle> {
+        return this.http.get<Vehicle>(`${this.apiUrl}/${id}`);
     }
 
-    addVehicle(vehicle: any): Observable<any> {
+    // FIX: Use the Vehicle interface for type safety
+    addVehicle(vehicle: Vehicle): Observable<any> {
         return this.http.post<any>(this.apiUrl, vehicle);
     }
 
-    updateVehicle(id: number, vehicle: any): Observable<any> {
+    // FIX: Use the Vehicle interface for type safety
+    updateVehicle(id: string, vehicle: Vehicle): Observable<any> {
         return this.http.put<any>(`${this.apiUrl}/${id}`, vehicle);
     }
 
-    deleteVehicle(id: number): Observable<any> {
+    // FIX: Use the Vehicle interface for type safety
+    deleteVehicle(id: string): Observable<any> {
         return this.http.delete<any>(`${this.apiUrl}/${id}`);
     }
 }

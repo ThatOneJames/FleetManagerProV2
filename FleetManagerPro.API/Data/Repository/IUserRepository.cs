@@ -7,5 +7,6 @@ namespace FleetManagerPro.API.Data.Repository
     {
         Task<User?> GetByEmailAsync(string email);
         Task<User?> GetByIdAsync(string id);
+        Task DeleteAsync(string id);
     }
 }

@@ -16,13 +16,13 @@
     <!-- Add Driver Form -->
     <div class="add-form" *ngIf="showAddDriverForm">
         <h3>Add Driver</h3>
-        <form #driverForm="ngForm" (ngSubmit)="addDriver(driverForm.value)">
-            <input name="name" ngModel placeholder="Driver Name" required />
-            <input name="email" ngModel type="email" placeholder="Email" required />
-            <input name="password" ngModel type="password" placeholder="Password" required />
-            <input name="licenseNumber" ngModel placeholder="License Number" required />
-            <input name="experienceYears" ngModel type="number" placeholder="Experience Years" required />
-            <button type="submit">Save</button>
+        <form [formGroup]="registrationForm" (ngSubmit)="addDriver()">
+            <input formControlName="name" placeholder="Driver Name" required />
+            <input formControlName="email" type="email" placeholder="Email" required />
+            <input formControlName="password" type="password" placeholder="Password" required />
+            <input formControlName="licenseNumber" placeholder="License Number" required />
+            <input formControlName="experienceYears" type="number" placeholder="Experience Years" required />
+            <button type="submit" [disabled]="registrationForm.invalid">Save</button>
         </form>
     </div>
 

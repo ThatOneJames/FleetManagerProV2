@@ -30,7 +30,7 @@
                         <div class="logo-text">
                             <h2>FleetManager Pro</h2>
                             <p class="role-text">
-                                {{ currentUser?.role === UserRole.Admin ? 'Admin Dashboard' : 'Driver Dashboard' }}
+                                {{ currentUser.role === UserRole.Admin ? 'Admin Dashboard' : 'Driver Dashboard' }}
                             </p>
                         </div>
                     </div>
@@ -58,8 +58,8 @@
                             <mat-icon>person</mat-icon>
                         </div>
                         <div class="user-details">
-                            <span class="user-name">{{ currentUser?.name }}</span>
-                            <span class="user-email">{{ currentUser?.email }}</span>
+                            <span class="user-name">{{ currentUser.name }}</span>
+                            <span class="user-email">{{ currentUser.email }}</span>
                         </div>
                     </div>
                     <button       mat-button

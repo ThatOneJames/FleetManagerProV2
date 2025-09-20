@@ -46,8 +46,8 @@ namespace FleetManagerPro.API.Models
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // 🔹 Navigation
-        public Vehicle Vehicle { get; set; } = null!;
+        // 🔹 Navigation
+        public Vehicle Vehicle { get; set; } = null!;
 
     }
 

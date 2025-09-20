@@ -1,21 +1,24 @@
-using FleetManagerPro.API.Models;
-using FleetManagerPro.API.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using FleetManagerPro.API.Models;
 using FleetManagerPro.API.Data;
-using System;
-using System.Collections.Generic;
+using FleetManagerPro.API.Services;
 using System.Threading.Tasks;
+using FleetManagerPro.API.DTOs.Vehicles;
 
-namespace FleetManagerPro.API.Controllers
+namespace FleetManager.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/vehicles")]
     public class VehicleController : ControllerBase
     {
+        private readonly FleetManagerDbContext _context;
         private readonly VehicleService _vehicleService;
 
-        public VehicleController(VehicleService vehicleService)
+        public VehicleController(FleetManagerDbContext context, VehicleService vehicleService)
         {
+            _context = context;
             _vehicleService = vehicleService;
         }
 
@@ -27,33 +30,42 @@ namespace FleetManagerPro.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Vehicle>> GetById(string id) // Changed 'Guid' to 'string'
+        public async Task<ActionResult<Vehicle>> GetById(string id)
         {
             var vehicle = await _vehicleService.GetByIdAsync(id);
-            if (vehicle == null) return NotFound();
+            if (vehicle == null)
+            {
+                return NotFound();
+            }
             return Ok(vehicle);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Vehicle>> Create(Vehicle vehicle)
+        public async Task<ActionResult<Vehicle>> Create([FromBody] CreateVehicleDto vehicleDto)
         {
-            var created = await _vehicleService.CreateAsync(vehicle);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+            var createdVehicle = await _vehicleService.CreateAsync(vehicleDto);
+            return CreatedAtAction(nameof(GetById), new { id = createdVehicle.Id }, createdVehicle);
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult<Vehicle>> Update(string id, Vehicle vehicle) // Changed 'Guid' to 'string'
+        public async Task<ActionResult<Vehicle>> Update(string id, [FromBody] Vehicle vehicle)
         {
-            var updated = await _vehicleService.UpdateAsync(id, vehicle);
-            if (updated == null) return NotFound();
-            return Ok(updated);
+            var updatedVehicle = await _vehicleService.UpdateAsync(id, vehicle);
+            if (updatedVehicle == null)
+            {
+                return NotFound();
+            }
+            return Ok(updatedVehicle);
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult> Delete(string id) // Changed 'Guid' to 'string'
+        public async Task<ActionResult> Delete(string id)
         {
             var deleted = await _vehicleService.DeleteAsync(id);
-            if (!deleted) return NotFound();
+            if (!deleted)
+            {
+                return NotFound();
+            }
             return NoContent();
         }
     }

@@ -5,6 +5,7 @@ using FleetManagerPro.API.Data;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using FleetManagerPro.API.DTOs.Vehicles;
 
 namespace FleetManagerPro.API.Services
 {
@@ -19,37 +20,77 @@ namespace FleetManagerPro.API.Services
 
         public async Task<IEnumerable<Vehicle>> GetAllAsync()
         {
-            return await _context.Vehicles.Include(v => v.Driver).ToListAsync();
+            // The .Include(v => v.Driver) was causing an "Unknown column" error.
+            // It has been removed to resolve this.
+            return await _context.Vehicles.ToListAsync();
         }
 
-        public async Task<Vehicle?> GetByIdAsync(string id) // Change Guid to string
+        public async Task<Vehicle?> GetByIdAsync(string id)
         {
-            return await _context.Vehicles.Include(v => v.Driver)
-                                           .FirstOrDefaultAsync(v => v.Id == id);
+            // The .Include(v => v.Driver) was causing an "Unknown column" error.
+            // It has been removed to resolve this.
+            return await _context.Vehicles.FirstOrDefaultAsync(v => v.Id == id);
         }
 
-        public async Task<Vehicle> CreateAsync(Vehicle vehicle)
+        public async Task<Vehicle> CreateAsync(CreateVehicleDto vehicleDto)
         {
+            // Map the DTO to the Vehicle model
+            var vehicle = new Vehicle
+            {
+                Id = Guid.NewGuid().ToString(),
+                CategoryId = vehicleDto.CategoryId,
+                Make = vehicleDto.Make,
+                Model = vehicleDto.Model,
+                Year = vehicleDto.Year,
+                LicensePlate = vehicleDto.LicensePlate,
+                Color = vehicleDto.Color,
+                FuelType = (FuelType)Enum.Parse(typeof(FuelType), vehicleDto.FuelType, true),
+                FuelCapacity = (decimal)vehicleDto.FuelCapacity,
+                CurrentMileage = (decimal)vehicleDto.CurrentMileage,
+                Status = (VehicleStatus)Enum.Parse(typeof(VehicleStatus), vehicleDto.Status, true),
+                FuelLevel = (decimal)vehicleDto.FuelLevel,
+                RegistrationExpiry = vehicleDto.RegistrationExpiry,
+                InsuranceExpiry = vehicleDto.InsuranceExpiry,
+                InsurancePolicy = vehicleDto.InsurancePolicy,
+                PurchaseDate = vehicleDto.PurchaseDate,
+                PurchasePrice = (decimal)vehicleDto.PurchasePrice,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
             _context.Vehicles.Add(vehicle);
             await _context.SaveChangesAsync();
             return vehicle;
         }
 
-        public async Task<Vehicle?> UpdateAsync(string id, Vehicle vehicle) // Change Guid to string
+        public async Task<Vehicle?> UpdateAsync(string id, Vehicle updatedVehicle)
         {
             var existing = await _context.Vehicles.FindAsync(id);
             if (existing == null) return null;
 
-            existing.PlateNumber = vehicle.PlateNumber;
-            existing.Model = vehicle.Model;
-            existing.Status = vehicle.Status;
-            existing.DriverId = vehicle.DriverId;
+            existing.CategoryId = updatedVehicle.CategoryId;
+            existing.Make = updatedVehicle.Make;
+            existing.Model = updatedVehicle.Model;
+            existing.Year = updatedVehicle.Year;
+            existing.LicensePlate = updatedVehicle.LicensePlate;
+            existing.Color = updatedVehicle.Color;
+            existing.FuelType = updatedVehicle.FuelType;
+            existing.FuelCapacity = updatedVehicle.FuelCapacity;
+            existing.CurrentMileage = updatedVehicle.CurrentMileage;
+            existing.Status = updatedVehicle.Status;
+            existing.FuelLevel = updatedVehicle.FuelLevel;
+            existing.RegistrationExpiry = updatedVehicle.RegistrationExpiry;
+            existing.InsuranceExpiry = updatedVehicle.InsuranceExpiry;
+            existing.InsurancePolicy = updatedVehicle.InsurancePolicy;
+            existing.PurchaseDate = updatedVehicle.PurchaseDate;
+            existing.PurchasePrice = updatedVehicle.PurchasePrice;
+            existing.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return existing;
         }
 
-        public async Task<bool> DeleteAsync(string id) // Change Guid to string
+        public async Task<bool> DeleteAsync(string id)
         {
             var existing = await _context.Vehicles.FindAsync(id);
             if (existing == null) return false;

@@ -22,5 +22,15 @@ namespace FleetManagerPro.API.Data.Repository
         {
             return await _context.Set<User>().FirstOrDefaultAsync(u => u.Id == id);
         }
+
+        public async Task DeleteAsync(string id)
+        {
+            var user = await _context.Set<User>().FirstOrDefaultAsync(u => u.Id == id);
+            if (user != null)
+            {
+                _context.Set<User>().Remove(user);
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

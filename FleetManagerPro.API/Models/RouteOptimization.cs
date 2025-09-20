@@ -43,12 +43,13 @@ namespace FleetManagerPro.API.Models
         [Column("optimized_at")]
         public DateTime OptimizedAt { get; set; } = DateTime.UtcNow;
 
+        // FIX: The foreign key property MUST be a string to match the User.Id type.
         [Column("optimized_by")]
-        [StringLength(128)]
-        public string OptimizedBy { get; set; } = string.Empty;
+        public string OptimizedBy { get; set; } = null!;
 
-        // 🔹 Navigation
         public Route Route { get; set; } = null!;
+
+        [ForeignKey("OptimizedBy")]
         public User OptimizedByUser { get; set; } = null!;
     }
 }

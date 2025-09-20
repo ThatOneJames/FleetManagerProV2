@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 using FleetManagerPro.API.Data.Repository;
 using FleetManagerPro.API.Models;
-using BCrypt.Net;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace FleetManagerPro.API.Controllers
 {
@@ -20,40 +16,31 @@ namespace FleetManagerPro.API.Controllers
             _userRepository = userRepository;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetUsers()
-        {
-            var users = await _userRepository.GetAllAsync();
-            if (users == null || !users.Any())
-            {
-                return NotFound();
-            }
-            return Ok(users);
-        }
-
         [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUser(string id)
+        public async Task<IActionResult> Get(string id)
         {
+            // Now passing the string ID directly to the repository, as the User ID is a string.
             var user = await _userRepository.GetByIdAsync(id);
             if (user == null)
             {
                 return NotFound();
             }
+
             return Ok(user);
         }
 
-        [HttpPost]
-        public async Task<ActionResult<User>> PostUser(User user)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(string id)
         {
+            // Now passing the string ID directly to the repository.
+            var user = await _userRepository.GetByIdAsync(id);
             if (user == null)
             {
-                return BadRequest();
+                return NotFound();
             }
 
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
-            await _userRepository.AddAsync(user);
-
-            return CreatedAtAction("GetUser", new { id = user.Id }, user);
+            await _userRepository.DeleteAsync(id);
+            return NoContent();
         }
     }
 }

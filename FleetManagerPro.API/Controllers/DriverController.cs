@@ -48,7 +48,7 @@ namespace FleetManagerPro.API.Controllers
 
         // PUT: api/drivers/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateDriver(int id, Driver driver)
+        public async Task<IActionResult> UpdateDriver(string id, Driver driver)
         {
             if (id != driver.Id)
                 return BadRequest();

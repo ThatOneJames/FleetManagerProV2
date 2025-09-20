@@ -1,49 +1,129 @@
 <div class="fleet-management">
-    <h2>Fleet Management</h2>
+    <h2 class="text-3xl font-bold mb-6">Fleet Management</h2>
 
     <!-- Search + Filter -->
-    <div class="controls">
-        <input [(ngModel)]="searchText" placeholder="Search driver..." />
-        <select [(ngModel)]="filterStatus">
+    <div class="flex items-center space-x-4 mb-6">
+        <input [(ngModel)]="searchText" placeholder="Search vehicle..."
+               class="p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <select [(ngModel)]="filterStatus"
+                class="p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="active">Active</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="inactive">Inactive</option>
+            <option value="on-route">On-route</option>
+            <option value="retired">Retired</option>
         </select>
+        <button (click)="openAddVehicleForm()"
+                class="px-4 py-2 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            + Add Vehicle
+        </button>
     </div>
 
-    <!-- Drivers Table -->
-    <table class="drivers-table">
-        <thead>
+    <!-- Add Vehicle Form -->
+    <div *ngIf="showAddVehicleForm"
+         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+        <div class="relative bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
+            <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" (click)="closeAddVehicleForm()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <h3 class="text-2xl font-bold mb-4">Add New Vehicle</h3>
+            <p class="text-gray-600 mb-6">Enter the vehicle information and registration details</p>
+
+            <form [formGroup]="vehicleForm" (ngSubmit)="addVehicle()">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="make">Make</label>
+                        <input id="make" formControlName="make" type="text" placeholder="e.g. Ford"
+                               class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label for="model">Model</label>
+                        <input id="model" formControlName="model" type="text" placeholder="e.g. Transit"
+                               class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label for="year">Year</label>
+                        <input id="year" formControlName="year" type="number" placeholder="e.g. 2023"
+                               class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label for="licensePlate">License Plate</label>
+                        <input id="licensePlate" formControlName="licensePlate" type="text" placeholder="e.g. ABC-123"
+                               class="form-input" />
+                    </div>
+                    <div class="form-group col-span-1 md:col-span-2">
+                        <label for="vin">VIN Number</label>
+                        <input id="vin" formControlName="vin" type="text" placeholder="Enter VIN number"
+                               class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label for="currentMileage">Current Mileage</label>
+                        <input id="currentMileage" formControlName="currentMileage" type="number"
+                               placeholder="Current mileage" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label for="registrationExpiry">Registration Expiry</label>
+                        <input id="registrationExpiry" formControlName="registrationExpiry" type="date"
+                               class="form-input" />
+                    </div>
+                    <div class="form-group col-span-1 md:col-span-2">
+                        <label for="additionalNotes">Additional Notes</label>
+                        <textarea id="additionalNotes" formControlName="additionalNotes"
+                                  placeholder="Any additional information..." rows="3" class="form-input"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex justify-end mt-6">
+                    <button type="submit" [disabled]="vehicleForm.invalid"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700">
+                        Add
+                        Vehicle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Vehicles Table -->
+    <table class="w-full bg-white rounded-lg shadow-md overflow-hidden">
+        <thead class="bg-gray-200">
             <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Vehicle</th>
+                <th class="px-4 py-2 text-left text-gray-600 font-semibold">Plate Number</th>
+                <th class="px-4 py-2 text-left text-gray-600 font-semibold">Model</th>
+                <th class="px-4 py-2 text-left text-gray-600 font-semibold">Status</th>
+                <th class="px-4 py-2 text-left text-gray-600 font-semibold">Assigned Driver</th>
             </tr>
         </thead>
         <tbody>
-            <tr *ngFor="let driver of filteredDrivers">
-                <td>{{ driver.id }}</td>
-                <td>{{ driver.name }}</td>
-                <td>
-                    <span [ngClass]="driver.status === 'Active' ? 'badge active' : 'badge inactive'">
-                        {{ driver.status }}
+            <tr *ngFor="let vehicle of filteredVehicles" class="border-t border-gray-200 hover:bg-gray-50 transition-colors">
+                <td class="px-4 py-2">{{ vehicle.licensePlate }}</td>
+                <td class="px-4 py-2">{{ vehicle.model }}</td>
+                <td class="px-4 py-2">
+                    <span [ngClass]="{'bg-green-100 text-green-800': vehicle.status === 'active' || vehicle.status === 'on-route', 'bg-red-100 text-red-800': vehicle.status === 'inactive' || vehicle.status === 'retired', 'bg-yellow-100 text-yellow-800': vehicle.status === 'maintenance'}"
+                          class="px-2 py-1 rounded-full text-xs font-semibold capitalize">
+                        {{ vehicle.status }}
                     </span>
                 </td>
-                <td>{{ driver.vehicle }}</td>
+                <td class="px-4 py-2">{{ vehicle.currentDriverId }}</td>
             </tr>
         </tbody>
     </table>
-
-    <!-- Add Driver Form -->
-    <form #driverForm="ngForm" (ngSubmit)="addDriver(driverForm.value); driverForm.resetForm()">
-        <h3>Add New Driver</h3>
-        <input name="name" ngModel placeholder="Driver Name" required />
-        <select name="status" ngModel required>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-        </select>
-        <input name="vehicle" ngModel placeholder="Assigned Vehicle" required />
-        <button type="submit">Add Driver</button>
-    </form>
 </div>
+
+<style>
+    .form-group {
+        @apply flex flex-col mb-4;
+    }
+
+        .form-group label {
+            @apply text-sm font-medium text-gray-700 mb-1;
+        }
+
+    .form-input {
+        @apply p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500;
+    }
+</style>

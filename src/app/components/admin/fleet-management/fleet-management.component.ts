@@ -1,41 +1,78 @@
-import { Component } from '@angular/core';
-
-interface Driver {
-    id: number;
-    name: string;
-    status: string;
-    vehicle: string;
-}
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { VehicleService } from '../../../services/vehicle.service';
+import { Vehicle } from '../../../models/vehicle.model';
 
 @Component({
     selector: 'app-fleet-management',
     templateUrl: './fleet-management.component.html',
     styleUrls: ['./fleet-management.component.css']
 })
-export class FleetManagementComponent {
+export class FleetManagementComponent implements OnInit {
     searchText: string = '';
     filterStatus: string = '';
+    showAddVehicleForm: boolean = false;
+    vehicles: Vehicle[] = [];
+    vehicleForm: FormGroup;
 
-    drivers: Driver[] = [
-        { id: 1, name: 'Juan Dela Cruz', status: 'Active', vehicle: 'Truck 101' },
-        { id: 2, name: 'Pedro Santos', status: 'Inactive', vehicle: 'Truck 202' },
-        { id: 3, name: 'Maria Lopez', status: 'Active', vehicle: 'Truck 303' }
-    ];
+    constructor(private fb: FormBuilder, private vehicleService: VehicleService) {
+        this.vehicleForm = this.fb.group({
+            licensePlate: ['', Validators.required],
+            make: ['', Validators.required],
+            model: ['', Validators.required],
+            year: ['', Validators.required],
+            vin: ['', Validators.required],
+            color: [''],
+            fuelType: ['gasoline'],
+            fuelCapacity: [0],
+            currentMileage: [0, Validators.required],
+            status: ['active', Validators.required],
+            currentDriverId: [''],
+            fuelLevel: [0],
+            registrationExpiry: ['', Validators.required],
+            insuranceExpiry: ['', Validators.required],
+            insurancePolicy: [''],
+            purchaseDate: [''],
+            purchasePrice: [0],
+            additionalNotes: ['']
+        });
+    }
 
-    get filteredDrivers(): Driver[] {
-        return this.drivers.filter(d =>
-            (this.filterStatus ? d.status === this.filterStatus : true) &&
-            (this.searchText ? d.name.toLowerCase().includes(this.searchText.toLowerCase()) : true)
+    ngOnInit(): void {
+        this.loadVehicles();
+    }
+
+    loadVehicles() {
+        this.vehicleService.getAllVehicles().subscribe((data: Vehicle[]) => {
+            this.vehicles = data;
+        });
+    }
+
+    get filteredVehicles(): Vehicle[] {
+        return this.vehicles.filter(v =>
+            (this.filterStatus ? v.status === this.filterStatus : true) &&
+            (this.searchText ? v.model.toLowerCase().includes(this.searchText.toLowerCase()) || v.licensePlate.toLowerCase().includes(this.searchText.toLowerCase()) : true)
         );
     }
 
-    addDriver(newDriver: any) {
-        const id = this.drivers.length + 1;
-        this.drivers.push({
-            id,
-            name: newDriver.name,
-            status: newDriver.status,
-            vehicle: newDriver.vehicle
+    openAddVehicleForm() {
+        this.showAddVehicleForm = true;
+    }
+
+    closeAddVehicleForm() {
+        this.showAddVehicleForm = false;
+        this.vehicleForm.reset({ status: 'active' });
+    }
+
+    addVehicle() {
+        if (this.vehicleForm.invalid) {
+            return;
+        }
+
+        const newVehicle = this.vehicleForm.value;
+        this.vehicleService.addVehicle(newVehicle).subscribe(() => {
+            this.loadVehicles();
+            this.closeAddVehicleForm();
         });
     }
 }
