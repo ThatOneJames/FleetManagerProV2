@@ -38,7 +38,7 @@ namespace FleetManagerPro.API.Data.Repository
         {
             return await _context.Users
                 .Include(u => u.Driver)
-                .Where(u => u.Role == UserRole.Driver)
+                .Where(u => u.RoleString == UserRole.Driver.ToString())
                 .ToListAsync();
         }
 

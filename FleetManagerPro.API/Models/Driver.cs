@@ -68,6 +68,10 @@ namespace FleetManagerPro.API.Models
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        [Column("has_helper")]
+        public bool HasHelper { get; set; }
+
+
         // 🔹 Navigation properties
         // The foreign key attribute is correctly placed here.
         [ForeignKey("UserId")]

@@ -22,8 +22,8 @@
 
     <!-- Add Vehicle Form -->
     <div *ngIf="showAddVehicleForm"
-         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-        <div class="relative bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
+         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+        <div class="relative bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" (click)="closeAddVehicleForm()">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
                      stroke="currentColor">
@@ -35,83 +35,213 @@
 
             <form [formGroup]="vehicleForm" (ngSubmit)="addVehicle()">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Category ID -->
                     <div class="form-group">
-                        <label for="make">Make</label>
+                        <label for="categoryId">Category ID <span class="text-red-500">*</span></label>
+                        <input id="categoryId" formControlName="categoryId" type="number" placeholder="e.g. 1"
+                               class="form-input"
+                               [class.border-red-500]="hasError('categoryId', 'required') || hasError('categoryId', 'min')" />
+                        <span *ngIf="vehicleForm.get('categoryId')?.invalid && (vehicleForm.get('categoryId')?.dirty || vehicleForm.get('categoryId')?.touched)" class="text-red-500 text-xs mt-1">
+                            {{ getErrorMessage('categoryId') }}
+                        </span>
+                    </div>
+
+                    <!-- Make -->
+                    <div class="form-group">
+                        <label for="make">Make <span class="text-red-500">*</span></label>
                         <input id="make" formControlName="make" type="text" placeholder="e.g. Ford"
-                               class="form-input" />
+                               class="form-input"
+                               [class.border-red-500]="hasError('make', 'required')" />
+                        <span *ngIf="hasError('make', 'required')" class="text-red-500 text-xs mt-1">
+                            {{ getErrorMessage('make') }}
+                        </span>
                     </div>
+
+                    <!-- Model -->
                     <div class="form-group">
-                        <label for="model">Model</label>
+                        <label for="model">Model <span class="text-red-500">*</span></label>
                         <input id="model" formControlName="model" type="text" placeholder="e.g. Transit"
-                               class="form-input" />
+                               class="form-input"
+                               [class.border-red-500]="hasError('model', 'required')" />
+                        <span *ngIf="hasError('model', 'required')" class="text-red-500 text-xs mt-1">
+                            {{ getErrorMessage('model') }}
+                        </span>
                     </div>
+
+                    <!-- Year -->
                     <div class="form-group">
-                        <label for="year">Year</label>
+                        <label for="year">Year <span class="text-red-500">*</span></label>
                         <input id="year" formControlName="year" type="number" placeholder="e.g. 2023"
-                               class="form-input" />
+                               class="form-input"
+                               [class.border-red-500]="hasError('year', 'required') || hasError('year', 'min')" />
+                        <span *ngIf="vehicleForm.get('year')?.invalid && (vehicleForm.get('year')?.dirty || vehicleForm.get('year')?.touched)" class="text-red-500 text-xs mt-1">
+                            {{ getErrorMessage('year') }}
+                        </span>
                     </div>
+
+                    <!-- License Plate -->
                     <div class="form-group">
-                        <label for="licensePlate">License Plate</label>
+                        <label for="licensePlate">License Plate <span class="text-red-500">*</span></label>
                         <input id="licensePlate" formControlName="licensePlate" type="text" placeholder="e.g. ABC-123"
-                               class="form-input" />
+                               class="form-input"
+                               [class.border-red-500]="hasError('licensePlate', 'required')" />
+                        <span *ngIf="hasError('licensePlate', 'required')" class="text-red-500 text-xs mt-1">
+                            {{ getErrorMessage('licensePlate') }}
+                        </span>
                     </div>
-                    <div class="form-group col-span-1 md:col-span-2">
-                        <label for="vin">VIN Number</label>
-                        <input id="vin" formControlName="vin" type="text" placeholder="Enter VIN number"
-                               class="form-input" />
-                    </div>
+
+                    <!-- Color -->
                     <div class="form-group">
-                        <label for="currentMileage">Current Mileage</label>
+                        <label for="color">Color</label>
+                        <input id="color" formControlName="color" type="text" placeholder="e.g. White"
+                               class="form-input" />
+                    </div>
+
+                    <!-- Fuel Type -->
+                    <div class="form-group">
+                        <label for="fuelType">Fuel Type</label>
+                        <select id="fuelType" formControlName="fuelType" class="form-input">
+                            <option value="gasoline">Gasoline</option>
+                            <option value="diesel">Diesel</option>
+                            <option value="electric">Electric</option>
+                            <option value="hybrid">Hybrid</option>
+                        </select>
+                    </div>
+
+                    <!-- Fuel Capacity -->
+                    <div class="form-group">
+                        <label for="fuelCapacity">Fuel Capacity (L)</label>
+                        <input id="fuelCapacity" formControlName="fuelCapacity" type="number" placeholder="e.g. 60"
+                               class="form-input" />
+                    </div>
+
+                    <!-- Current Mileage -->
+                    <div class="form-group">
+                        <label for="currentMileage">Current Mileage <span class="text-red-500">*</span></label>
                         <input id="currentMileage" formControlName="currentMileage" type="number"
-                               placeholder="Current mileage" class="form-input" />
+                               placeholder="Current mileage" class="form-input"
+                               [class.border-red-500]="hasError('currentMileage', 'required') || hasError('currentMileage', 'min')" />
+                        <span *ngIf="vehicleForm.get('currentMileage')?.invalid && (vehicleForm.get('currentMileage')?.dirty || vehicleForm.get('currentMileage')?.touched)" class="text-red-500 text-xs mt-1">
+                            {{ getErrorMessage('currentMileage') }}
+                        </span>
                     </div>
+
+                    <!-- Status -->
                     <div class="form-group">
-                        <label for="registrationExpiry">Registration Expiry</label>
-                        <input id="registrationExpiry" formControlName="registrationExpiry" type="date"
+                        <label for="status">Status <span class="text-red-500">*</span></label>
+                        <select id="status" formControlName="status" class="form-input">
+                            <option value="Ready">Ready</option>
+                            <option value="In Use">In Use</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Out of Service">Out of Service</option>
+                        </select>
+                    </div>
+
+                    <!-- Fuel Level -->
+                    <div class="form-group">
+                        <label for="fuelLevel">Fuel Level (%)</label>
+                        <input id="fuelLevel" formControlName="fuelLevel" type="number" min="0" max="100" placeholder="100"
                                class="form-input" />
                     </div>
-                    <div class="form-group col-span-1 md:col-span-2">
-                        <label for="additionalNotes">Additional Notes</label>
-                        <textarea id="additionalNotes" formControlName="additionalNotes"
-                                  placeholder="Any additional information..." rows="3" class="form-input"></textarea>
+
+                    <!-- Registration Expiry -->
+                    <div class="form-group">
+                        <label for="registrationExpiry">Registration Expiry <span class="text-red-500">*</span></label>
+                        <input id="registrationExpiry" formControlName="registrationExpiry" type="date"
+                               class="form-input"
+                               [class.border-red-500]="hasError('registrationExpiry', 'required')" />
+                        <span *ngIf="hasError('registrationExpiry', 'required')" class="text-red-500 text-xs mt-1">
+                            {{ getErrorMessage('registrationExpiry') }}
+                        </span>
+                    </div>
+
+                    <!-- Insurance Expiry -->
+                    <div class="form-group">
+                        <label for="insuranceExpiry">Insurance Expiry <span class="text-red-500">*</span></label>
+                        <input id="insuranceExpiry" formControlName="insuranceExpiry" type="date"
+                               class="form-input"
+                               [class.border-red-500]="hasError('insuranceExpiry', 'required')" />
+                        <span *ngIf="hasError('insuranceExpiry', 'required')" class="text-red-500 text-xs mt-1">
+                            {{ getErrorMessage('insuranceExpiry') }}
+                        </span>
+                    </div>
+
+                    <!-- Insurance Policy -->
+                    <div class="form-group">
+                        <label for="insurancePolicy">Insurance Policy</label>
+                        <input id="insurancePolicy" formControlName="insurancePolicy" type="text" placeholder="Policy number"
+                               class="form-input" />
+                    </div>
+
+                    <!-- Purchase Date -->
+                    <div class="form-group">
+                        <label for="purchaseDate">Purchase Date</label>
+                        <input id="purchaseDate" formControlName="purchaseDate" type="date"
+                               class="form-input" />
+                    </div>
+
+                    <!-- Purchase Price -->
+                    <div class="form-group">
+                        <label for="purchasePrice">Purchase Price</label>
+                        <input id="purchasePrice" formControlName="purchasePrice" type="number" placeholder="0"
+                               class="form-input" />
                     </div>
                 </div>
 
-                <div class="flex justify-end mt-6">
-                    <button type="submit" [disabled]="vehicleForm.invalid"
-                            class="px-6 py-2 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700">
-                        Add
-                        Vehicle
+                <div class="flex justify-end mt-6 space-x-3">
+                    <button type="button" (click)="closeAddVehicleForm()"
+                            class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md shadow-md hover:bg-gray-400">
+                        Cancel
                     </button>
+                    <button type="submit" [disabled]="vehicleForm.invalid"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        Add Vehicle
+                    </button>
+                </div>
+
+                <!-- Debug info (remove in production) -->
+                <div class="mt-4 p-3 bg-gray-100 rounded text-sm text-gray-600" *ngIf="!vehicleForm.valid">
+                    <strong>Form Status:</strong> {{ vehicleForm.status }}<br>
+                    <strong>Required fields:</strong> categoryId, make, model, year, licensePlate, currentMileage, status, registrationExpiry, insuranceExpiry
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Vehicles Table -->
-    <table class="w-full bg-white rounded-lg shadow-md overflow-hidden">
-        <thead class="bg-gray-200">
-            <tr>
-                <th class="px-4 py-2 text-left text-gray-600 font-semibold">Plate Number</th>
-                <th class="px-4 py-2 text-left text-gray-600 font-semibold">Model</th>
-                <th class="px-4 py-2 text-left text-gray-600 font-semibold">Status</th>
-                <th class="px-4 py-2 text-left text-gray-600 font-semibold">Assigned Driver</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr *ngFor="let vehicle of filteredVehicles" class="border-t border-gray-200 hover:bg-gray-50 transition-colors">
-                <td class="px-4 py-2">{{ vehicle.licensePlate }}</td>
-                <td class="px-4 py-2">{{ vehicle.model }}</td>
-                <td class="px-4 py-2">
-                    <span [ngClass]="{'bg-green-100 text-green-800': vehicle.status === 'active' || vehicle.status === 'on-route', 'bg-red-100 text-red-800': vehicle.status === 'inactive' || vehicle.status === 'retired', 'bg-yellow-100 text-yellow-800': vehicle.status === 'maintenance'}"
-                          class="px-2 py-1 rounded-full text-xs font-semibold capitalize">
-                        {{ vehicle.status }}
-                    </span>
-                </td>
-                <td class="px-4 py-2">{{ vehicle.currentDriverId }}</td>
-            </tr>
-        </tbody>
-    </table>
+    <div class="overflow-x-auto">
+        <table class="w-full bg-white rounded-lg shadow-md overflow-hidden">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="px-4 py-2 text-left text-gray-600 font-semibold">Plate Number</th>
+                    <th class="px-4 py-2 text-left text-gray-600 font-semibold">Make</th>
+                    <th class="px-4 py-2 text-left text-gray-600 font-semibold">Model</th>
+                    <th class="px-4 py-2 text-left text-gray-600 font-semibold">Year</th>
+                    <th class="px-4 py-2 text-left text-gray-600 font-semibold">Status</th>
+                    <th class="px-4 py-2 text-left text-gray-600 font-semibold">Assigned Driver</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let vehicle of filteredVehicles" class="border-t border-gray-200 hover:bg-gray-50 transition-colors">
+                    <td class="px-4 py-2">{{ vehicle.licensePlate }}</td>
+                    <td class="px-4 py-2">{{ vehicle.make }}</td>
+                    <td class="px-4 py-2">{{ vehicle.model }}</td>
+                    <td class="px-4 py-2">{{ vehicle.year }}</td>
+                    <td class="px-4 py-2">
+                        <span [ngClass]="{
+                            'bg-green-100 text-green-800': vehicle.status === 'active' || vehicle.status === 'on-route',
+                            'bg-red-100 text-red-800': vehicle.status === 'inactive' || vehicle.status === 'retired',
+                            'bg-yellow-100 text-yellow-800': vehicle.status === 'maintenance'
+                        }"
+                              class="px-2 py-1 rounded-full text-xs font-semibold capitalize">
+                            {{ vehicle.status }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-2">{{ vehicle.currentDriverId || 'Unassigned' }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <style>

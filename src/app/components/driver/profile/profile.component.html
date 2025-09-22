@@ -1,10 +1,61 @@
 ﻿<!-- profile.component.html -->
-<div>
+<div class="profile-container">
     <h1>Driver Profile</h1>
-    <p>ID: {{ driverDetails.id }}</p>
-    <p>Name: {{ driverDetails.name }}</p>
-    <p>Email: {{ driverDetails.email }}</p>
-    <button (click)="toggleEdit()">
-        {{ isEditing ? 'Cancel' : 'Edit' }}
-    </button>
+
+    <form (ngSubmit)="saveChanges()" *ngIf="isEditing; else viewMode">
+        <div class="profile-section">
+            <label>
+                Name:
+                <input type="text" [(ngModel)]="driverDetails.name" name="name" required />
+            </label>
+            <label>
+                Email:
+                <input type="email" [(ngModel)]="driverDetails.email" name="email" required />
+            </label>
+            <label>
+                Phone:
+                <input type="text" [(ngModel)]="driverDetails.phone" name="phone" />
+            </label>
+            <label>
+                Address:
+                <input type="text" [(ngModel)]="driverDetails.address" name="address" />
+            </label>
+            <label>
+                Date of Birth:
+                <input type="date" [(ngModel)]="driverDetails.dateOfBirth" name="dob" />
+            </label>
+            <label>
+                Hire Date:
+                <input type="date" [(ngModel)]="driverDetails.hireDate" name="hireDate" />
+            </label>
+            <label>
+                Emergency Contact:
+                <input type="text" [(ngModel)]="driverDetails.emergencyContact" name="emergencyContact" />
+            </label>
+            <label>
+                Profile Image URL:
+                <input type="text" [(ngModel)]="driverDetails.profileImageUrl" name="profileImageUrl" />
+            </label>
+        </div>
+
+        <button type="submit">Save</button>
+        <button type="button" (click)="toggleEdit()">Cancel</button>
+    </form>
+
+    <!-- Read-only mode -->
+    <ng-template #viewMode>
+        <div class="profile-section">
+            <p><strong>ID:</strong> {{ driverDetails.id }}</p>
+            <p><strong>Name:</strong> {{ driverDetails.name }}</p>
+            <p><strong>Email:</strong> {{ driverDetails.email }}</p>
+            <p><strong>Phone:</strong> {{ driverDetails.phone }}</p>
+            <p><strong>Address:</strong> {{ driverDetails.address }}</p>
+            <p><strong>Date of Birth:</strong> {{ driverDetails.dateOfBirth }}</p>
+            <p><strong>Hire Date:</strong> {{ driverDetails.hireDate }}</p>
+            <p><strong>Emergency Contact:</strong> {{ driverDetails.emergencyContact }}</p>
+            <p><strong>Profile Image:</strong> {{ driverDetails.profileImageUrl }}</p>
+        </div>
+
+        <button (click)="toggleEdit()">Edit</button>
+    </ng-template>
 </div>
