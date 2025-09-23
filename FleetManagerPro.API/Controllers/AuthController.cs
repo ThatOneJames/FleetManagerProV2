@@ -75,7 +75,7 @@ namespace FleetManager.Controllers
                 token,
                 email = user.Email,
                 role = user.Role.ToString(),
-                driver = user.Driver // Added this line to include the Driver object
+                driver = user.Driver
             });
         }
 
