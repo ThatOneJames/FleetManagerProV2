@@ -2,7 +2,7 @@ namespace FleetManagerPro.API.DTOs.Vehicles
 {
     public class CreateVehicleDto
     {
-        public int CategoryId { get; set; }
+        public string CategoryId { get; set; }
         public string Make { get; set; }
         public string Model { get; set; }
         public int Year { get; set; }

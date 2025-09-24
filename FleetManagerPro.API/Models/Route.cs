@@ -9,7 +9,8 @@ namespace FleetManagerPro.API.Models
     public class Route
     {
         [Key]
-        public int Id { get; set; }
+        // This is the correct ID property.
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
         [Required, StringLength(150)]
         public string Name { get; set; } = string.Empty;
@@ -23,7 +24,8 @@ namespace FleetManagerPro.API.Models
         public double? DistanceKm { get; set; }
         public double? EstimatedDurationHours { get; set; }
 
-        public int VehicleId { get; set; }
+        // The VehicleId property should also be a string to match the Vehicle's ID.
+        public string VehicleId { get; set; } = null!;
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

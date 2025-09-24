@@ -8,7 +8,7 @@ namespace FleetManagerPro.API.Models
     public class LeaveRequest
     {
         [Key]
-        public int Id { get; set; }
+        public string Id { get; set; } = "";
 
         [Required, StringLength(128)]
         public string DriverId { get; set; } = string.Empty;

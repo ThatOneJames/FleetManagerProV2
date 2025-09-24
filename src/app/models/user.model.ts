@@ -10,6 +10,8 @@ export interface User {
     emergencyContact?: string;
     status: UserStatus;
 
+    profileImageUrl?: string;
+
     // Driver specific fields
     vehicleId?: string;
     licenseNumber?: string;

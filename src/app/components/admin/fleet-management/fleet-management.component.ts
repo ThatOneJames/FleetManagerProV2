@@ -5,7 +5,7 @@ import { Vehicle } from '../../../models/vehicle.model';
 
 // Recreate the C# DTO as a TypeScript interface, with matching data types
 export interface CreateVehicleDto {
-    categoryId: number;
+    categoryId: string;
     make: string;
     model: string;
     year: number;
@@ -37,11 +37,11 @@ export class FleetManagementComponent implements OnInit {
 
     constructor(private fb: FormBuilder, private vehicleService: VehicleService) {
         this.vehicleForm = this.fb.group({
-            categoryId: [1, [Validators.required, Validators.min(1)]], // Changed from 0 to 1
+            categoryId: [1, [Validators.required, Validators.min(1)]],
             licensePlate: ['', Validators.required],
             make: ['', Validators.required],
             model: ['', Validators.required],
-            year: [new Date().getFullYear(), [Validators.required, Validators.min(1900)]], // Set current year as default
+            year: [new Date().getFullYear(), [Validators.required, Validators.min(1900)]],
             color: [''],
             fuelType: ['gasoline'],
             fuelCapacity: [0],
@@ -49,7 +49,7 @@ export class FleetManagementComponent implements OnInit {
             status: ['Ready', Validators.required],
             fuelLevel: [100],
             registrationExpiry: ['', Validators.required],
-            insuranceExpiry: ['', Validators.required], // This was missing from HTML
+            insuranceExpiry: ['', Validators.required],
             insurancePolicy: [''],
             purchaseDate: [''],
             purchasePrice: [0],
@@ -75,7 +75,6 @@ export class FleetManagementComponent implements OnInit {
 
     openAddVehicleForm() {
         this.showAddVehicleForm = true;
-        // Reset form with proper default values
         this.vehicleForm.patchValue({
             categoryId: 1,
             status: 'Ready',
@@ -94,18 +93,13 @@ export class FleetManagementComponent implements OnInit {
     }
 
     addVehicle() {
-        console.log('Form status:', this.vehicleForm.status);
-        console.log('Form errors:', this.getFormValidationErrors());
-
         if (this.vehicleForm.invalid) {
-            // Mark all fields as touched to show validation errors
             this.markFormGroupTouched(this.vehicleForm);
-            console.log('Form is invalid, cannot submit');
             return;
         }
 
         const newVehicleDto: CreateVehicleDto = {
-            categoryId: this.vehicleForm.value.categoryId,
+            categoryId: String(this.vehicleForm.value.categoryId),
             make: this.vehicleForm.value.make,
             model: this.vehicleForm.value.model,
             year: this.vehicleForm.value.year,
@@ -123,34 +117,29 @@ export class FleetManagementComponent implements OnInit {
             purchasePrice: this.vehicleForm.value.purchasePrice,
         };
 
-        console.log('Adding new vehicle:', newVehicleDto);
-
         this.vehicleService.addVehicle(newVehicleDto).subscribe({
-            next: (response) => {
-                console.log('Vehicle added successfully:', response);
+            next: (res) => {
+                console.log('Vehicle added successfully:', res);
                 this.loadVehicles();
                 this.closeAddVehicleForm();
             },
             error: (err) => {
                 console.error('Error adding vehicle:', err);
-                alert('An error occurred while adding the vehicle. Check the console for details.');
             }
         });
     }
 
-    // Helper method to mark all form fields as touched
+
     private markFormGroupTouched(formGroup: FormGroup) {
         Object.keys(formGroup.controls).forEach(key => {
             const control = formGroup.get(key);
             control?.markAsTouched();
-
             if (control instanceof FormGroup) {
                 this.markFormGroupTouched(control);
             }
         });
     }
 
-    // Helper method to get form validation errors for debugging
     private getFormValidationErrors() {
         let formErrors: any = {};
         Object.keys(this.vehicleForm.controls).forEach(key => {
@@ -162,13 +151,11 @@ export class FleetManagementComponent implements OnInit {
         return formErrors;
     }
 
-    // Helper method to check if a field has errors
     hasError(fieldName: string, errorType: string): boolean {
         const field = this.vehicleForm.get(fieldName);
         return !!(field?.hasError(errorType) && (field?.dirty || field?.touched));
     }
 
-    // Helper method to get error message
     getErrorMessage(fieldName: string): string {
         const field = this.vehicleForm.get(fieldName);
         if (field?.hasError('required')) {

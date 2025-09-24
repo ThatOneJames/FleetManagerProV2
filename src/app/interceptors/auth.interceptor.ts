@@ -5,33 +5,31 @@ import {
     HttpHandler,
     HttpEvent
 } from '@angular/common/http';
-import { Observable, from } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
-import { AuthService } from '../services/auth.service'; // Adjust path if needed
+import { Observable } from 'rxjs';
+import { AuthService } from '../services/auth.service'; // Adjust path
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
     constructor(private authService: AuthService) { }
 
     intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-        // Skip interceptor for public/unauthenticated endpoints (e.g., login)
-        const publicEndpoints = ['/api/auth/login']; // Add more like '/api/auth/register' if needed
-        if (publicEndpoints.some(endpoint => req.url.includes(endpoint))) {
+        // Skip auth for public endpoints
+        const publicEndpoints = ['/api/auth/login'];
+        if (publicEndpoints.some(url => req.url.includes(url))) {
             return next.handle(req);
         }
 
-        // For authenticated requests, fetch token and add to header
-        return from(this.authService.getToken()).pipe(
-            switchMap((token) => {
-                if (token) {
-                    const authReq = req.clone({
-                        setHeaders: { Authorization: `Bearer ${token}` }
-                    });
-                    return next.handle(authReq);
+        // Get token synchronously
+        const token = this.authService.getToken();
+        if (token) {
+            const authReq = req.clone({
+                setHeaders: {
+                    Authorization: `Bearer ${token}`
                 }
-                // If no token, proceed without auth (or you could redirect/handle unauthorized here)
-                return next.handle(req);
-            })
-        );
+            });
+            return next.handle(authReq);
+        }
+
+        return next.handle(req);
     }
 }

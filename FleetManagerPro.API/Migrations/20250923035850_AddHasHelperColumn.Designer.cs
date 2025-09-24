@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FleetManagerPro.API.Migrations
 {
     [DbContext(typeof(FleetManagerDbContext))]
-    [Migration("20250922015322_AddHasHelperToDrivers")]
-    partial class AddHasHelperToDrivers
+    [Migration("20250923035850_AddHasHelperColumn")]
+    partial class AddHasHelperColumn
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

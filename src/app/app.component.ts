@@ -66,7 +66,7 @@ export class AppComponent implements OnInit {
 
     ngOnInit(): void {
         // Subscribe to authentication state changes
-        this.authService.getCurrentUser().subscribe({
+        this.authService.currentUser$.subscribe({
             next: (user: User | null) => {
                 this.currentUser = user;
                 this.isLoading = false;
@@ -100,16 +100,15 @@ export class AppComponent implements OnInit {
     }
 
     onLogout(): void {
-        // logout() returns Promise<void>
-        this.authService.logout()
-            .then(() => {
-                this.currentUser = null;
-                this.router.navigate(['/login']);
-            })
-            .catch((error: unknown) => {
-                console.error('Logout error:', error);
-            });
+        try {
+            this.authService.logout();
+            this.currentUser = null;
+            this.router.navigate(['/login']);
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
     }
+
 
     isActiveRoute(route: string): boolean {
         return this.router.url === route;

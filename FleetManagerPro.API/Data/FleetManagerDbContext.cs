@@ -42,10 +42,11 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.ProfileImageUrl).HasColumnName("profile_image_url");
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+                entity.Property(e => e.Role).HasColumnName("role").HasConversion<string>();
+                entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
 
-                // ✅ Map the string-backed fields, not the enum wrappers
-                entity.Property(e => e.RoleString).HasColumnName("role");
-                entity.Property(e => e.StatusString).HasColumnName("status");
+
+
 
                 // One-to-one relationship User ↔ Driver
                 entity.HasOne(u => u.Driver)

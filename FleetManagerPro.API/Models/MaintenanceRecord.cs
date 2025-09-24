@@ -8,7 +8,7 @@ namespace FleetManagerPro.API.Models
     public class MaintenanceRecord
     {
         [Key]
-        public int Id { get; set; }
+        public string Id { get; set; } = "";
 
         [Required]
         [StringLength(128)]

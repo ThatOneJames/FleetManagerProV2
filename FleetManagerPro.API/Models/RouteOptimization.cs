@@ -9,11 +9,12 @@ namespace FleetManagerPro.API.Models
     public class RouteOptimization
     {
         [Key]
+        // The fix is here: Change the Id property to int to match the database
         public int Id { get; set; }
 
         [Required]
         [Column("route_id")]
-        public int RouteId { get; set; }
+        public string RouteId { get; set; } = null!;
 
         [Column("original_distance")]
         public decimal OriginalDistance { get; set; }
@@ -43,7 +44,6 @@ namespace FleetManagerPro.API.Models
         [Column("optimized_at")]
         public DateTime OptimizedAt { get; set; } = DateTime.UtcNow;
 
-        // FIX: The foreign key property MUST be a string to match the User.Id type.
         [Column("optimized_by")]
         public string OptimizedBy { get; set; } = null!;
 

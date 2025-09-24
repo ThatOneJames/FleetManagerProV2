@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using FleetManagerPro.API.Models;
 using FleetManagerPro.API.Services;
 using FleetManagerPro.API.Data.Repository;
+using FleetManagerPro.API.Data;
 
 namespace FleetManagerPro.API.Controllers
 {
@@ -13,11 +14,13 @@ namespace FleetManagerPro.API.Controllers
     {
         private readonly IDriverService _driverService;
         private readonly IUserRepository _userRepository;
+        private readonly FleetManagerDbContext _context;
 
-        public DriverController(IDriverService driverService, IUserRepository userRepository)
+        public DriverController(IDriverService driverService, IUserRepository userRepository, FleetManagerDbContext context)
         {
             _driverService = driverService;
             _userRepository = userRepository;
+            _context = context;
         }
 
         // GET: api/drivers
@@ -32,7 +35,7 @@ namespace FleetManagerPro.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Driver>> GetDriverById(string id)
         {
-            var driver = await _driverService.GetByIdAsync(id);
+            var driver = await _context.Drivers.FindAsync(id);
             if (driver == null)
                 return NotFound();
 

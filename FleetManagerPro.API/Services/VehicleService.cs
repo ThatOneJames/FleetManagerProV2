@@ -38,7 +38,8 @@ namespace FleetManagerPro.API.Services
             var vehicle = new Vehicle
             {
                 Id = Guid.NewGuid().ToString(),
-                CategoryId = vehicleDto.CategoryId,
+                // The fix is here: Convert the int CategoryId to a string.
+                CategoryId = vehicleDto.CategoryId.ToString(),
                 Make = vehicleDto.Make,
                 Model = vehicleDto.Model,
                 Year = vehicleDto.Year,

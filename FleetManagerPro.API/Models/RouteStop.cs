@@ -10,11 +10,11 @@ namespace FleetManagerPro.API.Models
     public class RouteStop
     {
         [Key]
-        public int Id { get; set; }
+        public string Id { get; set; } = "";
 
         [Required]
         [Column("route_id")]
-        public int RouteId { get; set; }
+        public string RouteId { get; set; }
 
         [Column("stop_order")]
         public int StopOrder { get; set; }

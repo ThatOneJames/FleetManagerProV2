@@ -5,7 +5,7 @@
 namespace FleetManagerPro.API.Migrations
 {
     /// <inheritdoc />
-    public partial class AddHasHelperToDrivers : Migration
+    public partial class AddHasHelperColumn : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

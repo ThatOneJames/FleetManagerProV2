@@ -2,7 +2,6 @@ using FleetManagerPro.API.Models;
 using Microsoft.EntityFrameworkCore;
 using Route = FleetManagerPro.API.Models.Route;
 
-
 namespace FleetManagerPro.API.Data.Repository
 {
     public class RouteRepository : Repository<Route>, IRouteRepository
@@ -16,15 +15,11 @@ namespace FleetManagerPro.API.Data.Repository
 
         public async new Task<IEnumerable<Route>> GetRoutesByVehicleAsync(string vehicleId)
         {
-            if (int.TryParse(vehicleId, out int idAsInt))
-            {
-                return await _context.Set<Route>()
-               .Where(r => r.VehicleId == idAsInt)
-               .Include(r => r.Stops)
-               .ToListAsync();
-            }
-
-            return new List<Route>();
+            // The fix is here: remove the int.TryParse and compare strings directly.
+            return await _context.Set<Route>()
+                .Where(r => r.VehicleId == vehicleId)
+                .Include(r => r.Stops)
+                .ToListAsync();
         }
     }
 }

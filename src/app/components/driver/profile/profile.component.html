@@ -44,18 +44,18 @@
 
     <!-- Read-only mode -->
     <ng-template #viewMode>
-        <div class="profile-section">
+        <div class="profile-section" *ngIf="driverDetails">
             <p><strong>ID:</strong> {{ driverDetails.id }}</p>
             <p><strong>Name:</strong> {{ driverDetails.name }}</p>
             <p><strong>Email:</strong> {{ driverDetails.email }}</p>
-            <p><strong>Phone:</strong> {{ driverDetails.phone }}</p>
-            <p><strong>Address:</strong> {{ driverDetails.address }}</p>
-            <p><strong>Date of Birth:</strong> {{ driverDetails.dateOfBirth }}</p>
-            <p><strong>Hire Date:</strong> {{ driverDetails.hireDate }}</p>
-            <p><strong>Emergency Contact:</strong> {{ driverDetails.emergencyContact }}</p>
-            <p><strong>Profile Image:</strong> {{ driverDetails.profileImageUrl }}</p>
+            <p><strong>Phone:</strong> {{ driverDetails.phone ?? 'N/A' }}</p>
+            <p><strong>Address:</strong> {{ driverDetails.address || 'N/A' }}</p>
+            <p><strong>Date of Birth:</strong> {{ driverDetails.dateOfBirth || 'N/A' }}</p>
+            <p><strong>Hire Date:</strong> {{ driverDetails.hireDate || 'N/A' }}</p>
+            <p><strong>Emergency Contact:</strong> {{ driverDetails.emergencyContact || 'N/A' }}</p>
+            <p><strong>Profile Image:</strong> {{ driverDetails.profileImageUrl || 'N/A' }}</p>
         </div>
-
         <button (click)="toggleEdit()">Edit</button>
     </ng-template>
+
 </div>

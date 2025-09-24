@@ -1,10 +1,21 @@
 using FleetManagerPro.API.Data.Repository;
 using FleetManagerPro.API.Models;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
-using System.Security.Claims;
+using System.Linq;
 using System.Threading.Tasks;
+using FleetManagerPro.API.DTOs;
+using FleetManagerPro.API.DTOs.Users;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
+using System.Security.Claims;
+
+
+
 
 namespace FleetManagerPro.API.Controllers
 {
@@ -13,13 +24,17 @@ namespace FleetManagerPro.API.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IUserRepository _userRepository;
+        private readonly PasswordHasher<User> _passwordHasher;
+        private readonly IConfiguration _config;
 
-        public UsersController(IUserRepository userRepository)
+
+        public UsersController(IUserRepository userRepository, IConfiguration config)
         {
             _userRepository = userRepository;
+            _passwordHasher = new PasswordHasher<User>();
+            _config = config;
         }
 
-        // GET: api/users
         [HttpGet]
         public async Task<ActionResult<IEnumerable<User>>> GetAllUsers()
         {
@@ -27,112 +42,128 @@ namespace FleetManagerPro.API.Controllers
             return Ok(users);
         }
 
-        // GET: api/users/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(string id)
         {
             var user = await _userRepository.GetByIdAsync(id);
-            if (user == null)
-            {
-                return NotFound();
-            }
-            return Ok(user);
+            return user == null ? NotFound() : Ok(user);
         }
 
-        // GET: api/users/current - TEMPORARY: Removed [Authorize] for testing
         [HttpGet("current")]
-        // [Authorize] // Commented out temporarily for debugging
+        [Authorize]
         public async Task<IActionResult> GetCurrentUser()
         {
-            // For testing purposes, return a hardcoded user or the first user
-            // THIS IS JUST FOR DEBUGGING - REMOVE IN PRODUCTION
+            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return Unauthorized();
 
-            // Try to get user ID from headers first (if token is being sent)
-            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
-            if (authHeader != null && authHeader.StartsWith("Bearer "))
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) return NotFound("User not found");
+
+            var claims = new[]
+{
+    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+    new Claim(ClaimTypes.Name, user.Name),
+    new Claim(ClaimTypes.Role, user.Role.ToString())
+};
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
             {
-                var token = authHeader.Substring("Bearer ".Length).Trim();
-                // Log the token for debugging (remove in production)
-                Console.WriteLine($"Received token: {token.Substring(0, Math.Min(20, token.Length))}...");
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.Now.AddDays(1),
+                SigningCredentials = creds,
+                Issuer = _config["Jwt:Issuer"],
+                Audience = _config["Jwt:Audience"]
+            };
 
-                try
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var tokenString = tokenHandler.WriteToken(token);
+
+            return Ok(new
+            {
+                token = tokenHandler.WriteToken(token),
+                id = user.Id,
+                name = user.Name,
+                email = user.Email,
+                role = user.Role.ToString(),
+                phone = user.Phone,
+                address = user.Address,
+                dateOfBirth = user.DateOfBirth?.ToString("yyyy-MM-dd"),
+                hireDate = user.HireDate?.ToString("yyyy-MM-dd"),
+                emergencyContact = user.EmergencyContact,
+                profileImageUrl = user.ProfileImageUrl,
+                driver = user.Driver != null ? new
                 {
-                    // Try to decode the token manually for debugging
-                    var parts = token.Split('.');
-                    if (parts.Length == 3)
-                    {
-                        var payload = parts[1];
-                        // Add padding if needed
-                        switch (payload.Length % 4)
-                        {
-                            case 2: payload += "=="; break;
-                            case 3: payload += "="; break;
-                        }
-                        var decodedBytes = Convert.FromBase64String(payload);
-                        var decodedPayload = System.Text.Encoding.UTF8.GetString(decodedBytes);
-                        Console.WriteLine($"Token payload: {decodedPayload}");
+                    fullName = user.Driver.FullName,
+                    licenseNumber = user.Driver.LicenseNumber,
+                    licenseClass = user.Driver.LicenseClass,
+                    contactNumber = user.Driver.ContactNumber,
+                    experienceYears = user.Driver.ExperienceYears,
+                    safetyRating = user.Driver.SafetyRating,
+                    currentVehicleId = user.Driver.CurrentVehicleId
+                } : null
+            });
 
-                        // Parse the payload and extract user ID
-                        // This is basic parsing - you might need to use a proper JWT library
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error decoding token: {ex.Message}");
-                }
-            }
-            else
-            {
-                Console.WriteLine("No Authorization header found");
-            }
-
-            // For now, return the first user for testing
-            var users = await _userRepository.GetAllAsync();
-            var firstUser = users.FirstOrDefault();
-
-            if (firstUser == null)
-            {
-                return NotFound("No users found");
-            }
-
-            return Ok(firstUser);
         }
 
-        // PUT: api/users/{id}
+
+
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUser(string id, [FromBody] User updatedUser)
+        public async Task<IActionResult> UpdateUser(string id, [FromBody] EditUserProfileDto dto)
         {
-            if (id != updatedUser.Id)
-            {
-                return BadRequest("ID mismatch");
-            }
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            var existingUser = await _userRepository.GetByIdAsync(id);
-            if (existingUser == null)
-            {
-                return NotFound();
-            }
+            var user = await _userRepository.GetByIdAsync(id);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
 
-            // Update the user
-            var success = await _userRepository.UpdateAsync(updatedUser);
+            // Update only provided fields
+            if (!string.IsNullOrWhiteSpace(dto.Name)) user.Name = dto.Name;
+            if (!string.IsNullOrWhiteSpace(dto.Email)) user.Email = dto.Email;
+
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+                user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
+
+            if (!string.IsNullOrWhiteSpace(dto.Phone)) user.Phone = dto.Phone;
+            if (!string.IsNullOrWhiteSpace(dto.Address)) user.Address = dto.Address;
+
+            if (dto.DateOfBirth.HasValue) user.DateOfBirth = dto.DateOfBirth.Value;
+            if (dto.HireDate.HasValue) user.HireDate = dto.HireDate.Value;
+
+            if (!string.IsNullOrWhiteSpace(dto.EmergencyContact)) user.EmergencyContact = dto.EmergencyContact;
+            if (!string.IsNullOrWhiteSpace(dto.ProfileImageUrl)) user.ProfileImageUrl = dto.ProfileImageUrl;
+
+            var success = await _userRepository.UpdateAsync(user);
             if (!success)
-            {
-                return BadRequest("Failed to update user");
-            }
+                return BadRequest(new { message = "Failed to update user" });
 
-            return NoContent();
+            // Return a safe DTO instead of exposing PasswordHash
+            var result = new
+            {
+                user.Id,
+                user.Name,
+                user.Email,
+                user.Phone,
+                user.Address,
+                user.DateOfBirth,
+                user.HireDate,
+                user.EmergencyContact,
+                user.ProfileImageUrl
+            };
+
+            return Ok(result);
         }
 
-        // DELETE: api/users/{id}
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
             var success = await _userRepository.DeleteAsync(id);
-            if (!success)
-            {
-                return NotFound();
-            }
-            return NoContent();
+            return success ? NoContent() : NotFound();
         }
     }
 }

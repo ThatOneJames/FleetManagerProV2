@@ -27,7 +27,6 @@ namespace FleetManagerPro.API.Data.Repository
 
         public async Task<User?> GetByEmailAsync(string email)
         {
-            // The fix is here: Use .Include() to eager-load the related Driver data.
             return await _context.Users
                 .Include(u => u.Driver)
                 .FirstOrDefaultAsync(u => u.Email == email);

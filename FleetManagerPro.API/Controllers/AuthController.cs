@@ -33,27 +33,24 @@ namespace FleetManager.Controllers
             _userRepository = userRepository;
         }
 
+        // AuthController.cs
+
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto loginDto)
         {
             var user = await _userRepository.GetByEmailAsync(loginDto.Email);
 
-            if (user == null)
-            {
-                return Unauthorized("Invalid email or password");
-            }
-
-            if (!BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
             {
                 return Unauthorized("Invalid email or password");
             }
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Name),
-                new Claim(ClaimTypes.Role, user.Role.ToString())
-            };
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(ClaimTypes.Name, user.Name),
+        new Claim(ClaimTypes.Role, user.Role.ToString())
+    };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
@@ -72,11 +69,29 @@ namespace FleetManager.Controllers
 
             return Ok(new
             {
-                token,
+                token = tokenHandler.WriteToken(token),
+                id = user.Id,
+                name = user.Name,
                 email = user.Email,
                 role = user.Role.ToString(),
-                driver = user.Driver
+                phone = user.Phone,
+                address = user.Address,
+                dateOfBirth = user.DateOfBirth?.ToString("yyyy-MM-dd"),
+                hireDate = user.HireDate?.ToString("yyyy-MM-dd"),
+                emergencyContact = user.EmergencyContact,
+                profileImageUrl = user.ProfileImageUrl,
+                driver = user.Driver != null ? new
+                {
+                    fullName = user.Driver.FullName,
+                    licenseNumber = user.Driver.LicenseNumber,
+                    licenseClass = user.Driver.LicenseClass,
+                    contactNumber = user.Driver.ContactNumber,
+                    experienceYears = user.Driver.ExperienceYears,
+                    safetyRating = user.Driver.SafetyRating,
+                    currentVehicleId = user.Driver.CurrentVehicleId
+                } : null
             });
+
         }
 
         [HttpPost("register")]
@@ -138,5 +153,6 @@ namespace FleetManager.Controllers
 
             return Ok(new { message = "User registered successfully" });
         }
+
     }
 }

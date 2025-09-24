@@ -1,7 +1,5 @@
 using FleetManagerPro.API.Models;
 using Microsoft.EntityFrameworkCore;
-using Route = FleetManagerPro.API.Models.Route;
-
 
 namespace FleetManagerPro.API.Data.Repository
 {
@@ -14,7 +12,7 @@ namespace FleetManagerPro.API.Data.Repository
             _context = context;
         }
 
-        public async new Task<IEnumerable<RouteStop>> GetStopsByRouteAsync(int routeId)
+        public async new Task<IEnumerable<RouteStop>> GetStopsByRouteAsync(string routeId)
         {
             return await _context.Set<RouteStop>()
                 .Where(s => s.RouteId == routeId)

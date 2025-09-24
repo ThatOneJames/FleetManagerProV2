@@ -7,6 +7,6 @@ namespace FleetManagerPro.API.DTOs
         public string Password { get; set; }
         public string Name { get; set; }
         public string Role { get; set; }
-        public int Status { get; set; }
+        public string Status { get; set; } = string.Empty;
     }
 }

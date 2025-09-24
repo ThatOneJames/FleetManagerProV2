@@ -14,7 +14,7 @@ namespace FleetManagerPro.API.Models
         [Required]
         [ForeignKey(nameof(VehicleCategory))]
         [Column("category_id")]
-        public int CategoryId { get; set; }
+        public string CategoryId { get; set; }
 
         [Required]
         [StringLength(50)]
@@ -118,7 +118,7 @@ namespace FleetManagerPro.API.Models
     public class VehicleCategory
     {
         [Key]
-        public int Id { get; set; }
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
         [Required]
         [StringLength(50)]

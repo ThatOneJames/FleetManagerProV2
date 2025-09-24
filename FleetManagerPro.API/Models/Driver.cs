@@ -11,10 +11,8 @@ namespace FleetManagerPro.API.Models
     {
         [Key]
         [Column("id")]
-        // The primary key for the Driver model is now a string to ensure consistency.
         public string Id { get; set; } = Guid.NewGuid().ToString();
 
-        // The foreign key property MUST be a string to match the primary key of the User model.
         [Column("user_id")]
         public string UserId { get; set; } = null!;
 
@@ -71,9 +69,6 @@ namespace FleetManagerPro.API.Models
         [Column("has_helper")]
         public bool HasHelper { get; set; }
 
-
-        // 🔹 Navigation properties
-        // The foreign key attribute is correctly placed here.
         [ForeignKey("UserId")]
         [JsonIgnore]
         public User? User { get; set; }

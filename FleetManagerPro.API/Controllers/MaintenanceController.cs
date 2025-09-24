@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using FleetManagerPro.API.Models;
-using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Services;
-
 
 namespace FleetManagerPro.API.Controllers
 {
@@ -25,7 +23,7 @@ namespace FleetManagerPro.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<MaintenanceRecord>> GetById(int id)
+        public async Task<ActionResult<MaintenanceRecord>> GetById(string id) // Changed 'int' to 'string'
         {
             var record = await _maintenanceService.GetByIdAsync(id);
             if (record == null) return NotFound();
@@ -36,11 +34,12 @@ namespace FleetManagerPro.API.Controllers
         public async Task<ActionResult<MaintenanceRecord>> Create(MaintenanceRecord record)
         {
             var created = await _maintenanceService.CreateAsync(record);
+            // The route parameter 'id' will be a string, which is correct
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult<MaintenanceRecord>> Update(int id, MaintenanceRecord record)
+        public async Task<ActionResult<MaintenanceRecord>> Update(string id, MaintenanceRecord record) // Changed 'int' to 'string'
         {
             var updated = await _maintenanceService.UpdateAsync(id, record);
             if (updated == null) return NotFound();
@@ -48,7 +47,7 @@ namespace FleetManagerPro.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult> Delete(int id)
+        public async Task<ActionResult> Delete(string id) // Changed 'int' to 'string'
         {
             var deleted = await _maintenanceService.DeleteAsync(id);
             if (!deleted) return NotFound();

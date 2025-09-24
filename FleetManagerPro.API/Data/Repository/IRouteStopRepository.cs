@@ -4,6 +4,6 @@ namespace FleetManagerPro.API.Data.Repository
 {
     public interface IRouteStopRepository : IRepository<RouteStop>
     {
-        Task<IEnumerable<RouteStop>> GetStopsByRouteAsync(int routeId);
+        Task<IEnumerable<RouteStop>> GetStopsByRouteAsync(string routeId);
     }
 }

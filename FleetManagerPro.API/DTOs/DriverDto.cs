@@ -2,7 +2,7 @@ namespace FleetManagerPro.API.DTOs
 {
     public class DriverDto
     {
-        public int Id { get; set; }
+        public string Id { get; set; } = null!;
         public string FullName { get; set; }
         public string LicenseNumber { get; set; }
         public string ContactNumber { get; set; }
