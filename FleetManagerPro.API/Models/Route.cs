@@ -15,6 +15,12 @@ namespace FleetManagerPro.API.Models
         [Required, StringLength(150)]
         public string Name { get; set; } = string.Empty;
 
+        [Column("vehicle_id")]
+        public string VehicleId { get; set; } = string.Empty;
+
+        [ForeignKey("VehicleId")]
+        public Vehicle Vehicle { get; set; } = null!;
+
         [StringLength(255)]
         public string? StartLocation { get; set; }
 
@@ -24,9 +30,6 @@ namespace FleetManagerPro.API.Models
         public double? DistanceKm { get; set; }
         public double? EstimatedDurationHours { get; set; }
 
-        // The VehicleId property should also be a string to match the Vehicle's ID.
-        public string VehicleId { get; set; } = null!;
-
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -34,8 +37,9 @@ namespace FleetManagerPro.API.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // 🔹 Navigation
-        public ICollection<Driver> AssignedDrivers { get; set; } = new List<Driver>();
-        public ICollection<Vehicle> AssignedVehicles { get; set; } = new List<Vehicle>();
+        public ICollection<RouteVehicle> RouteVehicles { get; set; } = new List<RouteVehicle>();
+        public ICollection<User> AssignedDrivers { get; set; } = new List<User>();
+
 
         // Relationships
         public ICollection<RouteStop> Stops { get; set; } = new List<RouteStop>();

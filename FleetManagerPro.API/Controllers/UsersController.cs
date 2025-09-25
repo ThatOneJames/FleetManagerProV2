@@ -95,16 +95,18 @@ namespace FleetManagerPro.API.Controllers
                 hireDate = user.HireDate?.ToString("yyyy-MM-dd"),
                 emergencyContact = user.EmergencyContact,
                 profileImageUrl = user.ProfileImageUrl,
-                driver = user.Driver != null ? new
+                driver = user.Role == UserRole.Driver ? new
                 {
-                    fullName = user.Driver.FullName,
-                    licenseNumber = user.Driver.LicenseNumber,
-                    licenseClass = user.Driver.LicenseClass,
-                    contactNumber = user.Driver.ContactNumber,
-                    experienceYears = user.Driver.ExperienceYears,
-                    safetyRating = user.Driver.SafetyRating,
-                    currentVehicleId = user.Driver.CurrentVehicleId
+                    fullName = user.Name,
+                    licenseNumber = user.LicenseNumber,
+                    licenseClass = user.LicenseClass,
+                    contactNumber = user.Phone,
+                    experienceYears = user.ExperienceYears,
+                    safetyRating = user.SafetyRating,
+                    totalMilesDriven = user.TotalMilesDriven,
+                    currentVehicleId = user.CurrentVehicleId
                 } : null
+
             });
 
         }

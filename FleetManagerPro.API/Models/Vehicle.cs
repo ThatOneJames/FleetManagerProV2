@@ -5,34 +5,34 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FleetManagerPro.API.Models
 {
+    [Table("vehicles")]
     public class Vehicle
     {
         [Key]
-        [StringLength(128)]
+        [Column("id")]
         public string Id { get; set; } = Guid.NewGuid().ToString();
 
         [Required]
-        [ForeignKey(nameof(VehicleCategory))]
         [Column("category_id")]
-        public string CategoryId { get; set; }
+        public string CategoryId { get; set; } = "";
 
         [Required]
-        [StringLength(50)]
-        public string Make { get; set; } = string.Empty;
+        [Column("make")]
+        public string Make { get; set; } = "";
 
         [Required]
-        [StringLength(50)]
-        public string Model { get; set; } = string.Empty;
+        [Column("model")]
+        public string Model { get; set; } = "";
 
         [Required]
+        [Column("year")]
         public int Year { get; set; }
 
         [Required]
         [Column("license_plate")]
-        [StringLength(20)]
-        public string LicensePlate { get; set; } = string.Empty;
+        public string LicensePlate { get; set; } = "";
 
-        [StringLength(30)]
+        [Column("color")]
         public string? Color { get; set; }
 
         [Required]
@@ -46,11 +46,10 @@ namespace FleetManagerPro.API.Models
         public decimal CurrentMileage { get; set; } = 0;
 
         [Required]
+        [Column("status")]
         public VehicleStatus Status { get; set; } = VehicleStatus.Ready;
 
-        [ForeignKey(nameof(CurrentDriver))]
         [Column("current_driver_id")]
-        // This is now a string to match the User.Id primary key
         public string? CurrentDriverId { get; set; }
 
         [Column("current_location_lat")]
@@ -74,7 +73,6 @@ namespace FleetManagerPro.API.Models
         public DateTime InsuranceExpiry { get; set; }
 
         [Column("insurance_policy")]
-        [StringLength(100)]
         public string? InsurancePolicy { get; set; }
 
         [Column("purchase_date")]
@@ -89,11 +87,15 @@ namespace FleetManagerPro.API.Models
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation properties
-        public VehicleCategory? Category { get; set; }
-        public Driver? CurrentDriver { get; set; }
+        // Navigation properties
+        public VehicleCategory? Category { get; set; }
+
+        [ForeignKey("CurrentDriverId")]
+        public User? CurrentDriver { get; set; }
+
         public ICollection<Route> Routes { get; set; } = new List<Route>();
         public ICollection<MaintenanceRecord> MaintenanceRecords { get; set; } = new List<MaintenanceRecord>();
+        public ICollection<RouteVehicle> RouteVehicles { get; set; } = new List<RouteVehicle>();
     }
 
     public enum FuelType
@@ -112,24 +114,29 @@ namespace FleetManagerPro.API.Models
         Inactive,
         OnRoute,
         Retired,
-        NotAvailable
+        NotAvailable,
+        InUse,
+        OutOfService
     }
 
+    [Table("vehicle_categories")]
     public class VehicleCategory
     {
         [Key]
+        [Column("id")]
         public string Id { get; set; } = Guid.NewGuid().ToString();
 
         [Required]
-        [StringLength(50)]
-        public string Name { get; set; } = string.Empty;
+        [Column("name")]
+        public string Name { get; set; } = "";
 
+        [Column("description")]
         public string? Description { get; set; }
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation properties
-        public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
+        // Navigation properties
+        public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
     }
 }

@@ -28,18 +28,23 @@ namespace FleetManagerPro.API.Data.Repository
         public async Task<User?> GetByEmailAsync(string email)
         {
             return await _context.Users
-                .Include(u => u.Driver)
-                .FirstOrDefaultAsync(u => u.Email == email);
+                .FirstOrDefaultAsync(u => u.Email.ToLower().Trim() == email.ToLower().Trim());
         }
 
-        // Added this missing method to implement the interface
-        public async Task<IEnumerable<User>> GetAllDriversWithUserAsync()
+        public async Task<User?> GetDriverByEmailAsync(string email)
         {
             return await _context.Users
-                .Include(u => u.Driver)
-                .Where(u => u.RoleString == UserRole.Driver.ToString())
+                .Where(u => u.Role == UserRole.Driver)
+                .FirstOrDefaultAsync(u => u.Email.ToLower().Trim() == email.ToLower().Trim());
+        }
+
+        public async Task<IEnumerable<User>> GetAllDriversAsync()
+        {
+            return await _context.Users
+                .Where(u => u.Role == UserRole.Driver)
                 .ToListAsync();
         }
+
 
         public async Task<bool> DeleteAsync(string id)
         {

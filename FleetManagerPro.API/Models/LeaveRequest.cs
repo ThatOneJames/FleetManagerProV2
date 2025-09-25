@@ -8,27 +8,40 @@ namespace FleetManagerPro.API.Models
     public class LeaveRequest
     {
         [Key]
-        public string Id { get; set; } = "";
+        [Column("id")]
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
-        [Required, StringLength(128)]
-        public string DriverId { get; set; } = string.Empty;
-
+        // Reference User instead of Driver
         [Required]
+        [Column("driver_id")]
+        public string DriverId { get; set; } = "";
+
+        [Column("leave_type")]
         public LeaveType LeaveType { get; set; }
 
+        [Column("start_date")]
         public DateTime StartDate { get; set; }
+
+        [Column("end_date")]
         public DateTime EndDate { get; set; }
 
+        [Column("total_days")]
         public int TotalDays { get; set; }
 
-        [Required, StringLength(255)]
-        public string Reason { get; set; } = string.Empty;
-
+        [Column("reason")]
         [Required]
+        public string Reason { get; set; } = "";
+
+        [Column("status")]
         public LeaveStatus Status { get; set; } = LeaveStatus.Pending;
 
+        [Column("approved_by")]
         public string? ApprovedBy { get; set; }
+
+        [Column("approved_at")]
         public DateTime? ApprovedAt { get; set; }
+
+        [Column("rejection_reason")]
         public string? RejectionReason { get; set; }
 
         [Column("created_at")]
@@ -37,8 +50,11 @@ namespace FleetManagerPro.API.Models
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // 🔹 Navigation
-        public Driver Driver { get; set; } = null!;
+        // Navigation properties - now reference User
+        [ForeignKey("DriverId")]
+        public User Driver { get; set; } = null!;
+
+        [ForeignKey("ApprovedBy")]
         public User? ApproverUser { get; set; }
     }
 

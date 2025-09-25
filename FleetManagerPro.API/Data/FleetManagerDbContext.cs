@@ -12,7 +12,6 @@ namespace FleetManagerPro.API.Data
         }
 
         public DbSet<User> Users { get; set; } = null!;
-        public DbSet<Driver> Drivers { get; set; } = null!;
         public DbSet<Vehicle> Vehicles { get; set; } = null!;
         public DbSet<VehicleCategory> VehicleCategories { get; set; } = null!;
         public DbSet<Route> Routes { get; set; } = null!;
@@ -45,13 +44,6 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.Role).HasColumnName("role").HasConversion<string>();
                 entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
 
-
-
-
-                // One-to-one relationship User ↔ Driver
-                entity.HasOne(u => u.Driver)
-                      .WithOne(d => d.User)
-                      .HasForeignKey<Driver>(d => d.UserId);
             });
 
 
@@ -85,12 +77,15 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
 
                 entity.HasOne(v => v.CurrentDriver)
-                      .WithMany(d => d.Vehicles)
-                      .HasForeignKey(v => v.CurrentDriverId);
+                       .WithMany()
+                       .HasForeignKey(v => v.CurrentDriverId);
+
 
                 entity.HasMany(v => v.MaintenanceRecords)
-                      .WithOne(m => m.Vehicle)
-                      .HasForeignKey(m => m.VehicleId);
+                        .WithOne(m => m.Vehicle)
+                        .HasForeignKey(m => m.VehicleId);
+
+
             });
 
             // 🔹 VehicleCategory entity
@@ -103,24 +98,6 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             });
 
-            // 🔹 Driver entity
-            modelBuilder.Entity<Driver>(entity =>
-            {
-                entity.ToTable("drivers");
-                entity.Property(e => e.Id).HasColumnName("id");
-                entity.Property(e => e.UserId).HasColumnName("user_id");
-                entity.Property(e => e.LicenseNumber).HasColumnName("license_number");
-                entity.Property(e => e.ExperienceYears).HasColumnName("experience_years");
-                entity.Property(e => e.SafetyRating).HasColumnName("safety_rating");
-
-                entity.HasMany(d => d.AttendanceRecords)
-                      .WithOne(a => a.Driver)
-                      .HasForeignKey(a => a.DriverId);
-
-                entity.HasMany(d => d.LeaveRequests)
-                      .WithOne(l => l.Driver)
-                      .HasForeignKey(l => l.DriverId);
-            });
 
             // 🔹 Route entity
             modelBuilder.Entity<Route>(entity =>
@@ -160,6 +137,63 @@ namespace FleetManagerPro.API.Data
                 .HasOne(ro => ro.OptimizedByUser)
                 .WithMany()
                 .HasForeignKey(ro => ro.OptimizedBy);
+
+            modelBuilder.Entity<LeaveRequest>(entity =>
+            {
+                entity.ToTable("leave_requests");
+
+                entity.HasOne(lr => lr.Driver)
+                      .WithMany() // a driver can have many leave requests
+                      .HasForeignKey(lr => lr.DriverId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(lr => lr.ApproverUser)
+                      .WithMany() // an approver can approve many leave requests
+                      .HasForeignKey(lr => lr.ApprovedBy)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<RouteVehicle>(entity =>
+            {
+                entity.ToTable("route_vehicles");
+
+                entity.HasKey(rv => new { rv.RouteId, rv.VehicleId });
+
+                entity.HasOne(rv => rv.Route)
+                      .WithMany(r => r.RouteVehicles)
+                      .HasForeignKey(rv => rv.RouteId);
+
+                entity.HasOne(rv => rv.Vehicle)
+                      .WithMany(v => v.RouteVehicles)
+                      .HasForeignKey(rv => rv.VehicleId);
+            });
+            modelBuilder.Entity<Route>()
+     .HasMany(r => r.AssignedDrivers)
+     .WithMany()
+     .UsingEntity<Dictionary<string, object>>(
+         "route_users",
+         j => j.HasOne<User>()
+               .WithMany()
+               .HasForeignKey("user_id")
+               .HasPrincipalKey(u => u.Id) // match PK type
+               .OnDelete(DeleteBehavior.Cascade),
+         j => j.HasOne<Route>()
+               .WithMany()
+               .HasForeignKey("route_id")
+               .HasPrincipalKey(r => r.Id) // match PK type
+               .OnDelete(DeleteBehavior.Cascade),
+         j =>
+         {
+             j.ToTable("route_users");
+
+             // force EF to treat these as varchar(128)
+             j.Property<string>("user_id").HasColumnName("user_id").HasColumnType("varchar(128)");
+             j.Property<string>("route_id").HasColumnName("route_id").HasColumnType("varchar(128)");
+
+             j.HasKey("route_id", "user_id");
+         });
+
+
         }
     }
 }

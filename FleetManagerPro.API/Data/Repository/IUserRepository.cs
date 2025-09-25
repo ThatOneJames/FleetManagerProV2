@@ -12,6 +12,6 @@ namespace FleetManagerPro.API.Data.Repository
         Task<bool> DeleteAsync(string id);
         Task<User> CreateAsync(User user);
         Task<bool> UpdateAsync(User user);
-        Task<IEnumerable<User>> GetAllDriversWithUserAsync();
+        Task<IEnumerable<User>> GetAllDriversAsync();
     }
 }

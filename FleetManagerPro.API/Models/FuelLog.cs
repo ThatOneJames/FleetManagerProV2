@@ -1,23 +1,45 @@
 using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FleetManagerPro.API.Models
 {
+    [Table("fuel_logs")]
     public class FuelLog
     {
-        public Guid Id { get; set; }
+        [Key]
+        [Column("id")]
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
-        public Guid VehicleId { get; set; }
-        public Vehicle Vehicle { get; set; }
+        [Required]
+        [Column("vehicle_id")]
+        public string VehicleId { get; set; } = string.Empty;
 
-        public Guid? DriverId { get; set; }
-        public Driver Driver { get; set; }
+        [ForeignKey("VehicleId")]
+        public Vehicle Vehicle { get; set; } = null!;
 
-        public string FuelType { get; set; }
+        [Column("driver_id")]
+        public string? DriverId { get; set; }
+
+        [ForeignKey("DriverId")]
+        public User? Driver { get; set; }
+
+        [Column("fuel_type")]
+        public string FuelType { get; set; } = string.Empty;
+
+        [Column("liters")]
         public double Liters { get; set; }
+
+        [Column("cost")]
         public decimal Cost { get; set; }
+
+        [Column("date")]
         public DateTime Date { get; set; }
 
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("updated_at")]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }

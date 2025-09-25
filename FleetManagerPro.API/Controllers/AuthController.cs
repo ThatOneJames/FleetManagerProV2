@@ -80,16 +80,18 @@ namespace FleetManager.Controllers
                 hireDate = user.HireDate?.ToString("yyyy-MM-dd"),
                 emergencyContact = user.EmergencyContact,
                 profileImageUrl = user.ProfileImageUrl,
-                driver = user.Driver != null ? new
+                driver = user.Role == UserRole.Driver ? new
                 {
-                    fullName = user.Driver.FullName,
-                    licenseNumber = user.Driver.LicenseNumber,
-                    licenseClass = user.Driver.LicenseClass,
-                    contactNumber = user.Driver.ContactNumber,
-                    experienceYears = user.Driver.ExperienceYears,
-                    safetyRating = user.Driver.SafetyRating,
-                    currentVehicleId = user.Driver.CurrentVehicleId
+                    fullName = user.Name,
+                    licenseNumber = user.LicenseNumber,
+                    licenseClass = user.LicenseClass,
+                    contactNumber = user.Phone,
+                    experienceYears = user.ExperienceYears,
+                    safetyRating = user.SafetyRating,
+                    totalMilesDriven = user.TotalMilesDriven,
+                    currentVehicleId = user.CurrentVehicleId
                 } : null
+
             });
 
         }
@@ -121,35 +123,20 @@ namespace FleetManager.Controllers
                 UpdatedAt = DateTime.UtcNow
             };
 
-            await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
-
-            // Check if the user is a driver and create a new Driver record
+            // If registering a driver, initialize driver-specific fields directly on the User
             if (user.Role == UserRole.Driver)
             {
-                var driver = new Driver
-                {
-                    UserId = user.Id,
-                    FullName = user.Name,
-                    LicenseNumber = Guid.NewGuid().ToString(), // Corrected to generate a unique license number
-                    ExperienceYears = 0,
-                    IsActive = true,
-                    IsAvailable = true,
-                    // The rest of the properties can be set to default values
-                    ContactNumber = "N/A",
-                    LicenseClass = "N/A",
-                    LicenseExpiry = DateTime.MinValue,
-                    TotalMilesDriven = 0.0,
-                    SafetyRating = 0.0,
-                    LastLocationLat = null,
-                    LastLocationLng = null,
-                    LastLocationUpdated = null,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                _context.Drivers.Add(driver);
-                await _context.SaveChangesAsync();
+                user.LicenseNumber = Guid.NewGuid().ToString();
+                user.LicenseClass = "N/A";
+                user.ExperienceYears = 0;
+                user.SafetyRating = 0;
+                user.TotalMilesDriven = 0;
+                user.IsAvailable = true;
+                user.HasHelper = false;
             }
+
+            await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
 
             return Ok(new { message = "User registered successfully" });
         }
