@@ -95,8 +95,8 @@ namespace FleetManagerPro.API.Models
         [ForeignKey("CurrentVehicleId")]
         public Vehicle? CurrentVehicle { get; set; }
 
-        public ICollection<Vehicle> AssignedVehicles { get; set; } = new List<Vehicle>();
-        public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
+        //public ICollection<Vehicle> AssignedVehicles { get; set; } = new List<Vehicle>();
+        //public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
         public ICollection<DriverAttendance> AttendanceRecords { get; set; } = new List<DriverAttendance>();
         public ICollection<LeaveRequest> LeaveRequests { get; set; } = new List<LeaveRequest>();
 

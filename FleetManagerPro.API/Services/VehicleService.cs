@@ -20,51 +20,19 @@ namespace FleetManagerPro.API.Services
 
         public async Task<IEnumerable<Vehicle>> GetAllAsync()
         {
-            // Fix for "Unknown column 'v.UserId'":
-            // We'll explicitly select the vehicle properties to bypass the EF Core
-            // convention that is incorrectly including a non-existent UserId column.
             return await _context.Vehicles
                 .Include(v => v.Category)
-                .Select(v => new Vehicle
-                {
-                    Id = v.Id,
-                    CategoryId = v.CategoryId,
-                    Make = v.Make,
-                    Model = v.Model,
-                    Year = v.Year,
-                    LicensePlate = v.LicensePlate,
-                    Color = v.Color,
-                    FuelType = v.FuelType,
-                    FuelCapacity = v.FuelCapacity,
-                    CurrentMileage = v.CurrentMileage,
-                    Status = v.Status,
-                    CurrentDriverId = v.CurrentDriverId,
-                    CurrentLocationLat = v.CurrentLocationLat,
-                    CurrentLocationLng = v.CurrentLocationLng,
-                    LastLocationUpdated = v.LastLocationUpdated,
-                    FuelLevel = v.FuelLevel,
-                    RegistrationExpiry = v.RegistrationExpiry,
-                    InsuranceExpiry = v.InsuranceExpiry,
-                    InsurancePolicy = v.InsurancePolicy,
-                    PurchaseDate = v.PurchaseDate,
-                    PurchasePrice = v.PurchasePrice,
-                    CreatedAt = v.CreatedAt,
-                    UpdatedAt = v.UpdatedAt,
-                    // The navigation property itself cannot be included this way
-                    // since it would require a JOIN, which is where the original
-                    // error occurred. We'll leave it as null for now.
-                    CurrentDriver = v.CurrentDriver, // EF Core will load this correctly
-                    Category = v.Category
-                })
+                .Include(v => v.CurrentDriver)
+                .AsNoTracking()
                 .ToListAsync();
         }
 
         public async Task<Vehicle?> GetByIdAsync(string id)
         {
-            // This method should be fine as it only retrieves one record
             return await _context.Vehicles
                 .Include(v => v.CurrentDriver)
                 .Include(v => v.Category)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(v => v.Id == id);
         }
 
@@ -82,12 +50,10 @@ namespace FleetManagerPro.API.Services
                 FuelType = (FuelType)Enum.Parse(typeof(FuelType), vehicleDto.FuelType, true),
                 FuelCapacity = (decimal?)vehicleDto.FuelCapacity,
                 CurrentMileage = (decimal)vehicleDto.CurrentMileage,
-
                 Status = Enum.Parse<VehicleStatus>(
                      vehicleDto.Status.Replace(" ", ""),
                      true
                  ),
-
                 FuelLevel = (decimal)vehicleDto.FuelLevel,
                 RegistrationExpiry = vehicleDto.RegistrationExpiry,
                 InsuranceExpiry = vehicleDto.InsuranceExpiry,
@@ -97,7 +63,6 @@ namespace FleetManagerPro.API.Services
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-
 
             _context.Vehicles.Add(vehicle);
             await _context.SaveChangesAsync();
@@ -148,6 +113,7 @@ namespace FleetManagerPro.API.Services
             return await _context.Vehicles
                 .Include(v => v.CurrentDriver)
                 .Where(v => v.Status == VehicleStatus.Ready)
+                .AsNoTracking()
                 .ToListAsync();
         }
 
@@ -156,6 +122,7 @@ namespace FleetManagerPro.API.Services
             return await _context.Vehicles
                 .Include(v => v.CurrentDriver)
                 .Where(v => v.CurrentDriverId == driverId)
+                .AsNoTracking()
                 .ToListAsync();
         }
 

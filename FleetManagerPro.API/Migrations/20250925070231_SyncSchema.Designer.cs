@@ -4,6 +4,7 @@ using FleetManagerPro.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FleetManagerPro.API.Migrations
 {
     [DbContext(typeof(FleetManagerDbContext))]
-    partial class FleetManagerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250925070231_SyncSchema")]
+    partial class SyncSchema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -618,6 +621,12 @@ namespace FleetManagerPro.API.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("updated_at");
 
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("UserId1")
+                        .HasColumnType("varchar(255)");
+
                     b.Property<int>("Year")
                         .HasColumnType("int")
                         .HasColumnName("year");
@@ -627,6 +636,10 @@ namespace FleetManagerPro.API.Migrations
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("CurrentDriverId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId1");
 
                     b.ToTable("vehicles", (string)null);
                 });
@@ -779,6 +792,14 @@ namespace FleetManagerPro.API.Migrations
                         .HasForeignKey("CurrentDriverId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("FleetManagerPro.API.Models.User", null)
+                        .WithMany("AssignedVehicles")
+                        .HasForeignKey("UserId");
+
+                    b.HasOne("FleetManagerPro.API.Models.User", null)
+                        .WithMany("Vehicles")
+                        .HasForeignKey("UserId1");
+
                     b.Navigation("Category");
 
                     b.Navigation("CurrentDriver");
@@ -808,9 +829,13 @@ namespace FleetManagerPro.API.Migrations
 
             modelBuilder.Entity("FleetManagerPro.API.Models.User", b =>
                 {
+                    b.Navigation("AssignedVehicles");
+
                     b.Navigation("AttendanceRecords");
 
                     b.Navigation("LeaveRequests");
+
+                    b.Navigation("Vehicles");
                 });
 
             modelBuilder.Entity("FleetManagerPro.API.Models.Vehicle", b =>

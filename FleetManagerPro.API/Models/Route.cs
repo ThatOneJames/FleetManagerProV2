@@ -37,7 +37,6 @@ namespace FleetManagerPro.API.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // 🔹 Navigation
-        public ICollection<RouteVehicle> RouteVehicles { get; set; } = new List<RouteVehicle>();
         public ICollection<User> AssignedDrivers { get; set; } = new List<User>();
 
 

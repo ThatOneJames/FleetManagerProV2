@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace FleetManagerPro.API.Models
 {
@@ -87,15 +88,15 @@ namespace FleetManagerPro.API.Models
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation properties
-        public VehicleCategory? Category { get; set; }
+        // Navigation properties - ONLY these should exist
+        [ForeignKey("CategoryId")]
+        public VehicleCategory? Category { get; set; }
 
         [ForeignKey("CurrentDriverId")]
         public User? CurrentDriver { get; set; }
 
-        public ICollection<Route> Routes { get; set; } = new List<Route>();
         public ICollection<MaintenanceRecord> MaintenanceRecords { get; set; } = new List<MaintenanceRecord>();
-        public ICollection<RouteVehicle> RouteVehicles { get; set; } = new List<RouteVehicle>();
+
     }
 
     public enum FuelType
@@ -136,7 +137,8 @@ namespace FleetManagerPro.API.Models
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation properties
-        public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
+        // Navigation properties
+        [JsonIgnore]
+        public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
     }
 }
