@@ -10,32 +10,280 @@
             <option>Inactive</option>
             <option>Suspended</option>
         </select>
-        <button (click)="toggleAddDriverForm()">+ Add Driver</button>
+        <button (click)="toggleAddDriverForm()" class="btn-primary">+ Add Driver</button>
     </div>
 
+    <!-- Success/Error Messages -->
+    <div *ngIf="successMessage" class="message success">{{ successMessage }}</div>
+    <div *ngIf="errorMessage" class="message error">{{ errorMessage }}</div>
+
     <!-- Add Driver Form -->
-    <div class="add-form" *ngIf="showAddDriverForm">
-        <h3>Add Driver</h3>
+    <div class="form-container" *ngIf="showAddDriverForm">
+        <div class="form-header">
+            <h3>Add New Driver</h3>
+            <button type="button" class="close-btn" (click)="cancelForm()">&times;</button>
+        </div>
         <form [formGroup]="registrationForm" (ngSubmit)="addDriver()">
-            <input formControlName="name" placeholder="Driver Name" required />
-            <input formControlName="email" type="email" placeholder="Email" required />
-            <input formControlName="password" type="password" placeholder="Password" required />
-            <input formControlName="licenseNumber" placeholder="License Number" required />
-            <input formControlName="experienceYears" type="number" placeholder="Experience Years" required />
-            <button type="submit" [disabled]="registrationForm.invalid">Save</button>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input formControlName="name" placeholder="Enter full name" required />
+                    <div *ngIf="registrationForm.get('name')?.invalid && registrationForm.get('name')?.touched" class="error-text">
+                        Name is required
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input formControlName="email" type="email" placeholder="Enter email address" required />
+                    <div *ngIf="registrationForm.get('email')?.invalid && registrationForm.get('email')?.touched" class="error-text">
+                        Valid email is required
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Password *</label>
+                    <input formControlName="password" type="password" placeholder="Enter password" required />
+                    <div *ngIf="registrationForm.get('password')?.invalid && registrationForm.get('password')?.touched" class="error-text">
+                        Password must be at least 6 characters
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input formControlName="phone" placeholder="Enter phone number" />
+                </div>
+
+                <div class="form-group">
+                    <label>License Number</label>
+                    <input formControlName="licenseNumber" placeholder="Enter license number" />
+                </div>
+
+                <div class="form-group">
+                    <label>License Class</label>
+                    <select formControlName="licenseClass">
+                        <option value="">Select License Class</option>
+                        <option value="A">Class A</option>
+                        <option value="B">Class B</option>
+                        <option value="C">Class C</option>
+                        <option value="CDL">CDL</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>License Expiry</label>
+                    <input formControlName="licenseExpiry" type="date" />
+                </div>
+
+                <div class="form-group">
+                    <label>Experience Years</label>
+                    <input formControlName="experienceYears" type="number" min="0" placeholder="Years of experience" />
+                </div>
+
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea formControlName="address" placeholder="Enter address" rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Date of Birth</label>
+                    <input formControlName="dateOfBirth" type="date" />
+                </div>
+
+                <div class="form-group">
+                    <label>Emergency Contact</label>
+                    <input formControlName="emergencyContact" placeholder="Emergency contact info" />
+                </div>
+
+                <div class="form-group">
+                    <label>Safety Rating</label>
+                    <input formControlName="safetyRating" type="number" min="0" max="5" step="0.1" placeholder="0.0 - 5.0" />
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" [disabled]="registrationForm.invalid" class="btn-primary">Save Driver</button>
+                <button type="button" (click)="cancelForm()" class="btn-secondary">Cancel</button>
+            </div>
         </form>
     </div>
 
-    <!-- Driver List -->
+    <!-- Edit Driver Form -->
+    <div class="form-container" *ngIf="showEditDriverForm && editingDriver">
+        <div class="form-header">
+            <h3>Edit Driver: {{ editingDriver.name }}</h3>
+            <button type="button" class="close-btn" (click)="cancelEdit()">&times;</button>
+        </div>
+        <form [formGroup]="editForm" (ngSubmit)="updateDriver()">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input formControlName="name" placeholder="Enter full name" required />
+                    <div *ngIf="editForm.get('name')?.invalid && editForm.get('name')?.touched" class="error-text">
+                        Name is required
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input formControlName="email" type="email" placeholder="Enter email address" required />
+                    <div *ngIf="editForm.get('email')?.invalid && editForm.get('email')?.touched" class="error-text">
+                        Valid email is required
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input formControlName="phone" placeholder="Enter phone number" />
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select formControlName="status">
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="Suspended">Suspended</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>License Number</label>
+                    <input formControlName="licenseNumber" placeholder="Enter license number" />
+                </div>
+
+                <div class="form-group">
+                    <label>License Class</label>
+                    <select formControlName="licenseClass">
+                        <option value="">Select License Class</option>
+                        <option value="A">Class A</option>
+                        <option value="B">Class B</option>
+                        <option value="C">Class C</option>
+                        <option value="CDL">CDL</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>License Expiry</label>
+                    <input formControlName="licenseExpiry" type="date" />
+                </div>
+
+                <div class="form-group">
+                    <label>Experience Years</label>
+                    <input formControlName="experienceYears" type="number" min="0" placeholder="Years of experience" />
+                </div>
+
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea formControlName="address" placeholder="Enter address" rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Date of Birth</label>
+                    <input formControlName="dateOfBirth" type="date" />
+                </div>
+
+                <div class="form-group">
+                    <label>Emergency Contact</label>
+                    <input formControlName="emergencyContact" placeholder="Emergency contact info" />
+                </div>
+
+                <div class="form-group">
+                    <label>Safety Rating</label>
+                    <input formControlName="safetyRating" type="number" min="0" max="5" step="0.1" placeholder="0.0 - 5.0" />
+                </div>
+
+                <div class="form-group">
+                    <label>Total Miles Driven</label>
+                    <input formControlName="totalMilesDriven" type="number" min="0" placeholder="Total miles" />
+                </div>
+
+                <div class="form-group">
+                    <label>Available</label>
+                    <select formControlName="isAvailable">
+                        <option [value]="true">Yes</option>
+                        <option [value]="false">No</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Has Helper</label>
+                    <select formControlName="hasHelper">
+                        <option [value]="true">Yes</option>
+                        <option [value]="false">No</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" [disabled]="editForm.invalid" class="btn-primary">Update Driver</button>
+                <button type="button" (click)="cancelEdit()" class="btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Driver List Table -->
     <div class="driver-list">
-        <div *ngFor="let driver of filteredDrivers" class="driver-card">
-            <h4>{{ driver.name }}</h4>
-            <p>Status: {{ getStringStatus(driver.status) }}</p>
-            <p>Email: {{ driver.email }}</p>
-            <p>License: {{ driver.licenseNumber }}</p>
-            <p>Experience: {{ driver.experienceYears }} years</p>
-            <button *ngIf="driver.id" (click)="deleteDriver(driver.id)">Delete</button>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>License</th>
+                        <th>Experience</th>
+                        <th>Status</th>
+                        <th>Available</th>
+                        <th>Safety Rating</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let driver of filteredDrivers">
+                        <td>{{ driver.name }}</td>
+                        <td>{{ driver.email }}</td>
+                        <td>{{ driver.phone || 'N/A' }}</td>
+                        <td>{{ driver.licenseNumber || 'N/A' }}</td>
+                        <td>{{ driver.experienceYears || 0 }} years</td>
+                        <td>
+                            <span class="status-badge" [class]="getStringStatus(driver.status).toLowerCase()">
+                                {{ getStringStatus(driver.status) }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="availability-badge" [class]="(driver.isAvailable ?? true) ? 'available' : 'unavailable'">
+                                {{ (driver.isAvailable ?? true) ? 'Yes' : 'No' }}
+                            </span>
+                        </td>
+                        <td>{{ driver.safetyRating || 'N/A' }}/5.0</td>
+                        <td class="actions">
+                            <button (click)="editDriver(driver)" class="btn-edit" title="Edit">
+                                <i class="icon-edit">✏️</i>
+                            </button>
+                            <button (click)="confirmDelete(driver)" class="btn-delete" title="Delete">
+                                <i class="icon-delete">🗑️</i>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div *ngIf="filteredDrivers.length === 0" class="no-data">
+            <p>No drivers found matching your criteria.</p>
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" *ngIf="showDeleteConfirm">
+        <div class="modal">
+            <h3>Confirm Delete</h3>
+            <p>Are you sure you want to delete driver <strong>{{ driverToDelete?.name }}</strong>?</p>
+            <p class="warning-text">This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button (click)="deleteDriver()" class="btn-danger">Delete</button>
+                <button (click)="cancelDelete()" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
 </div>

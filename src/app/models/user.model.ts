@@ -1,44 +1,41 @@
+// src/app/models/user.model.ts
+
 export interface User {
     id: string;
     name: string;
     email: string;
-    role: UserRole; // Use the UserRole enum
+    passwordHash?: string; // Optional since we don't usually expose this
+    role: UserRole;
     phone?: string;
     address?: string;
-    dateOfBirth?: Date;
-    hireDate?: Date;
+    dateOfBirth?: string | Date;
+    hireDate?: string | Date;
     emergencyContact?: string;
     status: UserStatus;
-
     profileImageUrl?: string;
+    createdAt: string | Date;
+    updatedAt: string | Date;
 
-    // Driver specific fields
-    vehicleId?: string;
+    // Driver-specific fields (these were missing)
     licenseNumber?: string;
     licenseClass?: string;
-    licenseExpiry?: Date;
+    licenseExpiry?: string | Date;
     experienceYears?: number;
     safetyRating?: number;
-
-    // Timestamps
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface LoginCredentials {
-    email: string;
-    password: string;
-}
-
-export interface AuthResponse {
-    user: User;
-    token: string;
-    refreshToken?: string;
+    totalMilesDriven?: number; // This was missing
+    currentVehicleId?: string;
+    vehicleId?: string; // Added this for auth service compatibility
+    isAvailable?: boolean; // This was missing
+    hasHelper?: boolean; // This was missing
+    lastLocationLat?: number;
+    lastLocationLng?: number;
+    lastLocationUpdated?: string | Date;
 }
 
 export enum UserRole {
     Admin = 0,
-    Driver = 1
+    Driver = 1,
+    Manager = 2
 }
 
 export enum UserStatus {
