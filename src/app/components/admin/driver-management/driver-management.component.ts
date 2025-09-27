@@ -103,9 +103,8 @@ export class DriverManagementComponent implements OnInit {
         console.log('Search text:', this.searchText); // Debug log
 
         return this.drivers.filter(driver => {
-            // Status filter - convert both to strings for comparison
-            const driverStatusString = typeof driver.status === 'string' ? driver.status : this.getStringStatus(driver.status);
-            const matchesStatus = this.filterStatus === 'All' || driverStatusString === this.filterStatus;
+            // Status filter - both are strings now
+            const matchesStatus = this.filterStatus === 'All' || driver.status === this.filterStatus;
 
             // Search filter
             const searchLower = this.searchText.toLowerCase();
@@ -114,7 +113,7 @@ export class DriverManagementComponent implements OnInit {
                 driver.email?.toLowerCase().includes(searchLower) ||
                 driver.licenseNumber?.toLowerCase().includes(searchLower);
 
-            console.log(`Driver ${driver.name}: Status match=${matchesStatus}, Search match=${matchesSearch}`); // Debug log
+            console.log(`Driver ${driver.name}: Status=${driver.status}, Status match=${matchesStatus}, Search match=${matchesSearch}`);
 
             return matchesStatus && matchesSearch;
         });
@@ -134,21 +133,8 @@ export class DriverManagementComponent implements OnInit {
         }
     }
 
-    getStringStatus(status: UserStatus | string): string {
-        if (typeof status === 'string') {
-            return status; // Already a string, return as-is
-        }
-
-        switch (status) {
-            case UserStatus.Active:
-                return 'Active';
-            case UserStatus.Inactive:
-                return 'Inactive';
-            case UserStatus.Suspended:
-                return 'Suspended';
-            default:
-                return 'Unknown';
-        }
+    getStringStatus(status: string): string {
+        return status; // Since status is already a string, just return it
     }
 
     // Add Driver Methods
@@ -241,8 +227,7 @@ export class DriverManagementComponent implements OnInit {
         // Prepare the update data
         const updateData = {
             ...formData,
-            status: this.getNumericStatus(formData.status),
-            // Convert empty strings to null for optional fields
+            status: formData.status,
             phone: formData.phone || null,
             address: formData.address || null,
             emergencyContact: formData.emergencyContact || null,

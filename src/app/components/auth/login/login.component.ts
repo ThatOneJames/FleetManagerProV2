@@ -2,14 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
-import { User, UserRole } from '../../../models/user.model';
+import { User } from '../../../models/user.model';
 
 @Component({
     selector: 'app-login',
     templateUrl: './login.component.html',
     styleUrls: ['./login.component.css']
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit { // Make sure this export exists
     loginForm: FormGroup;
     errorMessage: string | null = null;
     loading = false;
@@ -77,13 +77,13 @@ export class LoginComponent implements OnInit {
         });
     }
 
-    private redirectBasedOnRole(role: UserRole | null): void {
+    private redirectBasedOnRole(role: string | null): void {
         switch (role) {
-            case UserRole.Admin:
+            case 'Admin':
                 console.log('Redirecting to admin dashboard');
                 this.router.navigate(['/admin/dashboard']);
                 break;
-            case UserRole.Driver:
+            case 'Driver':
                 console.log('Redirecting to driver dashboard');
                 this.router.navigate(['/driver/dashboard']);
                 break;

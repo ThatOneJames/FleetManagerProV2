@@ -33,8 +33,6 @@ namespace FleetManager.Controllers
             _userRepository = userRepository;
         }
 
-        // AuthController.cs
-
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto loginDto)
         {
@@ -47,12 +45,18 @@ namespace FleetManager.Controllers
 
             var claims = new[]
             {
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Name, user.Name),
-        new Claim(ClaimTypes.Role, user.Role.ToString())
-    };
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Role, user.Role) // Direct string assignment
+            };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var jwtKey = _config["Jwt:Key"];
+            if (string.IsNullOrEmpty(jwtKey))
+            {
+                return StatusCode(500, "JWT configuration is missing");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -73,14 +77,14 @@ namespace FleetManager.Controllers
                 id = user.Id,
                 name = user.Name,
                 email = user.Email,
-                role = user.Role.ToString(),
+                role = user.Role, // Direct string assignment
                 phone = user.Phone,
                 address = user.Address,
                 dateOfBirth = user.DateOfBirth?.ToString("yyyy-MM-dd"),
                 hireDate = user.HireDate?.ToString("yyyy-MM-dd"),
                 emergencyContact = user.EmergencyContact,
                 profileImageUrl = user.ProfileImageUrl,
-                driver = user.Role == UserRole.Driver ? new
+                driver = user.Role == "Driver" ? new // String comparison
                 {
                     fullName = user.Name,
                     licenseNumber = user.LicenseNumber,
@@ -91,9 +95,7 @@ namespace FleetManager.Controllers
                     totalMilesDriven = user.TotalMilesDriven,
                     currentVehicleId = user.CurrentVehicleId
                 } : null
-
             });
-
         }
 
         [HttpPost("register")]
@@ -104,11 +106,6 @@ namespace FleetManager.Controllers
                 return BadRequest(new { message = "Email already exists" });
             }
 
-            if (!Enum.TryParse(userDto.Role, true, out UserRole userRole))
-            {
-                return BadRequest(new { message = "Invalid role specified" });
-            }
-
             var hashedPassword = await _authService.HashPassword(userDto.Password);
 
             var user = new User
@@ -117,14 +114,14 @@ namespace FleetManager.Controllers
                 Email = userDto.Email,
                 Name = userDto.Name,
                 PasswordHash = hashedPassword,
-                Role = userRole,
-                Status = UserStatus.Active,
+                Role = userDto.Role, // Direct string assignment
+                Status = "Active", // Direct string assignment
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
-            // If registering a driver, initialize driver-specific fields directly on the User
-            if (user.Role == UserRole.Driver)
+            // If registering a driver, initialize driver-specific fields
+            if (user.Role == "Driver") // String comparison
             {
                 user.LicenseNumber = Guid.NewGuid().ToString();
                 user.LicenseClass = "N/A";
@@ -140,6 +137,5 @@ namespace FleetManager.Controllers
 
             return Ok(new { message = "User registered successfully" });
         }
-
     }
 }

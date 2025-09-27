@@ -34,17 +34,16 @@ namespace FleetManagerPro.API.Data.Repository
         public async Task<User?> GetDriverByEmailAsync(string email)
         {
             return await _context.Users
-                .Where(u => u.Role == UserRole.Driver)
+                .Where(u => u.Role == "Driver") // String comparison
                 .FirstOrDefaultAsync(u => u.Email.ToLower().Trim() == email.ToLower().Trim());
         }
 
         public async Task<IEnumerable<User>> GetAllDriversAsync()
         {
             return await _context.Users
-                .Where(u => u.Role == UserRole.Driver)
+                .Where(u => u.Role == "Driver") // String comparison
                 .ToListAsync();
         }
-
 
         public async Task<bool> DeleteAsync(string id)
         {
@@ -53,7 +52,6 @@ namespace FleetManagerPro.API.Data.Repository
             {
                 return false;
             }
-
             _context.Users.Remove(user);
             return await _context.SaveChangesAsync() > 0;
         }

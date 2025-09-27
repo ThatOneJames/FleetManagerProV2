@@ -8,7 +8,7 @@
             <div class="logo-text">
                 <h2>FleetManager Pro</h2>
                 <p class="role-text">
-                    {{ user?.role === UserRole.Admin ? 'Admin Dashboard' : 'Driver Dashboard' }}
+                    {{ user?.role === 'Admin' ? 'Admin Dashboard' : 'Driver Dashboard' }}
                 </p>
             </div>
         </div>
@@ -38,8 +38,8 @@
                 <mat-icon>person</mat-icon>
             </div>
             <div class="user-details" *ngIf="user">
-                <span class="user-name">{{ user.name }}</span>
-                <span class="user-email">{{ user.email }}</span>
+                <span class="user-name">{{ user?.name }}</span>
+                <span class="user-email">{{ user?.email }}</span>
             </div>
         </div>
         <button mat-button

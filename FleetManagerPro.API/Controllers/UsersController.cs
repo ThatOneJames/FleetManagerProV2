@@ -42,7 +42,7 @@ namespace FleetManagerPro.API.Controllers
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAllDrivers()
         {
             var users = await _userRepository.GetAllAsync();
-            var drivers = users.Where(u => u.Role == UserRole.Driver)
+            var drivers = users.Where(u => u.Role == "Driver") // String comparison
                               .Select(u => MapToResponseDto(u));
             return Ok(drivers);
         }
@@ -71,10 +71,16 @@ namespace FleetManagerPro.API.Controllers
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Name),
-                new Claim(ClaimTypes.Role, user.Role.ToString())
+                new Claim(ClaimTypes.Role, user.Role) // Direct string assignment
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var jwtKey = _config["Jwt:Key"];
+            if (string.IsNullOrEmpty(jwtKey))
+            {
+                return StatusCode(500, "JWT configuration is missing");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -95,15 +101,15 @@ namespace FleetManagerPro.API.Controllers
                 id = user.Id,
                 name = user.Name,
                 email = user.Email,
-                role = user.Role.ToString(),
+                role = user.Role, // Direct string assignment
                 phone = user.Phone,
                 address = user.Address,
                 dateOfBirth = user.DateOfBirth?.ToString("yyyy-MM-dd"),
                 hireDate = user.HireDate?.ToString("yyyy-MM-dd"),
                 emergencyContact = user.EmergencyContact,
                 profileImageUrl = user.ProfileImageUrl,
-                status = user.Status.ToString(),
-                driver = user.Role == UserRole.Driver ? new
+                status = user.Status, // Direct string assignment
+                driver = user.Role == "Driver" ? new // String comparison
                 {
                     fullName = user.Name,
                     licenseNumber = user.LicenseNumber,
@@ -142,11 +148,10 @@ namespace FleetManagerPro.API.Controllers
             if (dto.DateOfBirth.HasValue) user.DateOfBirth = dto.DateOfBirth.Value;
             if (dto.HireDate.HasValue) user.HireDate = dto.HireDate.Value;
 
-            // Update status if provided
+            // Update status if provided - treat as string since DB stores varchar
             if (!string.IsNullOrWhiteSpace(dto.Status))
             {
-                if (Enum.TryParse<UserStatus>(dto.Status, true, out var status))
-                    user.Status = status;
+                user.Status = dto.Status; // Direct string assignment
             }
 
             // Update driver-specific fields
@@ -182,19 +187,14 @@ namespace FleetManagerPro.API.Controllers
             if (user == null)
                 return NotFound(new { message = "User not found" });
 
-            if (Enum.TryParse<UserStatus>(statusDto.Status, true, out var status))
-            {
-                user.Status = status;
-                user.UpdatedAt = DateTime.UtcNow;
+            user.Status = statusDto.Status; // Direct string assignment
+            user.UpdatedAt = DateTime.UtcNow;
 
-                var success = await _userRepository.UpdateAsync(user);
-                if (!success)
-                    return BadRequest(new { message = "Failed to update user status" });
+            var success = await _userRepository.UpdateAsync(user);
+            if (!success)
+                return BadRequest(new { message = "Failed to update user status" });
 
-                return Ok(new { message = "Status updated successfully", status = user.Status.ToString() });
-            }
-
-            return BadRequest(new { message = "Invalid status value" });
+            return Ok(new { message = "Status updated successfully", status = user.Status });
         }
 
         // PATCH: api/users/{id}/availability - Quick availability toggle
@@ -205,7 +205,7 @@ namespace FleetManagerPro.API.Controllers
             if (user == null)
                 return NotFound(new { message = "User not found" });
 
-            if (user.Role != UserRole.Driver)
+            if (user.Role != "Driver") // String comparison
                 return BadRequest(new { message = "User is not a driver" });
 
             user.IsAvailable = availabilityDto.IsAvailable;
@@ -240,21 +240,20 @@ namespace FleetManagerPro.API.Controllers
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email,
-                Role = user.Role.ToString(),
+                Role = user.Role, // Direct string assignment
                 Phone = user.Phone ?? string.Empty,
                 Address = user.Address ?? string.Empty,
                 DateOfBirth = user.DateOfBirth,
                 HireDate = user.HireDate,
                 EmergencyContact = user.EmergencyContact ?? string.Empty,
                 ProfileImageUrl = user.ProfileImageUrl ?? string.Empty,
-                Status = user.Status.ToString(),
+                Status = user.Status, // Direct string assignment
                 LicenseNumber = user.LicenseNumber ?? string.Empty,
                 LicenseClass = user.LicenseClass ?? string.Empty,
                 LicenseExpiry = user.LicenseExpiry,
                 ExperienceYears = user.ExperienceYears ?? 0,
                 SafetyRating = user.SafetyRating ?? 0m,
                 TotalMilesDriven = user.TotalMilesDriven ?? 0m,
-                // Use direct assignment for non-nullable bools
                 IsAvailable = user.IsAvailable,
                 HasHelper = user.HasHelper,
                 CreatedAt = user.CreatedAt,

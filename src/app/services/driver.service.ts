@@ -171,11 +171,11 @@ export class DriverService {
         }
     }
 
-    private getStatusString(status: number): string {
+    private getStatusString(status: string): string {
         switch (status) {
-            case 0: return 'Active';
-            case 1: return 'Inactive';
-            case 2: return 'Suspended';
+            case 'Active': return 'Active';
+            case 'Inactive': return 'Inactive';
+            case 'Suspended': return 'Suspended';
             default: return 'Unknown';
         }
     }

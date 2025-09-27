@@ -17,11 +17,11 @@
 
         <!-- Sidebar -->
         <mat-sidenav-container class="sidenav-container">
-            <mat-sidenav     #sidenav
-                             [opened]="sidebarOpen"
-                             mode="side"
-                             class="sidebar"
-                             [fixedInViewport]="true">
+            <mat-sidenav #sidenav
+                         [opened]="sidebarOpen"
+                         mode="side"
+                         class="sidebar"
+                         [fixedInViewport]="true">
 
                 <!-- Sidebar Header -->
                 <div class="sidebar-header">
@@ -30,7 +30,7 @@
                         <div class="logo-text">
                             <h2>FleetManager Pro</h2>
                             <p class="role-text">
-                                {{ currentUser.role === UserRole.Admin ? 'Admin Dashboard' : 'Driver Dashboard' }}
+                                {{ currentUser.role === 'Admin' ? 'Admin Dashboard' : 'Driver Dashboard' }}
                             </p>
                         </div>
                     </div>
@@ -40,10 +40,10 @@
                     <div *ngFor="let group of navigationItems" class="nav-group">
                         <div class="nav-group-label">{{ group.title }}</div>
                         <mat-nav-list class="nav-list">
-                            <mat-list-item         *ngFor="let item of group.items"
-                                                   [routerLink]="item.route"
-                                                   routerLinkActive="active-link"
-                                                   class="nav-item">
+                            <mat-list-item *ngFor="let item of group.items"
+                                           [routerLink]="item.route"
+                                           routerLinkActive="active-link"
+                                           class="nav-item">
                                 <mat-icon matListIcon>{{ item.icon }}</mat-icon>
                                 <span matLine>{{ item.title }}</span>
                             </mat-list-item>
@@ -62,9 +62,9 @@
                             <span class="user-email">{{ currentUser.email }}</span>
                         </div>
                     </div>
-                    <button       mat-button
-                                  class="logout-button"
-                                  (click)="onLogout()">
+                    <button mat-button
+                            class="logout-button"
+                            (click)="onLogout()">
                         <mat-icon>logout</mat-icon>
                         Logout
                     </button>
@@ -74,9 +74,9 @@
             <mat-sidenav-content class="main-content">
                 <!-- Top Toolbar -->
                 <mat-toolbar class="top-toolbar">
-                    <button       mat-icon-button
-                                  (click)="toggleSidebar()"
-                                  class="menu-button">
+                    <button mat-icon-button
+                            (click)="toggleSidebar()"
+                            class="menu-button">
                         <mat-icon>menu</mat-icon>
                     </button>
                     <span class="toolbar-spacer"></span>

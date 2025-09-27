@@ -131,7 +131,7 @@ namespace FleetManagerPro.API.Services
             var vehicle = await _context.Vehicles.FindAsync(vehicleId);
             var user = await _context.Users.FindAsync(driverId);
 
-            if (vehicle == null || user == null || user.Role != UserRole.Driver)
+            if (vehicle == null || user == null || user.Role != "Driver") // String comparison
                 return false;
 
             vehicle.CurrentDriverId = driverId;

@@ -4,34 +4,35 @@ export interface User {
     id: string;
     name: string;
     email: string;
-    passwordHash?: string; // Optional since we don't usually expose this
-    role: UserRole;
+    passwordHash?: string;
+    role: string; // Changed from UserRole enum to string
     phone?: string;
     address?: string;
     dateOfBirth?: string | Date;
     hireDate?: string | Date;
     emergencyContact?: string;
-    status: UserStatus;
+    status: string; // Changed from UserStatus enum to string
     profileImageUrl?: string;
     createdAt: string | Date;
     updatedAt: string | Date;
 
-    // Driver-specific fields (these were missing)
+    // Driver-specific fields
     licenseNumber?: string;
     licenseClass?: string;
     licenseExpiry?: string | Date;
     experienceYears?: number;
     safetyRating?: number;
-    totalMilesDriven?: number; // This was missing
+    totalMilesDriven?: number;
     currentVehicleId?: string;
-    vehicleId?: string; // Added this for auth service compatibility
-    isAvailable?: boolean; // This was missing
-    hasHelper?: boolean; // This was missing
+    vehicleId?: string; // For auth service compatibility
+    isAvailable?: boolean;
+    hasHelper?: boolean;
     lastLocationLat?: number;
     lastLocationLng?: number;
     lastLocationUpdated?: string | Date;
 }
 
+// Keep enums for reference/conversion if needed
 export enum UserRole {
     Admin = 0,
     Driver = 1,

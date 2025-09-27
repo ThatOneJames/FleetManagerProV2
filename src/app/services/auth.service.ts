@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
-import { User, UserRole, UserStatus } from '../models/user.model';
+import { User } from '../models/user.model';
 
 export interface LoginResponse {
     token: any;
@@ -93,8 +93,8 @@ export class AuthService {
             id: data.id,
             name: data.driver?.fullName || this.sanitize(data.name),
             email: this.sanitize(data.email),
-            role: this.parseUserRole(data.role),
-            status: this.parseUserStatus(data.status),
+            role: data.role, // Direct string assignment
+            status: data.status || 'Active', // Direct string assignment
             phone: this.sanitize(data.phone),
             address: data.driver?.address || this.sanitize(data.address),
             dateOfBirth: data.driver?.dateOfBirth ? new Date(data.driver.dateOfBirth)
@@ -125,28 +125,12 @@ export class AuthService {
         return value === null || value === undefined || value === 'N/A' ? '' : value;
     }
 
-    private parseUserRole(role: string): UserRole {
-        switch (role?.toLowerCase()) {
-            case 'admin': return UserRole.Admin;
-            case 'driver': return UserRole.Driver;
-            default: return UserRole.Driver;
-        }
-    }
-
-    private parseUserStatus(status: string): UserStatus {
-        switch (status?.toLowerCase()) {
-            case 'active': return UserStatus.Active;
-            case 'inactive': return UserStatus.Inactive;
-            case 'suspended': return UserStatus.Suspended;
-            default: return UserStatus.Active;
-        }
-    }
-
     getToken(): string | null { return localStorage.getItem('token'); }
     getCurrentUserSync(): User | null { return this.currentUserSubject.value; }
     getCurrentUser(): Observable<User | null> { return this.currentUser$; }
     getCurrentUserId(): string | null { return this.getCurrentUserSync()?.id ?? null; }
-    getUserRole(): UserRole | null { return this.getCurrentUserSync()?.role ?? null; }
+    getUserRole(): string | null { return this.getCurrentUserSync()?.role ?? null; } // Return string instead of enum
+
     isAuthenticated(): boolean {
         const token = this.getToken();
         if (!token) return false;
@@ -159,8 +143,8 @@ export class AuthService {
         }
     }
 
-    isDriver(): boolean { return this.getUserRole() === UserRole.Driver; }
-    isAdmin(): boolean { return this.getUserRole() === UserRole.Admin; }
+    isDriver(): boolean { return this.getUserRole() === 'Driver'; } // String comparison
+    isAdmin(): boolean { return this.getUserRole() === 'Admin'; } // String comparison
 
     logout(): void {
         this.clearUser();
