@@ -47,13 +47,10 @@ namespace FleetManagerPro.API.Services
                 Year = vehicleDto.Year,
                 LicensePlate = vehicleDto.LicensePlate,
                 Color = vehicleDto.Color,
-                FuelType = (FuelType)Enum.Parse(typeof(FuelType), vehicleDto.FuelType, true),
+                FuelType = vehicleDto.FuelType ?? "Gasoline", // Direct string assignment
                 FuelCapacity = (decimal?)vehicleDto.FuelCapacity,
                 CurrentMileage = (decimal)vehicleDto.CurrentMileage,
-                Status = Enum.Parse<VehicleStatus>(
-                     vehicleDto.Status.Replace(" ", ""),
-                     true
-                 ),
+                Status = vehicleDto.Status ?? "Ready", // Direct string assignment
                 FuelLevel = (decimal)vehicleDto.FuelLevel,
                 RegistrationExpiry = vehicleDto.RegistrationExpiry,
                 InsuranceExpiry = vehicleDto.InsuranceExpiry,
@@ -112,7 +109,7 @@ namespace FleetManagerPro.API.Services
         {
             return await _context.Vehicles
                 .Include(v => v.CurrentDriver)
-                .Where(v => v.Status == VehicleStatus.Ready)
+                .Where(v => v.Status == "Ready") // String comparison
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -151,6 +148,17 @@ namespace FleetManagerPro.API.Services
 
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        // Get vehicles by status
+        public async Task<IEnumerable<Vehicle>> GetVehiclesByStatusAsync(string status)
+        {
+            return await _context.Vehicles
+                .Include(v => v.Category)
+                .Include(v => v.CurrentDriver)
+                .Where(v => v.Status == status)
+                .AsNoTracking()
+                .ToListAsync();
         }
     }
 }

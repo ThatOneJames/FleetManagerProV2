@@ -38,7 +38,7 @@ namespace FleetManagerPro.API.Models
 
         [Required]
         [Column("fuel_type")]
-        public FuelType FuelType { get; set; }
+        public string FuelType { get; set; } = "Gasoline"; // Changed from enum to string
 
         [Column("fuel_capacity")]
         public decimal? FuelCapacity { get; set; }
@@ -48,7 +48,7 @@ namespace FleetManagerPro.API.Models
 
         [Required]
         [Column("status")]
-        public VehicleStatus Status { get; set; } = VehicleStatus.Ready;
+        public string Status { get; set; } = "Ready"; // Changed from enum to string
 
         [Column("current_driver_id")]
         public string? CurrentDriverId { get; set; }
@@ -88,7 +88,7 @@ namespace FleetManagerPro.API.Models
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation properties - ONLY these should exist
+        // Navigation properties
         [ForeignKey("CategoryId")]
         public VehicleCategory? Category { get; set; }
 
@@ -96,7 +96,6 @@ namespace FleetManagerPro.API.Models
         public User? CurrentDriver { get; set; }
 
         public ICollection<MaintenanceRecord> MaintenanceRecords { get; set; } = new List<MaintenanceRecord>();
-
     }
 
     public enum FuelType
