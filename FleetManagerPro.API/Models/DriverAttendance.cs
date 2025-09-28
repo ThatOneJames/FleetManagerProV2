@@ -4,47 +4,68 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FleetManagerPro.API.Models
 {
-    [Table("driver_attendance")]
+    [Table("attendance")]
     public class DriverAttendance
     {
         [Key]
         [Column("id")]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public long Id { get; set; }
 
-        // Reference User instead of Driver
         [Required]
         [Column("driver_id")]
+        [MaxLength(128)]
         public string DriverId { get; set; } = "";
 
-        [Column("check_in_time")]
-        public DateTime? CheckInTime { get; set; }
+        [Required]
+        [Column("date")]
+        public DateTime Date { get; set; }
 
-        [Column("check_out_time")]
-        public DateTime? CheckOutTime { get; set; }
+        [Column("clock_in")]
+        public TimeSpan? ClockIn { get; set; }
 
-        [Column("work_date")]
-        public DateTime WorkDate { get; set; }
+        [Column("clock_out")]
+        public TimeSpan? ClockOut { get; set; }
 
-        [Column("total_hours")]
+        [Column("total_hours", TypeName = "decimal(4,2)")]
         public decimal? TotalHours { get; set; }
 
-        [Column("overtime_hours")]
-        public decimal? OvertimeHours { get; set; }
+        [Column("break_duration", TypeName = "decimal(4,2)")]
+        public decimal BreakDuration { get; set; } = 0;
 
+        [Column("overtime_hours", TypeName = "decimal(4,2)")]
+        public decimal OvertimeHours { get; set; } = 0;
+
+        [Required]
         [Column("status")]
-        public AttendanceStatus Status { get; set; }
+        [MaxLength(20)]
+        public string Status { get; set; } = "Present";
+
+        [Column("location")]
+        [MaxLength(255)]
+        public string? Location { get; set; }
 
         [Column("notes")]
         public string? Notes { get; set; }
 
+        [Column("approved_by")]
+        [MaxLength(128)]
+        public string? ApprovedBy { get; set; }
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation property - now references User
+        [Column("updated_at")]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        // Navigation properties
         [ForeignKey("DriverId")]
         public User Driver { get; set; } = null!;
+
+        [ForeignKey("ApprovedBy")]
+        public User? Approver { get; set; }
     }
 
+    // Enum for reference, but we'll use strings in the database
     public enum AttendanceStatus
     {
         Present,

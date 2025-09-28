@@ -1,7 +1,7 @@
 ﻿import { Injectable, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { User } from '../models/user.model';
 
@@ -51,38 +51,80 @@ export class AuthService {
         try {
             const storedUser = localStorage.getItem('currentUser');
             const token = localStorage.getItem('token');
+            console.log('🔄 Loading stored user on service init...');
+            console.log('💾 Stored user exists:', !!storedUser);
+            console.log('🔑 Stored token exists:', !!token);
+
             if (storedUser && token) {
+                console.log('✅ Both user and token found in storage');
                 this.currentUserSubject.next(JSON.parse(storedUser));
+            } else {
+                console.log('❌ Missing user or token in storage');
             }
         } catch (error) {
-            console.error('Error loading stored user:', error);
+            console.error('❌ Error loading stored user:', error);
             this.clearStorage();
         }
     }
 
     login(email: string, password: string): Observable<User | null> {
+        console.log('🔐 Starting login process for:', email);
+
         return this.http.post<LoginResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
+            tap(response => {
+                console.log('📨 Raw login response received:', response);
+                console.log('🔑 Token in response:', response.token);
+                console.log('🔑 Token type:', typeof response.token);
+                console.log('👤 User data in response:', {
+                    id: response.id,
+                    name: response.name,
+                    email: response.email,
+                    role: response.role
+                });
+            }),
             map(response => this.handleAuthResponse(response)),
-            catchError(error => throwError(() => error))
+            catchError(error => {
+                console.error('❌ Login error:', error);
+                return throwError(() => error);
+            })
         );
     }
 
     private handleAuthResponse(response: LoginResponse): User | null {
         try {
-            const tokenString = this.extractToken(response.token);
-            if (!tokenString) throw new Error('Token not found');
+            console.log('🔄 Processing auth response...');
 
+            const tokenString = this.extractToken(response.token);
+            console.log('🔍 Extracted token:', tokenString ? `${tokenString.substring(0, 50)}...` : 'null');
+
+            if (!tokenString) {
+                console.error('❌ No token could be extracted from response');
+                throw new Error('Token not found');
+            }
+
+            // Store token
             localStorage.setItem('token', tokenString);
+            console.log('💾 Token stored in localStorage');
+
+            // Verify token storage immediately
+            const storedToken = localStorage.getItem('token');
+            console.log('✅ Verification - token retrieved from storage:', storedToken ? 'Success' : 'Failed');
 
             const user: User = this.mapToUser(response);
+            console.log('👤 Mapped user object:', user);
 
             localStorage.setItem('currentUser', JSON.stringify(user));
-            this.ngZone.run(() => this.currentUserSubject.next(user));
+            console.log('💾 User stored in localStorage');
 
-            console.log('Created user object:', user);
+            this.ngZone.run(() => {
+                console.log('🔄 Updating currentUserSubject...');
+                this.currentUserSubject.next(user);
+            });
+
+            console.log('✅ Auth response handled successfully');
             return user;
         } catch (error) {
-            console.error('Error handling auth response:', error);
+            console.error('❌ Error handling auth response:', error);
             this.clearStorage();
             return null;
         }
@@ -93,8 +135,8 @@ export class AuthService {
             id: data.id,
             name: data.driver?.fullName || this.sanitize(data.name),
             email: this.sanitize(data.email),
-            role: data.role, // Direct string assignment
-            status: data.status || 'Active', // Direct string assignment
+            role: data.role,
+            status: data.status || 'Active',
             phone: this.sanitize(data.phone),
             address: data.driver?.address || this.sanitize(data.address),
             dateOfBirth: data.driver?.dateOfBirth ? new Date(data.driver.dateOfBirth)
@@ -115,9 +157,26 @@ export class AuthService {
     }
 
     private extractToken(token: any): string | null {
-        if (!token) return null;
-        if (typeof token === 'string') return token;
-        if (typeof token === 'object') return token.token || token.accessToken || null;
+        console.log('🔍 Extracting token from:', token, 'Type:', typeof token);
+
+        if (!token) {
+            console.log('❌ Token is null/undefined');
+            return null;
+        }
+
+        if (typeof token === 'string') {
+            console.log('✅ Token is string, returning as-is');
+            return token;
+        }
+
+        if (typeof token === 'object') {
+            console.log('🔍 Token is object, looking for token properties...');
+            const extracted = token.token || token.accessToken || null;
+            console.log('🔍 Extracted from object:', extracted);
+            return extracted;
+        }
+
+        console.log('❌ Token type not recognized');
         return null;
     }
 
@@ -125,28 +184,41 @@ export class AuthService {
         return value === null || value === undefined || value === 'N/A' ? '' : value;
     }
 
-    getToken(): string | null { return localStorage.getItem('token'); }
+    getToken(): string | null {
+        const token = localStorage.getItem('token');
+        console.log('🔑 getToken() called, returning:', token ? `Token found (${token.substring(0, 20)}...)` : 'null');
+        return token;
+    }
+
     getCurrentUserSync(): User | null { return this.currentUserSubject.value; }
     getCurrentUser(): Observable<User | null> { return this.currentUser$; }
     getCurrentUserId(): string | null { return this.getCurrentUserSync()?.id ?? null; }
-    getUserRole(): string | null { return this.getCurrentUserSync()?.role ?? null; } // Return string instead of enum
+    getUserRole(): string | null { return this.getCurrentUserSync()?.role ?? null; }
 
     isAuthenticated(): boolean {
         const token = this.getToken();
-        if (!token) return false;
+        if (!token) {
+            console.log('❌ No token for authentication check');
+            return false;
+        }
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
-            return payload.exp > Math.floor(Date.now() / 1000);
-        } catch {
+            const isValid = payload.exp > Math.floor(Date.now() / 1000);
+            console.log('🔐 Token validation result:', isValid ? 'Valid' : 'Expired');
+            if (!isValid) this.logout();
+            return isValid;
+        } catch (error) {
+            console.error('❌ Token validation error:', error);
             this.logout();
             return false;
         }
     }
 
-    isDriver(): boolean { return this.getUserRole() === 'Driver'; } // String comparison
-    isAdmin(): boolean { return this.getUserRole() === 'Admin'; } // String comparison
+    isDriver(): boolean { return this.getUserRole() === 'Driver'; }
+    isAdmin(): boolean { return this.getUserRole() === 'Admin'; }
 
     logout(): void {
+        console.log('🚪 Logging out...');
         this.clearUser();
         this.router.navigate(['/login']);
     }
@@ -157,6 +229,7 @@ export class AuthService {
     }
 
     private clearStorage(): void {
+        console.log('🗑️ Clearing all storage...');
         localStorage.removeItem('token');
         localStorage.removeItem('currentUser');
         sessionStorage.removeItem('token');

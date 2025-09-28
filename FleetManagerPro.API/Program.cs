@@ -10,7 +10,8 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
-builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -20,6 +21,7 @@ builder.Services.AddDbContext<FleetManagerDbContext>(options =>
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<VehicleService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 
 // Enable CORS for Angular
 builder.Services.AddCors(options =>
@@ -32,7 +34,15 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 🔑 JWT Authentication setup
+// JWT Authentication setup with debugging
+var jwtKey = builder.Configuration["Jwt:Key"];
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+
+Console.WriteLine($"[JWT CONFIG] Key: {jwtKey?.Substring(0, 10)}...");
+Console.WriteLine($"[JWT CONFIG] Issuer: {jwtIssuer}");
+Console.WriteLine($"[JWT CONFIG] Audience: {jwtAudience}");
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -40,16 +50,58 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    // Add debugging events
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"[JWT] Authentication failed: {context.Exception.Message}");
+            Console.WriteLine($"[JWT] Exception type: {context.Exception.GetType().Name}");
+            if (context.Exception.InnerException != null)
+            {
+                Console.WriteLine($"[JWT] Inner exception: {context.Exception.InnerException.Message}");
+            }
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            Console.WriteLine($"[JWT] Token validated successfully");
+            Console.WriteLine($"[JWT] User: {context.Principal?.Identity?.Name}");
+            var claims = context.Principal?.Claims?.Select(c => $"{c.Type}={c.Value}");
+            Console.WriteLine($"[JWT] Claims: {string.Join(", ", claims ?? Array.Empty<string>())}");
+            return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            Console.WriteLine($"[JWT] Challenge triggered: {context.Error}");
+            Console.WriteLine($"[JWT] Error description: {context.ErrorDescription}");
+            return Task.CompletedTask;
+        },
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+            if (!string.IsNullOrEmpty(token))
+            {
+                Console.WriteLine($"[JWT] Token received: {token.Substring(0, Math.Min(50, token.Length))}...");
+            }
+            else
+            {
+                Console.WriteLine("[JWT] No token received in Authorization header");
+            }
+            return Task.CompletedTask;
+        }
+    };
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ClockSkew = TimeSpan.Zero // Remove default 5 minute clock skew
     };
 });
 
@@ -60,14 +112,14 @@ app.UseCors("AllowAngular");
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
-
 app.UseRouting();
 
-// 🔑 Middleware order matters
+// Middleware order is critical
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -79,7 +131,6 @@ app.MapGet("/weatherforecast", () =>
     {
         "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
     };
-
     var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
@@ -91,6 +142,8 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
+Console.WriteLine("[SERVER] Starting application with JWT authentication...");
 
 app.Run();
 

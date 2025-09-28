@@ -19,12 +19,13 @@ namespace FleetManagerPro.API.Data
         public DbSet<RouteOptimization> RouteOptimizations { get; set; } = null!;
         public DbSet<MaintenanceRecord> MaintenanceRecords { get; set; } = null!;
         public DbSet<LeaveRequest> LeaveRequests { get; set; } = null!;
+        public DbSet<DriverAttendance> DriverAttendances { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // 🔹 User entity
+            // User entity
             modelBuilder.Entity<User>(entity =>
             {
                 entity.ToTable("users");
@@ -45,7 +46,7 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.Status).HasColumnName("status").HasConversion<string>();
             });
 
-            // 🔹 Vehicle entity
+            // Vehicle entity
             modelBuilder.Entity<Vehicle>(entity =>
             {
                 entity.ToTable("vehicles");
@@ -92,7 +93,7 @@ namespace FleetManagerPro.API.Data
                         .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // 🔹 VehicleCategory entity
+            // VehicleCategory entity
             modelBuilder.Entity<VehicleCategory>(entity =>
             {
                 entity.ToTable("vehicle_categories");
@@ -102,7 +103,7 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             });
 
-            // 🔹 Route entity
+            // Route entity
             modelBuilder.Entity<Route>(entity =>
             {
                 entity.ToTable("routes");
@@ -111,7 +112,7 @@ namespace FleetManagerPro.API.Data
                       .HasForeignKey(rs => rs.RouteId);
             });
 
-            // 🔹 MaintenanceRecord entity
+            // MaintenanceRecord entity
             modelBuilder.Entity<MaintenanceRecord>(entity =>
             {
                 entity.ToTable("maintenance_records");
@@ -130,7 +131,45 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             });
 
-            // 🔹 RouteOptimization entity
+            // DriverAttendance entity
+            modelBuilder.Entity<DriverAttendance>(entity =>
+            {
+                entity.ToTable("attendance");
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.DriverId).HasColumnName("driver_id").HasMaxLength(128);
+                entity.Property(e => e.Date).HasColumnName("date");
+                entity.Property(e => e.ClockIn).HasColumnName("clock_in");
+                entity.Property(e => e.ClockOut).HasColumnName("clock_out");
+                entity.Property(e => e.TotalHours).HasColumnName("total_hours").HasColumnType("decimal(4,2)");
+                entity.Property(e => e.BreakDuration).HasColumnName("break_duration").HasColumnType("decimal(4,2)");
+                entity.Property(e => e.OvertimeHours).HasColumnName("overtime_hours").HasColumnType("decimal(4,2)");
+                entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+                entity.Property(e => e.Location).HasColumnName("location").HasMaxLength(255);
+                entity.Property(e => e.Notes).HasColumnName("notes");
+                entity.Property(e => e.ApprovedBy).HasColumnName("approved_by").HasMaxLength(128);
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+                // Relationships
+                entity.HasOne(a => a.Driver)
+                      .WithMany()
+                      .HasForeignKey(a => a.DriverId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(a => a.Approver)
+                      .WithMany()
+                      .HasForeignKey(a => a.ApprovedBy)
+                      .OnDelete(DeleteBehavior.SetNull)
+                      .IsRequired(false);
+
+                // Indexes
+                entity.HasIndex(a => new { a.DriverId, a.Date }).IsUnique();
+                entity.HasIndex(a => a.Date);
+                entity.HasIndex(a => a.Status);
+            });
+
+            // RouteOptimization entity
             modelBuilder.Entity<RouteOptimization>()
                 .HasOne(ro => ro.Route)
                 .WithOne(r => r.Optimization)
@@ -141,7 +180,7 @@ namespace FleetManagerPro.API.Data
                 .WithMany()
                 .HasForeignKey(ro => ro.OptimizedBy);
 
-            // 🔹 LeaveRequest entity
+            // LeaveRequest entity
             modelBuilder.Entity<LeaveRequest>(entity =>
             {
                 entity.ToTable("leave_requests");
@@ -157,7 +196,7 @@ namespace FleetManagerPro.API.Data
                       .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // 🔹 Route-User Many-to-Many relationship (using the existing route_users table)
+            // Route-User Many-to-Many relationship
             modelBuilder.Entity<Route>()
                 .HasMany(r => r.AssignedDrivers)
                 .WithMany()

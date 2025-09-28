@@ -29,6 +29,8 @@ import { MatNativeDateModule } from '@angular/material/core';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { HTTP_INTERCEPTORS } from '@angular/common/http';
+import { AuthInterceptor } from './interceptors/auth.interceptor';
 
 // Components
 import { LoginComponent } from './components/auth/login/login.component';
@@ -42,6 +44,7 @@ import { SidebarComponent } from './components/shared/sidebar/sidebar.component'
 import { DriverProfileComponent } from './components/driver/profile/profile.component';
 import { LeaveRequestsComponent } from './components/driver/leave-requests/leave-requests.component';
 import { UserComponent } from './components/user/user.component';
+import { DriverAttendanceComponent } from './components//driver/attendance/attendance.component';
 
 // Services
 import { AuthService } from './services/auth.service';
@@ -56,6 +59,7 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
         DriverDashboardComponent,
         AdminDashboardComponent,
         DriverManagementComponent,
+        DriverAttendanceComponent,
         FleetManagementComponent,
         RouteOptimizationComponent,
         MaintenanceComponent,
@@ -99,7 +103,12 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
         AuthService,
         DriverService,
         VehicleService,
-        provideAnimationsAsync()
+        provideAnimationsAsync(),
+        {
+            provide: HTTP_INTERCEPTORS,
+            useClass: AuthInterceptor,
+            multi: true
+        }
     ],
     bootstrap: [AppComponent]
 })
