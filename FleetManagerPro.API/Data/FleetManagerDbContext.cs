@@ -181,10 +181,30 @@ namespace FleetManagerPro.API.Data
                 .HasForeignKey(ro => ro.OptimizedBy);
 
             // LeaveRequest entity
+            // Replace the LeaveRequest entity configuration in your DbContext with this:
+
             modelBuilder.Entity<LeaveRequest>(entity =>
             {
                 entity.ToTable("leave_requests");
 
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.DriverId).HasColumnName("driver_id");
+                entity.Property(e => e.LeaveTypeId).HasColumnName("leave_type_id");
+                entity.Property(e => e.StartDate).HasColumnName("start_date");
+                entity.Property(e => e.EndDate).HasColumnName("end_date");
+                entity.Property(e => e.TotalDays).HasColumnName("total_days");
+                entity.Property(e => e.Reason).HasColumnName("reason");
+                entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+                entity.Property(e => e.SubmittedDate).HasColumnName("submitted_date");
+                entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
+                entity.Property(e => e.ApprovedAt).HasColumnName("approved_at");  // Changed from approved_date to approved_at
+                entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
+                entity.Property(e => e.EmergencyContact).HasColumnName("emergency_contact");
+                entity.Property(e => e.SupportingDocuments).HasColumnName("supporting_documents");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+                // Relationships
                 entity.HasOne(lr => lr.Driver)
                       .WithMany()
                       .HasForeignKey(lr => lr.DriverId)
@@ -193,7 +213,13 @@ namespace FleetManagerPro.API.Data
                 entity.HasOne(lr => lr.ApproverUser)
                       .WithMany()
                       .HasForeignKey(lr => lr.ApprovedBy)
-                      .OnDelete(DeleteBehavior.Restrict);
+                      .OnDelete(DeleteBehavior.SetNull)
+                      .IsRequired(false);
+
+                // Indexes
+                entity.HasIndex(lr => lr.DriverId);
+                entity.HasIndex(lr => lr.Status);
+                entity.HasIndex(lr => lr.StartDate);
             });
 
             // Route-User Many-to-Many relationship

@@ -11,13 +11,15 @@ namespace FleetManagerPro.API.Models
         [Column("id")]
         public string Id { get; set; } = Guid.NewGuid().ToString();
 
-        // Reference User instead of Driver
+        [Column("UserId")]
+        public string? UserId { get; set; }
+
         [Required]
         [Column("driver_id")]
         public string DriverId { get; set; } = "";
 
-        [Column("leave_type")]
-        public LeaveType LeaveType { get; set; }
+        [Column("leave_type_id")]
+        public int LeaveTypeId { get; set; }
 
         [Column("start_date")]
         public DateTime StartDate { get; set; }
@@ -33,16 +35,25 @@ namespace FleetManagerPro.API.Models
         public string Reason { get; set; } = "";
 
         [Column("status")]
-        public LeaveStatus Status { get; set; } = LeaveStatus.Pending;
+        public string Status { get; set; } = "Pending";
+
+        [Column("submitted_date")]
+        public DateTime? SubmittedDate { get; set; }
 
         [Column("approved_by")]
         public string? ApprovedBy { get; set; }
 
-        [Column("approved_at")]
+        [Column("approved_at")]  // This matches your updated database column
         public DateTime? ApprovedAt { get; set; }
 
         [Column("rejection_reason")]
         public string? RejectionReason { get; set; }
+
+        [Column("emergency_contact")]
+        public string? EmergencyContact { get; set; }
+
+        [Column("supporting_documents")]
+        public string? SupportingDocuments { get; set; }
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -50,31 +61,54 @@ namespace FleetManagerPro.API.Models
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation properties - now reference User
+        // Navigation properties
         [ForeignKey("DriverId")]
         public User Driver { get; set; } = null!;
 
         [ForeignKey("ApprovedBy")]
         public User? ApproverUser { get; set; }
+
+        // Helper properties for your service to work with enums
+        [NotMapped]
+        public LeaveStatus StatusEnum
+        {
+            get => Enum.Parse<LeaveStatus>(Status);
+            set => Status = value.ToString();
+        }
+
+        [NotMapped]
+        public LeaveType LeaveTypeEnum
+        {
+            get => (LeaveType)LeaveTypeId;
+            set => LeaveTypeId = (int)value;
+        }
+
+        // Alias for your service compatibility
+        [NotMapped]
+        public DateTime? ApprovedDate
+        {
+            get => ApprovedAt;
+            set => ApprovedAt = value;
+        }
     }
 
     public enum LeaveType
     {
-        Annual,
-        Sick,
-        Personal,
-        Emergency,
-        Maternity,
-        Paternity,
-        Bereavement,
-        Other
+        Annual = 1,
+        Sick = 2,
+        Personal = 3,
+        Emergency = 4,
+        Maternity = 5,
+        Paternity = 6,
+        Bereavement = 7,
+        Other = 8
     }
 
     public enum LeaveStatus
     {
-        Pending,
-        Approved,
-        Rejected,
-        Cancelled
+        Pending = 0,
+        Approved = 1,
+        Rejected = 2,
+        Cancelled = 3
     }
 }

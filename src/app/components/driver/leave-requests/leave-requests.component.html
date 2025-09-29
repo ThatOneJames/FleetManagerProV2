@@ -1,22 +1,363 @@
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div *ngFor="let type of leaveTypes">
-        <div class="p-4 border rounded shadow space-y-2">
-            <div class="font-medium capitalize">{{ type }} Leave</div>
-            <div class="flex justify-between text-sm">
-                <span>Used</span>
-                <span class="font-medium">{{ leaveBalance[type].used }} days</span>
-            </div>
-            <div class="flex justify-between text-sm">
-                <span>Remaining</span>
-                <span class="font-medium">{{ leaveBalance[type].total - leaveBalance[type].used }} days</span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-blue-500 h-2 rounded-full"
-                     [style.width.%]="(leaveBalance[type].used / leaveBalance[type].total) * 100">
+﻿<div class="leave-requests-container">
+    <div class="header">
+        <h2>Leave Management</h2>
+        <div class="header-actions">
+            <button *ngIf="!isAdminOrManager()"
+                    (click)="toggleCreateForm()"
+                    class="btn btn-primary">
+                + Request Leave
+            </button>
+            <button *ngIf="isAdminOrManager()"
+                    (click)="exportRequests()"
+                    class="btn btn-secondary">
+                Export Data
+            </button>
+        </div>
+    </div>
+
+    <div *ngIf="loading" class="loading">
+        <div class="spinner"></div>
+        <span>Loading...</span>
+    </div>
+
+    <div *ngIf="successMessage" class="alert alert-success">
+        {{ successMessage }}
+    </div>
+    <div *ngIf="errorMessage" class="alert alert-error">
+        {{ errorMessage }}
+    </div>
+
+    <div *ngIf="!isAdminOrManager() && leaveBalance" class="leave-balance-section">
+        <h3>Leave Balance</h3>
+        <div class="balance-cards">
+            <div class="balance-card">
+                <div class="card-header">
+                    <h4>Annual Leave</h4>
+                </div>
+                <div class="card-content">
+                    <div class="balance-info">
+                        <span class="used">{{ leaveBalance.annual.used }} used</span>
+                        <span class="remaining">{{ leaveBalance.annual.remaining }} remaining</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill"
+                             [style.width.%]="(leaveBalance.annual.used / leaveBalance.annual.total) * 100">
+                        </div>
+                    </div>
+                    <div class="total">{{ leaveBalance.annual.used }}/{{ leaveBalance.annual.total }} days</div>
                 </div>
             </div>
-            <div class="text-xs text-gray-500 text-center">
-                {{ leaveBalance[type].used }}/{{ leaveBalance[type].total }} days used
+
+            <div class="balance-card">
+                <div class="card-header">
+                    <h4>Sick Leave</h4>
+                </div>
+                <div class="card-content">
+                    <div class="balance-info">
+                        <span class="used">{{ leaveBalance.sick.used }} used</span>
+                        <span class="remaining">{{ leaveBalance.sick.remaining }} remaining</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill"
+                             [style.width.%]="(leaveBalance.sick.used / leaveBalance.sick.total) * 100">
+                        </div>
+                    </div>
+                    <div class="total">{{ leaveBalance.sick.used }}/{{ leaveBalance.sick.total }} days</div>
+                </div>
+            </div>
+
+            <div class="balance-card">
+                <div class="card-header">
+                    <h4>Personal Leave</h4>
+                </div>
+                <div class="card-content">
+                    <div class="balance-info">
+                        <span class="used">{{ leaveBalance.personal.used }} used</span>
+                        <span class="remaining">{{ leaveBalance.personal.remaining }} remaining</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill"
+                             [style.width.%]="(leaveBalance.personal.used / leaveBalance.personal.total) * 100">
+                        </div>
+                    </div>
+                    <div class="total">{{ leaveBalance.personal.used }}/{{ leaveBalance.personal.total }} days</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div *ngIf="showCreateForm" class="form-overlay">
+        <div class="form-container">
+            <div class="form-header">
+                <h3>Request Leave</h3>
+                <button type="button" class="close-btn" (click)="toggleCreateForm()">&times;</button>
+            </div>
+
+            <form [formGroup]="createLeaveForm" (ngSubmit)="submitLeaveRequest()">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="leaveType">Leave Type *</label>
+                        <select formControlName="leaveType" id="leaveType" class="form-control">
+                            <option [value]="LeaveType.Annual">Annual Leave</option>
+                            <option [value]="LeaveType.Sick">Sick Leave</option>
+                            <option [value]="LeaveType.Personal">Personal Leave</option>
+                            <option [value]="LeaveType.Emergency">Emergency Leave</option>
+                            <option [value]="LeaveType.Maternity">Maternity Leave</option>
+                            <option [value]="LeaveType.Paternity">Paternity Leave</option>
+                            <option [value]="LeaveType.Bereavement">Bereavement Leave</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="startDate">Start Date *</label>
+                        <input formControlName="startDate"
+                               type="date"
+                               id="startDate"
+                               class="form-control"
+                               (change)="calculateDays()">
+                        <div *ngIf="createLeaveForm.get('startDate')?.invalid && createLeaveForm.get('startDate')?.touched"
+                             class="error-text">
+                            Start date is required
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="endDate">End Date *</label>
+                        <input formControlName="endDate"
+                               type="date"
+                               id="endDate"
+                               class="form-control"
+                               (change)="calculateDays()">
+                        <div *ngIf="createLeaveForm.get('endDate')?.invalid && createLeaveForm.get('endDate')?.touched"
+                             class="error-text">
+                            End date is required
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="reason">Reason *</label>
+                        <textarea formControlName="reason"
+                                  id="reason"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Please provide a detailed reason for your leave request (minimum 10 characters)">
+                        </textarea>
+                        <div *ngIf="createLeaveForm.get('reason')?.invalid && createLeaveForm.get('reason')?.touched"
+                             class="error-text">
+                            Please provide a detailed reason (minimum 10 characters)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit"
+                            [disabled]="createLeaveForm.invalid || loading"
+                            class="btn btn-primary">
+                        {{ loading ? 'Submitting...' : 'Submit Request' }}
+                    </button>
+                    <button type="button"
+                            (click)="toggleCreateForm()"
+                            class="btn btn-secondary">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="filters-section">
+        <div class="search-filters">
+            <input [(ngModel)]="searchText"
+                   placeholder="Search by driver name or reason..."
+                   class="search-input">
+
+            <select [(ngModel)]="filterStatus" class="filter-select">
+                <option value="All">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+
+            <select [(ngModel)]="filterType" class="filter-select">
+                <option value="All">All Types</option>
+                <option value="Annual">Annual</option>
+                <option value="Sick">Sick</option>
+                <option value="Personal">Personal</option>
+                <option value="Emergency">Emergency</option>
+                <option value="Maternity">Maternity</option>
+                <option value="Paternity">Paternity</option>
+                <option value="Bereavement">Bereavement</option>
+            </select>
+
+            <button (click)="loadData()" class="btn btn-secondary">Refresh</button>
+        </div>
+    </div>
+
+    <div class="requests-section">
+        <div class="table-container">
+            <table class="requests-table">
+                <thead>
+                    <tr>
+                        <th *ngIf="isAdminOrManager()">Driver</th>
+                        <th>Type</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Days</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th *ngIf="isAdminOrManager()">Approver</th>
+                        <th class="actions-column">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let request of filteredRequests" class="request-row">
+                        <td *ngIf="isAdminOrManager()" class="driver-name">
+                            {{ request.driver?.name || 'Unknown' }}
+                        </td>
+                        <td>
+                            <span class="type-badge" [ngClass]="getTypeClass(request.leaveTypeEnum)">
+                                {{ getLeaveTypeString(request.leaveTypeEnum) }}
+                            </span>
+                        </td>
+                        <td>{{ request.startDate | date:'shortDate' }}</td>
+                        <td>{{ request.endDate | date:'shortDate' }}</td>
+                        <td class="days-count">{{ request.totalDays }}</td>
+                        <td class="reason-cell" [title]="request.reason">
+                            {{ request.reason.length > 50 ? (request.reason | slice:0:50) + '...' : request.reason }}
+                        </td>
+                        <td>
+                            <span class="status-badge" [ngClass]="getStatusClass(request.status)">
+                                {{ getLeaveStatusString(request.status) }}
+                            </span>
+                        </td>
+                        <td>{{ request.createdAt | date:'shortDate' }}</td>
+                        <td *ngIf="isAdminOrManager()">
+                            {{ request.approverUser?.name || '-' }}
+                        </td>
+                        <td class="actions-cell">
+                            <div class="action-buttons">
+                                <button *ngIf="canApproveReject(request)"
+                                        (click)="openApprovalModal(request)"
+                                        class="btn btn-sm btn-success"
+                                        title="Approve">
+                                    ✓
+                                </button>
+
+                                <button *ngIf="canApproveReject(request)"
+                                        (click)="openRejectionModal(request)"
+                                        class="btn btn-sm btn-danger"
+                                        title="Reject">
+                                    ✗
+                                </button>
+
+                                <button *ngIf="canDelete(request)"
+                                        (click)="deleteRequest(request)"
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Delete">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div *ngIf="filteredRequests.length === 0" class="no-data">
+                <p>No leave requests found.</p>
+            </div>
+        </div>
+    </div>
+
+    <div *ngIf="showApprovalModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Approve Leave Request</h3>
+                <button type="button" class="close-btn" (click)="closeApprovalModal()">&times;</button>
+            </div>
+
+            <div class="modal-content" *ngIf="selectedRequest">
+                <div class="request-details">
+                    <p><strong>Driver:</strong> {{ selectedRequest.driver?.name }}</p>
+                    <p><strong>Type:</strong> {{ getLeaveTypeString(selectedRequest.leaveTypeEnum) }}</p>
+                    <p><strong>Dates:</strong> {{ selectedRequest.startDate | date:'shortDate' }} - {{ selectedRequest.endDate | date:'shortDate' }}</p>
+                    <p><strong>Days:</strong> {{ selectedRequest.totalDays }}</p>
+                    <p><strong>Reason:</strong> {{ selectedRequest.reason }}</p>
+                </div>
+
+                <form [formGroup]="approvalForm" (ngSubmit)="approveRequest()">
+                    <div class="form-group">
+                        <label for="approvalNotes">Approval Notes (Optional)</label>
+                        <textarea formControlName="notes"
+                                  id="approvalNotes"
+                                  class="form-control"
+                                  rows="3"
+                                  placeholder="Add any notes about this approval...">
+                        </textarea>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="submit"
+                                [disabled]="loading"
+                                class="btn btn-success">
+                            {{ loading ? 'Approving...' : 'Approve Request' }}
+                        </button>
+                        <button type="button"
+                                (click)="closeApprovalModal()"
+                                class="btn btn-secondary">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div *ngIf="showRejectionModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Reject Leave Request</h3>
+                <button type="button" class="close-btn" (click)="closeRejectionModal()">&times;</button>
+            </div>
+
+            <div class="modal-content" *ngIf="selectedRequest">
+                <div class="request-details">
+                    <p><strong>Driver:</strong> {{ selectedRequest.driver?.name }}</p>
+                    <p><strong>Type:</strong> {{ getLeaveTypeString(selectedRequest.leaveTypeEnum) }}</p>
+                    <p><strong>Dates:</strong> {{ selectedRequest.startDate | date:'shortDate' }} - {{ selectedRequest.endDate | date:'shortDate' }}</p>
+                    <p><strong>Days:</strong> {{ selectedRequest.totalDays }}</p>
+                    <p><strong>Reason:</strong> {{ selectedRequest.reason }}</p>
+                </div>
+
+                <form [formGroup]="rejectionForm" (ngSubmit)="rejectRequest()">
+                    <div class="form-group">
+                        <label for="rejectionReason">Rejection Reason *</label>
+                        <textarea formControlName="rejectionReason"
+                                  id="rejectionReason"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Please provide a detailed reason for rejecting this request (minimum 10 characters)...">
+                        </textarea>
+                        <div *ngIf="rejectionForm.get('rejectionReason')?.invalid && rejectionForm.get('rejectionReason')?.touched"
+                             class="error-text">
+                            Please provide a detailed rejection reason (minimum 10 characters)
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="submit"
+                                [disabled]="rejectionForm.invalid || loading"
+                                class="btn btn-danger">
+                            {{ loading ? 'Rejecting...' : 'Reject Request' }}
+                        </button>
+                        <button type="button"
+                                (click)="closeRejectionModal()"
+                                class="btn btn-secondary">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
