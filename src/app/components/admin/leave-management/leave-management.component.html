@@ -1,0 +1,370 @@
+﻿<div class="admin-leave-management">
+    <div class="header">
+        <h2>Leave Request Management</h2>
+        <div class="header-actions">
+            <button (click)="exportRequests()" class="btn btn-secondary">
+                📊 Export Data
+            </button>
+            <button (click)="bulkApprove()"
+                    class="btn btn-success"
+                    [disabled]="loading">
+                ✓ Bulk Approve Pending
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-container">
+        <div class="stat-card total">
+            <div class="stat-value">{{ stats.total }}</div>
+            <div class="stat-label">Total Requests</div>
+        </div>
+        <div class="stat-card pending">
+            <div class="stat-value">{{ stats.pending }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card approved">
+            <div class="stat-value">{{ stats.approved }}</div>
+            <div class="stat-label">Approved</div>
+        </div>
+        <div class="stat-card rejected">
+            <div class="stat-value">{{ stats.rejected }}</div>
+            <div class="stat-label">Rejected</div>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div *ngIf="loading" class="loading">
+        <div class="spinner"></div>
+        <span>Processing...</span>
+    </div>
+
+    <!-- Messages -->
+    <div *ngIf="successMessage" class="alert alert-success">
+        {{ successMessage }}
+    </div>
+    <div *ngIf="errorMessage" class="alert alert-error">
+        {{ errorMessage }}
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+        <div class="search-filters">
+            <input [(ngModel)]="searchText"
+                   placeholder="Search by driver name, email, or reason..."
+                   class="search-input">
+
+            <input [(ngModel)]="filterDriver"
+                   placeholder="Filter by driver name..."
+                   class="search-input">
+
+            <select [(ngModel)]="filterStatus" class="filter-select">
+                <option value="All">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+
+            <select [(ngModel)]="filterType" class="filter-select">
+                <option value="All">All Types</option>
+                <option value="Annual">Annual</option>
+                <option value="Sick">Sick</option>
+                <option value="Personal">Personal</option>
+                <option value="Emergency">Emergency</option>
+                <option value="Maternity">Maternity</option>
+                <option value="Paternity">Paternity</option>
+                <option value="Bereavement">Bereavement</option>
+            </select>
+
+            <button (click)="loadAllLeaveRequests()" class="btn btn-secondary">
+                🔄 Refresh
+            </button>
+            <button (click)="resetFilters()" class="btn btn-outline">
+                Clear Filters
+            </button>
+        </div>
+    </div>
+
+    <!-- Requests Table -->
+    <div class="requests-section">
+        <div class="table-container">
+            <table class="requests-table">
+                <thead>
+                    <tr>
+                        <th>Driver</th>
+                        <th>Type</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Days</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Approver</th>
+                        <th class="actions-column">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let request of filteredRequests"
+                        class="request-row"
+                        [class.pending-row]="request.status === 'Pending'">
+                        <td class="driver-info">
+                            <div class="driver-name">{{ request.driver?.name || 'Unknown' }}</div>
+                            <div class="driver-email">{{ request.driver?.email }}</div>
+                        </td>
+                        <td>
+                            <span class="type-badge" [ngClass]="getTypeClass(request.leaveTypeEnum)">
+                                {{ getLeaveTypeString(request.leaveTypeEnum) }}
+                            </span>
+                        </td>
+                        <td>{{ request.startDate | date:'MMM d, y' }}</td>
+                        <td>{{ request.endDate | date:'MMM d, y' }}</td>
+                        <td class="days-count">
+                            <strong>{{ request.totalDays }}</strong> days
+                        </td>
+                        <td class="reason-cell" [title]="request.reason">
+                            {{ request.reason.length > 60 ? (request.reason | slice:0:60) + '...' : request.reason }}
+                        </td>
+                        <td>
+                            <span class="status-badge" [ngClass]="getStatusClass(request.status)">
+                                {{ request.status }}
+                            </span>
+                        </td>
+                        <td>{{ request.createdAt | date:'MMM d, y' }}</td>
+                        <td>
+                            <div *ngIf="request.approverUser" class="approver-info">
+                                <div class="approver-name">{{ request.approverUser.name }}</div>
+                                <div class="approval-date" *ngIf="request.approvedAt">
+                                    {{ request.approvedAt | date:'short' }}
+                                </div>
+                            </div>
+                            <span *ngIf="!request.approverUser" class="text-muted">-</span>
+                        </td>
+                        <td class="actions-cell">
+                            <div class="action-buttons">
+                                <button (click)="viewDetails(request)"
+                                        class="btn btn-sm btn-info"
+                                        title="View Details">
+                                    👁️
+                                </button>
+
+                                <button *ngIf="request.status === 'Pending'"
+                                        (click)="openApprovalModal(request)"
+                                        class="btn btn-sm btn-success"
+                                        title="Approve">
+                                    ✓
+                                </button>
+
+                                <button *ngIf="request.status === 'Pending'"
+                                        (click)="openRejectionModal(request)"
+                                        class="btn btn-sm btn-danger"
+                                        title="Reject">
+                                    ✗
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div *ngIf="filteredRequests.length === 0" class="no-data">
+                <p>No leave requests found matching your criteria.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div *ngIf="showDetailsModal" class="modal-overlay">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h3>Leave Request Details</h3>
+                <button type="button" class="close-btn" (click)="closeDetailsModal()">&times;</button>
+            </div>
+
+            <div class="modal-content" *ngIf="selectedRequest">
+                <div class="details-grid">
+                    <div class="detail-section">
+                        <h4>Driver Information</h4>
+                        <div class="detail-item">
+                            <label>Name:</label>
+                            <span>{{ selectedRequest.driver?.name || 'Unknown' }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Email:</label>
+                            <span>{{ selectedRequest.driver?.email || 'N/A' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>Leave Information</h4>
+                        <div class="detail-item">
+                            <label>Type:</label>
+                            <span class="type-badge" [ngClass]="getTypeClass(selectedRequest.leaveTypeEnum)">
+                                {{ getLeaveTypeString(selectedRequest.leaveTypeEnum) }}
+                            </span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Start Date:</label>
+                            <span>{{ selectedRequest.startDate | date:'fullDate' }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>End Date:</label>
+                            <span>{{ selectedRequest.endDate | date:'fullDate' }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Total Days:</label>
+                            <span><strong>{{ selectedRequest.totalDays }}</strong> days</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-section full-width">
+                        <h4>Reason</h4>
+                        <p class="reason-text">{{ selectedRequest.reason }}</p>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>Request Status</h4>
+                        <div class="detail-item">
+                            <label>Status:</label>
+                            <span class="status-badge" [ngClass]="getStatusClass(selectedRequest.status)">
+                                {{ selectedRequest.status }}
+                            </span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Submitted:</label>
+                            <span>{{ selectedRequest.createdAt | date:'medium' }}</span>
+                        </div>
+                        <div class="detail-item" *ngIf="selectedRequest.approverUser">
+                            <label>Approved/Rejected By:</label>
+                            <span>{{ selectedRequest.approverUser.name }}</span>
+                        </div>
+                        <div class="detail-item" *ngIf="selectedRequest.approvedAt">
+                            <label>Action Date:</label>
+                            <span>{{ selectedRequest.approvedAt | date:'medium' }}</span>
+                        </div>
+                        <div class="detail-item" *ngIf="selectedRequest.rejectionReason">
+                            <label>Rejection Reason:</label>
+                            <p class="rejection-reason">{{ selectedRequest.rejectionReason }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button *ngIf="selectedRequest.status === 'Pending'"
+                            (click)="closeDetailsModal(); openApprovalModal(selectedRequest)"
+                            class="btn btn-success">
+                        Approve Request
+                    </button>
+                    <button *ngIf="selectedRequest.status === 'Pending'"
+                            (click)="closeDetailsModal(); openRejectionModal(selectedRequest)"
+                            class="btn btn-danger">
+                        Reject Request
+                    </button>
+                    <button (click)="closeDetailsModal()" class="btn btn-secondary">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Modal -->
+    <div *ngIf="showApprovalModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Approve Leave Request</h3>
+                <button type="button" class="close-btn" (click)="closeApprovalModal()">&times;</button>
+            </div>
+
+            <div class="modal-content" *ngIf="selectedRequest">
+                <div class="request-summary">
+                    <p><strong>Driver:</strong> {{ selectedRequest.driver?.name }}</p>
+                    <p><strong>Type:</strong> {{ getLeaveTypeString(selectedRequest.leaveTypeEnum) }}</p>
+                    <p><strong>Duration:</strong> {{ selectedRequest.startDate | date:'shortDate' }} - {{ selectedRequest.endDate | date:'shortDate' }} ({{ selectedRequest.totalDays }} days)</p>
+                    <p><strong>Reason:</strong> {{ selectedRequest.reason }}</p>
+                </div>
+
+                <form [formGroup]="approvalForm" (ngSubmit)="approveRequest()">
+                    <div class="form-group">
+                        <label for="approvalNotes">Approval Notes (Optional)</label>
+                        <textarea formControlName="notes"
+                                  id="approvalNotes"
+                                  class="form-control"
+                                  rows="3"
+                                  maxlength="250"
+                                  placeholder="Add any notes about this approval (optional)...">
+                        </textarea>
+                        <small class="char-count">
+                            {{ approvalForm.get('notes')?.value?.length || 0 }} / 250 characters
+                        </small>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="submit"
+                                [disabled]="loading"
+                                class="btn btn-success">
+                            {{ loading ? 'Approving...' : '✓ Approve Request' }}
+                        </button>
+                        <button type="button"
+                                (click)="closeApprovalModal()"
+                                class="btn btn-secondary">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rejection Modal -->
+    <div *ngIf="showRejectionModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Reject Leave Request</h3>
+                <button type="button" class="close-btn" (click)="closeRejectionModal()">&times;</button>
+            </div>
+
+            <div class="modal-content" *ngIf="selectedRequest">
+                <div class="request-summary alert-warning">
+                    <p><strong>Driver:</strong> {{ selectedRequest.driver?.name }}</p>
+                    <p><strong>Type:</strong> {{ getLeaveTypeString(selectedRequest.leaveTypeEnum) }}</p>
+                    <p><strong>Duration:</strong> {{ selectedRequest.startDate | date:'shortDate' }} - {{ selectedRequest.endDate | date:'shortDate' }} ({{ selectedRequest.totalDays }} days)</p>
+                    <p><strong>Reason:</strong> {{ selectedRequest.reason }}</p>
+                </div>
+
+                <form [formGroup]="rejectionForm" (ngSubmit)="rejectRequest()">
+                    <div class="form-group">
+                        <label for="rejectionReason">Rejection Reason *</label>
+                        <textarea formControlName="rejectionReason"
+                                  id="rejectionReason"
+                                  class="form-control"
+                                  rows="4"
+                                  maxlength="500"
+                                  placeholder="Please provide a detailed reason for rejecting this request (minimum 10 characters)...">
+                        </textarea>
+                        <small class="char-count">
+                            {{ rejectionForm.get('rejectionReason')?.value?.length || 0 }} / 500 characters
+                        </small>
+                        <div *ngIf="rejectionForm.get('rejectionReason')?.invalid && rejectionForm.get('rejectionReason')?.touched"
+                             class="error-text">
+                            Please provide a detailed rejection reason (minimum 10 characters)
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="submit"
+                                [disabled]="rejectionForm.invalid || loading"
+                                class="btn btn-danger">
+                            {{ loading ? 'Rejecting...' : '✗ Reject Request' }}
+                        </button>
+                        <button type="button"
+                                (click)="closeRejectionModal()"
+                                class="btn btn-secondary">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

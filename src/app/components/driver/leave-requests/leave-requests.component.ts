@@ -151,7 +151,7 @@ export class LeaveRequestsComponent implements OnInit {
                 request.driver?.name?.toLowerCase().includes(this.searchText.toLowerCase()) ||
                 request.reason.toLowerCase().includes(this.searchText.toLowerCase());
             const matchesStatus = this.filterStatus === 'All' ||
-                this.getLeaveStatusString(request.status) === this.filterStatus;
+                request.status === this.filterStatus;
             const matchesType = this.filterType === 'All' ||
                 this.getLeaveTypeString(request.leaveTypeEnum) === this.filterType;
             return matchesSearch && matchesStatus && matchesType;
@@ -315,11 +315,11 @@ export class LeaveRequestsComponent implements OnInit {
     }
 
     canApproveReject(request: LeaveRequest): boolean {
-        return this.isAdminOrManager() && request.status === LeaveStatus.Pending;
+        return this.isAdminOrManager() && request.status === 'Pending';
     }
 
     canDelete(request: LeaveRequest): boolean {
-        return request.status === LeaveStatus.Pending &&
+        return request.status === 'Pending' &&
             (this.isAdminOrManager() || request.driverId === this.currentDriverId);
     }
 
@@ -327,11 +327,11 @@ export class LeaveRequestsComponent implements OnInit {
         return this.leaveRequestService.getLeaveTypeString(leaveType);
     }
 
-    getLeaveStatusString(status: LeaveStatus): string {
-        return this.leaveRequestService.getLeaveStatusString(status);
+    getLeaveStatusString(status: string): string {
+        return status; // Since status is already a string, just return it
     }
 
-    getStatusClass(status: LeaveStatus): string {
+    getStatusClass(status: string): string {
         return this.leaveRequestService.getStatusClass(status);
     }
 
@@ -385,7 +385,7 @@ export class LeaveRequestsComponent implements OnInit {
             new Date(request.endDate).toLocaleDateString(),
             request.totalDays.toString(),
             request.reason,
-            this.getLeaveStatusString(request.status),
+            request.status,
             new Date(request.createdAt).toLocaleDateString(),
             request.approverUser?.name || 'N/A'
         ]);

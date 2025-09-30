@@ -9,6 +9,7 @@ import { DriverManagementComponent } from './components/admin/driver-management/
 import { FleetManagementComponent } from './components/admin/fleet-management/fleet-management.component';
 import { RouteOptimizationComponent } from './components/admin/route-optimization/route-optimization.component';
 import { MaintenanceComponent } from './components/admin/maintenance/maintenance.component';
+import { LeaveManagementComponent } from './components/admin/leave-management/leave-management.component';
 
 // Driver Component imports
 import { DriverDashboardComponent } from './components/driver/dashboard/dashboard.component';
@@ -41,6 +42,7 @@ const routes: Routes = [
       { path: 'fleet', component: FleetManagementComponent },
       { path: 'routes', component: RouteOptimizationComponent },
       { path: 'maintenance', component: MaintenanceComponent },
+      { path: 'leave-management', component: LeaveManagementComponent },
     ]
   },
   
@@ -65,7 +67,7 @@ const routes: Routes = [
 
 @NgModule({
   imports: [RouterModule.forRoot(routes, {
-    enableTracing: false, // Set to true for debugging
+    enableTracing: true, // Set to true for debugging
     useHash: false,
     scrollPositionRestoration: 'top'
   })],

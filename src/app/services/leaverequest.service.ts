@@ -12,7 +12,8 @@ export interface LeaveRequest {
     endDate: string;
     totalDays: number;
     reason: string;
-    status: LeaveStatus;
+    status: string;          // String status like "Pending", "Approved"
+    statusEnum: LeaveStatus; // Enum status like 0, 1, 2
     approvedBy?: string;
     approvedAt?: string;
     rejectionReason?: string;
@@ -141,12 +142,13 @@ export class LeaveRequestService {
         return LeaveStatus[status];
     }
 
-    getStatusClass(status: LeaveStatus): string {
-        switch (status) {
-            case LeaveStatus.Approved: return 'status-approved';
-            case LeaveStatus.Pending: return 'status-pending';
-            case LeaveStatus.Rejected: return 'status-rejected';
-            case LeaveStatus.Cancelled: return 'status-cancelled';
+    getStatusClass(status: LeaveStatus | string): string {
+        const statusString = typeof status === 'string' ? status : LeaveStatus[status];
+        switch (statusString) {
+            case 'Approved': return 'status-approved';
+            case 'Pending': return 'status-pending';
+            case 'Rejected': return 'status-rejected';
+            case 'Cancelled': return 'status-cancelled';
             default: return '';
         }
     }
