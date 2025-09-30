@@ -1,28 +1,351 @@
-import { Component } from '@angular/core';
-
-interface MaintenanceRecord {
-    vehicle: string;
-    date: string;
-    type: string;
-    status: string;
-}
+﻿import { Component, OnInit } from '@angular/core';
+import { MaintenanceService } from '../../../services/maintenance.service';
+import { VehicleService } from '../../../services/vehicle.service';
+import {
+    MaintenanceTask,
+    MaintenanceCategory,
+    MaintenanceStatistics,
+    CreateMaintenanceTaskDto
+} from '../../../models/maintenance.model';
+import { Vehicle } from '../../../models/vehicle.model';
 
 @Component({
     selector: 'app-maintenance',
     templateUrl: './maintenance.component.html',
     styleUrls: ['./maintenance.component.css']
 })
-export class MaintenanceComponent {
-    records: MaintenanceRecord[] = [
-        { vehicle: 'Truck 101', date: '2025-08-15', type: 'Oil Change', status: 'Completed' },
-        { vehicle: 'Truck 102', date: '2025-08-20', type: 'Brake Check', status: 'Scheduled' }
-    ];
+export class MaintenanceComponent implements OnInit {
+    tasks: MaintenanceTask[] = [];
+    filteredTasks: MaintenanceTask[] = [];
+    vehicles: Vehicle[] = [];
+    categories: MaintenanceCategory[] = [];
+    statistics: MaintenanceStatistics | null = null;
 
-    newRecord: MaintenanceRecord = { vehicle: '', date: '', type: '', status: 'Scheduled' };
+    // Filters
+    filterStatus: string = '';
+    filterPriority: string = '';
+    filterVehicle: string = '';
 
-    addRecord() {
-        if (!this.newRecord.vehicle || !this.newRecord.date || !this.newRecord.type) return;
-        this.records.push({ ...this.newRecord });
-        this.newRecord = { vehicle: '', date: '', type: '', status: 'Scheduled' };
+    // Form state
+    showAddForm: boolean = false;
+    editingTask: MaintenanceTask | null = null;
+
+    newTask: CreateMaintenanceTaskDto = {
+        vehicleId: '',
+        categoryId: 0,
+        taskType: '',
+        description: '',
+        priority: 'Medium',
+        status: 'Scheduled',
+        scheduledDate: '',
+        estimatedCost: undefined,
+        assignedTo: '',
+        serviceProvider: ''
+    };
+
+    // Status and priority options
+    statusOptions = ['Scheduled', 'InProgress', 'Completed', 'Cancelled', 'Overdue'];
+    priorityOptions = ['High', 'Medium', 'Low'];
+
+    loading: boolean = false;
+    error: string = '';
+
+    constructor(
+        private maintenanceService: MaintenanceService,
+        private vehicleService: VehicleService
+    ) { }
+
+    ngOnInit(): void {
+        this.loadData();
+    }
+
+    loadData(): void {
+        this.loading = true;
+        this.error = '';
+
+        // Load tasks
+        this.maintenanceService.getAllTasks().subscribe({
+            next: (data) => {
+                this.tasks = data;
+                this.applyFilters();
+                this.loading = false;
+            },
+            error: (err) => {
+                this.error = 'Failed to load maintenance tasks';
+                console.error(err);
+                this.loading = false;
+            }
+        });
+
+        // Load vehicles
+        this.vehicleService.getAllVehicles().subscribe({
+            next: (data) => this.vehicles = data,
+            error: (err) => console.error('Failed to load vehicles', err)
+        });
+
+        // Load categories
+        this.maintenanceService.getAllCategories().subscribe({
+            next: (data) => this.categories = data,
+            error: (err) => console.error('Failed to load categories', err)
+        });
+
+        // Load statistics
+        this.maintenanceService.getStatistics().subscribe({
+            next: (data) => this.statistics = data,
+            error: (err) => console.error('Failed to load statistics', err)
+        });
+    }
+
+    applyFilters(): void {
+        this.filteredTasks = this.tasks.filter(task => {
+            const statusMatch = !this.filterStatus || task.status === this.filterStatus;
+            const priorityMatch = !this.filterPriority || task.priority === this.filterPriority;
+            const vehicleMatch = !this.filterVehicle || task.vehicleId === this.filterVehicle;
+            return statusMatch && priorityMatch && vehicleMatch;
+        });
+    }
+
+    onFilterChange(): void {
+        this.applyFilters();
+    }
+
+    clearFilters(): void {
+        this.filterStatus = '';
+        this.filterPriority = '';
+        this.filterVehicle = '';
+        this.applyFilters();
+    }
+
+    toggleAddForm(): void {
+        this.showAddForm = !this.showAddForm;
+        if (!this.showAddForm) {
+            this.resetForm();
+        }
+    }
+
+    resetForm(): void {
+        this.newTask = {
+            vehicleId: '',
+            categoryId: 0,
+            taskType: '',
+            description: '',
+            priority: 'Medium',
+            status: 'Scheduled',
+            scheduledDate: '',
+            estimatedCost: undefined,
+            assignedTo: '',
+            serviceProvider: ''
+        };
+        this.editingTask = null;
+    }
+
+    addTask(): void {
+        if (!this.validateForm()) {
+            return;
+        }
+
+        this.loading = true;
+        this.maintenanceService.createTask(this.newTask).subscribe({
+            next: (task) => {
+                this.tasks.unshift(task);
+                this.applyFilters();
+                this.resetForm();
+                this.showAddForm = false;
+                this.loadData(); // Reload to get updated statistics
+                this.loading = false;
+            },
+            error: (err) => {
+                this.error = 'Failed to create task';
+                console.error(err);
+                this.loading = false;
+            }
+        });
+    }
+
+    editTask(task: MaintenanceTask): void {
+        this.editingTask = task;
+        this.newTask = {
+            vehicleId: task.vehicleId,
+            categoryId: task.categoryId,
+            taskType: task.taskType,
+            description: task.description,
+            priority: task.priority,
+            status: task.status,
+            scheduledDate: typeof task.scheduledDate === 'string'
+                ? task.scheduledDate.split('T')[0]
+                : new Date(task.scheduledDate).toISOString().split('T')[0],
+            estimatedCost: task.estimatedCost,
+            assignedTo: task.assignedTo,
+            serviceProvider: task.serviceProvider
+        };
+        this.showAddForm = true;
+    }
+
+    updateTask(): void {
+        if (!this.editingTask || !this.validateForm()) {
+            return;
+        }
+
+        this.loading = true;
+        this.maintenanceService.updateTask(this.editingTask.id!, this.newTask as any).subscribe({
+            next: () => {
+                this.loadData();
+                this.resetForm();
+                this.showAddForm = false;
+                this.loading = false;
+            },
+            error: (err) => {
+                this.error = 'Failed to update task';
+                console.error(err);
+                this.loading = false;
+            }
+        });
+    }
+
+    deleteTask(id: string): void {
+        if (!confirm('Are you sure you want to delete this maintenance task?')) {
+            return;
+        }
+
+        this.loading = true;
+        this.maintenanceService.deleteTask(id).subscribe({
+            next: () => {
+                this.tasks = this.tasks.filter(t => t.id !== id);
+                this.applyFilters();
+                this.loadData(); // Reload statistics
+                this.loading = false;
+            },
+            error: (err) => {
+                this.error = 'Failed to delete task';
+                console.error(err);
+                this.loading = false;
+            }
+        });
+    }
+
+    completeTask(task: MaintenanceTask): void {
+        const updatedTask = {
+            ...task,
+            status: 'Completed',
+            completedDate: new Date().toISOString()
+        };
+
+        this.maintenanceService.updateTask(task.id!, updatedTask as any).subscribe({
+            next: () => {
+                this.loadData();
+            },
+            error: (err) => {
+                this.error = 'Failed to complete task';
+                console.error(err);
+            }
+        });
+    }
+
+    validateForm(): boolean {
+        if (!this.newTask.vehicleId || !this.newTask.categoryId ||
+            !this.newTask.taskType || !this.newTask.description ||
+            !this.newTask.scheduledDate) {
+            this.error = 'Please fill in all required fields';
+            return false;
+        }
+        this.error = '';
+        return true;
+    }
+
+    getVehicleDisplay(task: MaintenanceTask): string {
+        if (task.vehicle) {
+            return `${task.vehicle.make} ${task.vehicle.model} (${task.vehicle.licensePlate})`;
+        }
+        return 'Unknown Vehicle';
+    }
+
+    getCategoryName(categoryId: number): string {
+        const category = this.categories.find(c => c.id === categoryId);
+        return category ? category.name : 'Unknown';
+    }
+
+    getStatusClass(status: string): string {
+        const statusClasses: { [key: string]: string } = {
+            'Scheduled': 'status-scheduled',
+            'InProgress': 'status-in-progress',
+            'Completed': 'status-completed',
+            'Cancelled': 'status-cancelled',
+            'Overdue': 'status-overdue'
+        };
+        return statusClasses[status] || '';
+    }
+
+    getPriorityClass(priority: string): string {
+        const priorityClasses: { [key: string]: string } = {
+            'High': 'priority-high',
+            'Medium': 'priority-medium',
+            'Low': 'priority-low'
+        };
+        return priorityClasses[priority] || '';
+    }
+
+    formatDate(date: Date | string | undefined): string {
+        if (!date) return 'N/A';
+        return new Date(date).toLocaleDateString();
+    }
+
+    formatCurrency(amount: number | undefined): string {
+        if (!amount) return '₱0.00';
+        return new Intl.NumberFormat('en-PH', {
+            style: 'currency',
+            currency: 'PHP'
+        }).format(amount);
+    }
+
+    downloadCSV(): void {
+        // Prepare CSV data
+        const headers = [
+            'Task Type',
+            'Vehicle',
+            'Category',
+            'Priority',
+            'Status',
+            'Scheduled Date',
+            'Completed Date',
+            'Estimated Cost',
+            'Actual Cost',
+            'Assigned To',
+            'Service Provider',
+            'Description'
+        ];
+
+        const rows = this.filteredTasks.map(task => [
+            task.taskType,
+            this.getVehicleDisplay(task),
+            this.getCategoryName(task.categoryId),
+            task.priority,
+            task.status,
+            this.formatDate(task.scheduledDate),
+            this.formatDate(task.completedDate),
+            task.estimatedCost?.toString() || '0',
+            task.actualCost?.toString() || '0',
+            task.assignedTo || '',
+            task.serviceProvider || '',
+            task.description.replace(/,/g, ';') // Replace commas to avoid CSV issues
+        ]);
+
+        // Combine headers and rows
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        // Create blob and download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', `maintenance_tasks_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }

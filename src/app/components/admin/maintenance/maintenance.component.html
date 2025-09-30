@@ -1,27 +1,280 @@
-<div class="maintenance-container">
-    <h2>Vehicle Maintenance</h2>
-
-    <!-- Form -->
-    <div class="maintenance-form">
-        <input [(ngModel)]="newRecord.vehicle" placeholder="Vehicle" />
-        <input [(ngModel)]="newRecord.date" type="date" />
-        <input [(ngModel)]="newRecord.type" placeholder="Maintenance Type" />
-        <select [(ngModel)]="newRecord.status">
-            <option value="Scheduled">Scheduled</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Completed">Completed</option>
-        </select>
-        <button (click)="addRecord()">Add</button>
+﻿<div class="maintenance-container">
+    <div class="page-header">
+        <h2>Vehicle Maintenance Management</h2>
+        <div class="header-actions">
+            <button class="btn btn-secondary" (click)="downloadCSV()" [disabled]="filteredTasks.length === 0">
+                📥 Download CSV
+            </button>
+            <button class="btn btn-primary" (click)="toggleAddForm()">
+                {{ showAddForm ? 'Cancel' : '+ Add New Task' }}
+            </button>
+        </div>
     </div>
 
-    <!-- List -->
-    <div class="maintenance-list">
-        <h3>Maintenance Records</h3>
-        <div *ngFor="let record of records" class="maintenance-card">
-            <p><strong>Vehicle:</strong> {{ record.vehicle }}</p>
-            <p><strong>Date:</strong> {{ record.date }}</p>
-            <p><strong>Type:</strong> {{ record.type }}</p>
-            <p><strong>Status:</strong> {{ record.status }}</p>
+    <!-- Error Message -->
+    <div *ngIf="error" class="alert alert-error">
+        {{ error }}
+    </div>
+
+    <!-- Statistics Dashboard -->
+    <div class="statistics-grid" *ngIf="statistics">
+        <div class="stat-card">
+            <div class="stat-icon scheduled">📅</div>
+            <div class="stat-content">
+                <h3>{{ statistics.scheduledTasks }}</h3>
+                <p>Scheduled</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon in-progress">🔧</div>
+            <div class="stat-content">
+                <h3>{{ statistics.inProgressTasks }}</h3>
+                <p>In Progress</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon completed">✅</div>
+            <div class="stat-content">
+                <h3>{{ statistics.completedTasks }}</h3>
+                <p>Completed</p>
+            </div>
+        </div>
+        <div class="stat-card alert-card">
+            <div class="stat-icon overdue">⚠️</div>
+            <div class="stat-content">
+                <h3>{{ statistics.overdueTasks }}</h3>
+                <p>Overdue</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon cost">💰</div>
+            <div class="stat-content">
+                <h3>{{ formatCurrency(statistics.totalCost) }}</h3>
+                <p>Total Cost</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Form -->
+    <div class="maintenance-form-card" *ngIf="showAddForm">
+        <h3>{{ editingTask ? 'Edit' : 'Add New' }} Maintenance Task</h3>
+        <form class="maintenance-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Vehicle *</label>
+                    <select [(ngModel)]="newTask.vehicleId" name="vehicleId" required>
+                        <option value="">Select Vehicle</option>
+                        <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
+                            {{ vehicle.make }} {{ vehicle.model }} - {{ vehicle.licensePlate }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Category *</label>
+                    <select [(ngModel)]="newTask.categoryId" name="categoryId" required>
+                        <option [value]="0">Select Category</option>
+                        <option *ngFor="let category of categories" [value]="category.id">
+                            {{ category.name }}
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Task Type *</label>
+                    <input [(ngModel)]="newTask.taskType"
+                           name="taskType"
+                           placeholder="e.g., Oil Change, Tire Rotation"
+                           required />
+                </div>
+
+                <div class="form-group">
+                    <label>Scheduled Date *</label>
+                    <input [(ngModel)]="newTask.scheduledDate"
+                           name="scheduledDate"
+                           type="date"
+                           required />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Priority *</label>
+                    <select [(ngModel)]="newTask.priority" name="priority" required>
+                        <option *ngFor="let priority of priorityOptions" [value]="priority">
+                            {{ priority }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Status *</label>
+                    <select [(ngModel)]="newTask.status" name="status" required>
+                        <option *ngFor="let status of statusOptions" [value]="status">
+                            {{ status }}
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group full-width">
+                <label>Description *</label>
+                <textarea [(ngModel)]="newTask.description"
+                          name="description"
+                          placeholder="Detailed description of the maintenance task"
+                          rows="3"
+                          required></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Estimated Cost</label>
+                    <input [(ngModel)]="newTask.estimatedCost"
+                           name="estimatedCost"
+                           type="number"
+                           step="0.01"
+                           placeholder="0.00" />
+                </div>
+
+                <div class="form-group">
+                    <label>Service Provider</label>
+                    <input [(ngModel)]="newTask.serviceProvider"
+                           name="serviceProvider"
+                           placeholder="e.g., ABC Auto Shop" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Assigned To</label>
+                <input [(ngModel)]="newTask.assignedTo"
+                       name="assignedTo"
+                       placeholder="Technician name" />
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" (click)="toggleAddForm()">
+                    Cancel
+                </button>
+                <button type="button"
+                        class="btn btn-primary"
+                        (click)="editingTask ? updateTask() : addTask()"
+                        [disabled]="loading">
+                    {{ loading ? 'Saving...' : (editingTask ? 'Update Task' : 'Create Task') }}
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <h3>Filters</h3>
+        <div class="filters">
+            <select [(ngModel)]="filterVehicle" (change)="onFilterChange()">
+                <option value="">All Vehicles</option>
+                <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
+                    {{ vehicle.make }} {{ vehicle.model }}
+                </option>
+            </select>
+
+            <select [(ngModel)]="filterStatus" (change)="onFilterChange()">
+                <option value="">All Statuses</option>
+                <option *ngFor="let status of statusOptions" [value]="status">
+                    {{ status }}
+                </option>
+            </select>
+
+            <select [(ngModel)]="filterPriority" (change)="onFilterChange()">
+                <option value="">All Priorities</option>
+                <option *ngFor="let priority of priorityOptions" [value]="priority">
+                    {{ priority }}
+                </option>
+            </select>
+
+            <button class="btn btn-secondary" (click)="clearFilters()">
+                Clear Filters
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading && !showAddForm" class="loading">
+        <p>Loading maintenance tasks...</p>
+    </div>
+
+    <!-- Tasks List -->
+    <div class="maintenance-list" *ngIf="!loading || showAddForm">
+        <h3>Maintenance Tasks ({{ filteredTasks.length }})</h3>
+
+        <div *ngIf="filteredTasks.length === 0" class="no-data">
+            <p>No maintenance tasks found. Create your first task to get started!</p>
+        </div>
+
+        <div class="task-grid">
+            <div *ngFor="let task of filteredTasks"
+                 class="task-card"
+                 [class.overdue]="task.status === 'Overdue'">
+                <div class="task-header">
+                    <div>
+                        <h4>{{ task.taskType }}</h4>
+                        <p class="vehicle-info">{{ getVehicleDisplay(task) }}</p>
+                    </div>
+                    <div class="task-badges">
+                        <span class="badge priority" [ngClass]="getPriorityClass(task.priority)">
+                            {{ task.priority }}
+                        </span>
+                        <span class="badge status" [ngClass]="getStatusClass(task.status)">
+                            {{ task.status }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="task-body">
+                    <p class="description">{{ task.description }}</p>
+
+                    <div class="task-details">
+                        <div class="detail-item">
+                            <span class="label">Category:</span>
+                            <span>{{ getCategoryName(task.categoryId) }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Scheduled:</span>
+                            <span>{{ formatDate(task.scheduledDate) }}</span>
+                        </div>
+                        <div class="detail-item" *ngIf="task.estimatedCost">
+                            <span class="label">Estimated Cost:</span>
+                            <span>{{ formatCurrency(task.estimatedCost) }}</span>
+                        </div>
+                        <div class="detail-item" *ngIf="task.actualCost">
+                            <span class="label">Actual Cost:</span>
+                            <span>{{ formatCurrency(task.actualCost) }}</span>
+                        </div>
+                        <div class="detail-item" *ngIf="task.serviceProvider">
+                            <span class="label">Provider:</span>
+                            <span>{{ task.serviceProvider }}</span>
+                        </div>
+                        <div class="detail-item" *ngIf="task.assignedTo">
+                            <span class="label">Assigned To:</span>
+                            <span>{{ task.assignedTo }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="task-actions">
+                    <button class="btn btn-sm btn-success"
+                            (click)="completeTask(task)"
+                            *ngIf="task.status !== 'Completed' && task.status !== 'Cancelled'">
+                        ✓ Complete
+                    </button>
+                    <button class="btn btn-sm btn-secondary" (click)="editTask(task)">
+                        ✏️ Edit
+                    </button>
+                    <button class="btn btn-sm btn-danger" (click)="deleteTask(task.id!)">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

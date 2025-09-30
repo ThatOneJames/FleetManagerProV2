@@ -20,6 +20,9 @@ namespace FleetManagerPro.API.Data
         public DbSet<MaintenanceRecord> MaintenanceRecords { get; set; } = null!;
         public DbSet<LeaveRequest> LeaveRequests { get; set; } = null!;
         public DbSet<DriverAttendance> DriverAttendances { get; set; } = null!;
+        public DbSet<MaintenanceTask> MaintenanceTasks { get; set; } = null!;
+        public DbSet<MaintenanceCategory> MaintenanceCategories { get; set; } = null!;
+        public DbSet<MaintenanceReminder> MaintenanceReminders { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -129,6 +132,106 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.NextDueDate).HasColumnName("next_due_date");
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            });
+
+            modelBuilder.Entity<MaintenanceTask>(entity =>
+            {
+                entity.ToTable("maintenance_tasks");
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
+                entity.Property(e => e.CategoryId).HasColumnName("category_id");
+                entity.Property(e => e.TaskType).HasColumnName("task_type");
+                entity.Property(e => e.Description).HasColumnName("description");
+                entity.Property(e => e.Priority).HasColumnName("priority");
+                entity.Property(e => e.Status).HasColumnName("status");
+                entity.Property(e => e.ScheduledDate).HasColumnName("scheduled_date");
+                entity.Property(e => e.CompletedDate).HasColumnName("completed_date");
+                entity.Property(e => e.ScheduledMileage).HasColumnName("scheduled_mileage").HasPrecision(10, 2);
+                entity.Property(e => e.CompletedMileage).HasColumnName("completed_mileage").HasPrecision(10, 2);
+                entity.Property(e => e.EstimatedCost).HasColumnName("estimated_cost").HasPrecision(10, 2);
+                entity.Property(e => e.ActualCost).HasColumnName("actual_cost").HasPrecision(10, 2);
+                entity.Property(e => e.AssignedTo).HasColumnName("assigned_to");
+                entity.Property(e => e.TechnicianNotes).HasColumnName("technician_notes");
+                entity.Property(e => e.PartsUsed).HasColumnName("parts_used");
+                entity.Property(e => e.LaborHours).HasColumnName("labor_hours").HasPrecision(4, 2);
+                entity.Property(e => e.ServiceProvider).HasColumnName("service_provider");
+                entity.Property(e => e.WarrantyUntil).HasColumnName("warranty_until");
+                entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+                // Relationships
+                entity.HasOne(t => t.Vehicle)
+                      .WithMany()
+                      .HasForeignKey(t => t.VehicleId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(t => t.Category)
+                      .WithMany(c => c.MaintenanceTasks)
+                      .HasForeignKey(t => t.CategoryId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(t => t.Creator)
+                      .WithMany()
+                      .HasForeignKey(t => t.CreatedBy)
+                      .OnDelete(DeleteBehavior.SetNull)
+                      .IsRequired(false);
+
+                // Indexes
+                entity.HasIndex(t => t.VehicleId);
+                entity.HasIndex(t => t.Status);
+                entity.HasIndex(t => t.ScheduledDate);
+                entity.HasIndex(t => t.Priority);
+            });
+
+            // MaintenanceCategory entity
+            modelBuilder.Entity<MaintenanceCategory>(entity =>
+            {
+                entity.ToTable("maintenance_categories");
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.Name).HasColumnName("name");
+                entity.Property(e => e.Description).HasColumnName("description");
+                entity.Property(e => e.DefaultIntervalMiles).HasColumnName("default_interval_miles");
+                entity.Property(e => e.DefaultIntervalMonths).HasColumnName("default_interval_months");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+                // Unique constraint
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // MaintenanceReminder entity
+            modelBuilder.Entity<MaintenanceReminder>(entity =>
+            {
+                entity.ToTable("maintenance_reminders");
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.VehicleId).HasColumnName("vehicle_id");
+                entity.Property(e => e.CategoryId).HasColumnName("category_id");
+                entity.Property(e => e.ReminderType).HasColumnName("reminder_type");
+                entity.Property(e => e.NextServiceMiles).HasColumnName("next_service_miles").HasPrecision(10, 2);
+                entity.Property(e => e.NextServiceDate).HasColumnName("next_service_date");
+                entity.Property(e => e.IntervalMiles).HasColumnName("interval_miles");
+                entity.Property(e => e.IntervalMonths).HasColumnName("interval_months");
+                entity.Property(e => e.LastServiceDate).HasColumnName("last_service_date");
+                entity.Property(e => e.LastServiceMiles).HasColumnName("last_service_miles").HasPrecision(10, 2);
+                entity.Property(e => e.IsActive).HasColumnName("is_active");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+                // Relationships
+                entity.HasOne(r => r.Vehicle)
+                      .WithMany()
+                      .HasForeignKey(r => r.VehicleId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(r => r.Category)
+                      .WithMany(c => c.MaintenanceReminders)
+                      .HasForeignKey(r => r.CategoryId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Indexes
+                entity.HasIndex(r => r.VehicleId);
+                entity.HasIndex(r => r.CategoryId);
+                entity.HasIndex(r => r.IsActive);
             });
 
             // DriverAttendance entity

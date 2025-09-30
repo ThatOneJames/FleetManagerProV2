@@ -17,7 +17,7 @@ namespace FleetManagerPro.API.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.13")
+                .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -69,7 +69,7 @@ namespace FleetManagerPro.API.Migrations
 
                     b.HasIndex("DriverId");
 
-                    b.ToTable("driver_attendance");
+                    b.ToTable("driver_attendance", (string)null);
                 });
 
             modelBuilder.Entity("FleetManagerPro.API.Models.LeaveRequest", b =>
@@ -318,7 +318,7 @@ namespace FleetManagerPro.API.Migrations
                     b.HasIndex("RouteId")
                         .IsUnique();
 
-                    b.ToTable("route_optimizations");
+                    b.ToTable("route_optimizations", (string)null);
                 });
 
             modelBuilder.Entity("FleetManagerPro.API.Models.RouteStop", b =>
@@ -401,7 +401,7 @@ namespace FleetManagerPro.API.Migrations
 
                     b.HasIndex("RouteId");
 
-                    b.ToTable("route_stops");
+                    b.ToTable("route_stops", (string)null);
                 });
 
             modelBuilder.Entity("FleetManagerPro.API.Models.User", b =>
