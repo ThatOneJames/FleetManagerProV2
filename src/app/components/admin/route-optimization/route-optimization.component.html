@@ -1,39 +1,284 @@
 <div class="route-optimization-container">
-    <h2>Route Optimization</h2>
+    <div class="header">
+        <h2>Route Management</h2>
+        <button class="btn-primary" (click)="openCreateModal()">
+            <i class="icon-plus"></i> Create Route
+        </button>
+    </div>
 
-    <!-- Search and Filter -->
+    <div *ngIf="errorMessage" class="error-message">
+        {{ errorMessage }}
+        <button (click)="errorMessage = ''" class="close-btn">×</button>
+    </div>
+
     <div class="search-filter">
-        <input [(ngModel)]="searchRoute" placeholder="Search route..." />
-        <select [(ngModel)]="filterType">
-            <option value="">All</option>
-            <option value="Shortest">Shortest</option>
-            <option value="Fastest">Fastest</option>
+        <input [(ngModel)]="searchRoute"
+               placeholder="Search by route name or vehicle..."
+               class="search-input" />
+        <select [(ngModel)]="filterStatus" class="filter-select">
+            <option value="">All Statuses</option>
+            <option value="planned">Planned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
         </select>
     </div>
 
-    <!-- Route List -->
-    <div class="route-list">
+    <div *ngIf="loading" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <div class="route-list" *ngIf="!loading">
         <div *ngFor="let route of filteredRoutes()" class="route-card">
-            <h3>{{ route.name }}</h3>
-            <p><strong>Origin:</strong> {{ route.origin }}</p>
-            <p><strong>Destination:</strong> {{ route.destination }}</p>
-            <p><strong>Type:</strong> {{ route.type }}</p>
-            <p><strong>Distance:</strong> {{ route.distance }} km</p>
-            <p><strong>Estimated Time:</strong> {{ route.time }} mins</p>
+            <div class="route-header">
+                <h3>{{ route.name }}</h3>
+                <span class="status-badge" [ngClass]="getStatusClass(route.status!)">
+                    {{ route.status }}
+                </span>
+            </div>
+
+            <div class="route-info">
+                <div class="info-row">
+                    <span class="label">Vehicle:</span>
+                    <span>{{ route.vehiclePlate }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Driver:</span>
+                    <span>{{ route.driverName }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Distance:</span>
+                    <span>{{ route.totalDistance }} km</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Duration:</span>
+                    <span>{{ route.estimatedDuration }} mins</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Stops:</span>
+                    <span>{{ route.stops.length }}</span>
+                </div>
+                <div class="info-row" *ngIf="route.description">
+                    <span class="label">Description:</span>
+                    <span>{{ route.description }}</span>
+                </div>
+            </div>
+
+            <div class="route-actions">
+                <button class="btn-view" (click)="viewRouteStops(route)">
+                    View Stops
+                </button>
+                <button class="btn-start"
+                        (click)="startRoute(route.id!)"
+                        *ngIf="route.status === 'planned'">
+                    Start Route
+                </button>
+                <button class="btn-complete"
+                        (click)="completeRoute(route.id!)"
+                        *ngIf="route.status === 'in_progress'">
+                    Complete
+                </button>
+                <button class="btn-optimize" (click)="optimizeRoute(route.id!)">
+                    Optimize
+                </button>
+                <button class="btn-delete"
+                        (click)="deleteRoute(route.id!)"
+                        *ngIf="route.status !== 'in_progress'">
+                    Delete
+                </button>
+            </div>
+        </div>
+
+        <div *ngIf="filteredRoutes().length === 0" class="no-routes">
+            <p>No routes found. Create your first route to get started!</p>
         </div>
     </div>
 
-    <!-- Add Route Form -->
-    <form #routeForm="ngForm" (ngSubmit)="addRoute(routeForm.value)">
-        <input type="text" name="name" placeholder="Route Name" ngModel required />
-        <input type="text" name="origin" placeholder="Origin" ngModel required />
-        <input type="text" name="destination" placeholder="Destination" ngModel required />
-        <select name="type" ngModel required>
-            <option value="Shortest">Shortest</option>
-            <option value="Fastest">Fastest</option>
-        </select>
-        <input type="number" name="distance" placeholder="Distance (km)" ngModel required />
-        <input type="number" name="time" placeholder="Estimated Time (mins)" ngModel required />
-        <button type="submit">Add Route</button>
-    </form>
+    <div class="modal" *ngIf="showCreateModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Route</h3>
+                <button class="close-btn" (click)="closeCreateModal()">×</button>
+            </div>
+
+            <form class="route-form">
+                <div class="form-group">
+                    <label>Route Name *</label>
+                    <input type="text"
+                           [(ngModel)]="newRoute.name"
+                           name="routeName"
+                           placeholder="Enter route name"
+                           required />
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea [(ngModel)]="newRoute.description"
+                              name="description"
+                              placeholder="Enter route description"
+                              rows="3"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Vehicle *</label>
+                        <select [(ngModel)]="newRoute.vehicleId" name="vehicle" required>
+                            <option value="">Select Vehicle</option>
+                            <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
+                                {{ vehicle.licensePlate }} - {{ vehicle.make }} {{ vehicle.model }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Driver *</label>
+                        <select [(ngModel)]="newRoute.driverId" name="driver" required>
+                            <option value="">Select Driver</option>
+                            <option *ngFor="let driver of drivers" [value]="driver.id">
+                                {{ driver.name }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="stops-section">
+                    <h4>Route Stops *</h4>
+
+                    <div class="stop-form">
+                        <div class="form-group">
+                            <input type="text"
+                                   [(ngModel)]="newStop.address"
+                                   name="stopAddress"
+                                   placeholder="Stop address" />
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <select [(ngModel)]="newStop.priority" name="priority">
+                                    <option value="low">Low Priority</option>
+                                    <option value="normal">Normal Priority</option>
+                                    <option value="high">High Priority</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <input type="text"
+                                       [(ngModel)]="newStop.contactName"
+                                       name="contactName"
+                                       placeholder="Contact name (optional)" />
+                            </div>
+
+                            <div class="form-group">
+                                <input type="tel"
+                                       [(ngModel)]="newStop.contactPhone"
+                                       name="contactPhone"
+                                       placeholder="Contact phone (optional)" />
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn-add-stop" (click)="addStopToNewRoute()">
+                            Add Stop
+                        </button>
+                    </div>
+
+                    <div class="stops-list" *ngIf="newRoute.stops.length > 0">
+                        <div *ngFor="let stop of newRoute.stops; let i = index" class="stop-item">
+                            <div class="stop-order">{{ stop.stopOrder }}</div>
+                            <div class="stop-details">
+                                <div class="stop-address">{{ stop.address }}</div>
+                                <div class="stop-meta">
+                                    <span class="priority-badge" [ngClass]="getPriorityClass(stop.priority)">
+                                        {{ stop.priority }}
+                                    </span>
+                                    <span *ngIf="stop.contactName">{{ stop.contactName }}</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-remove" (click)="removeStopFromNewRoute(i)">
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" (click)="closeCreateModal()">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn-primary" (click)="createRoute()">
+                        Create Route
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" *ngIf="showStopsModal && selectedRoute">
+        <div class="modal-content stops-modal">
+            <div class="modal-header">
+                <h3>{{ selectedRoute.name }} - Stops</h3>
+                <button class="close-btn" (click)="closeStopsModal()">×</button>
+            </div>
+
+            <div class="stops-timeline">
+                <div *ngFor="let stop of selectedRoute.stops" class="timeline-item">
+                    <div class="timeline-marker" [ngClass]="getStatusClass(stop.status!)"></div>
+
+                    <div class="timeline-content">
+                        <div class="stop-header">
+                            <span class="stop-number">Stop {{ stop.stopOrder }}</span>
+                            <span class="status-badge" [ngClass]="getStatusClass(stop.status!)">
+                                {{ stop.status }}
+                            </span>
+                            <span class="priority-badge" [ngClass]="getPriorityClass(stop.priority)">
+                                {{ stop.priority }}
+                            </span>
+                        </div>
+
+                        <div class="stop-address">{{ stop.address }}</div>
+
+                        <div class="stop-info" *ngIf="stop.contactName || stop.contactPhone">
+                            <div *ngIf="stop.contactName">
+                                <strong>Contact:</strong> {{ stop.contactName }}
+                            </div>
+                            <div *ngIf="stop.contactPhone">
+                                <strong>Phone:</strong> {{ stop.contactPhone }}
+                            </div>
+                        </div>
+
+                        <div class="stop-times">
+                            <div *ngIf="stop.estimatedArrival">
+                                <strong>Est. Arrival:</strong> {{ stop.estimatedArrival | date:'short' }}
+                            </div>
+                            <div *ngIf="stop.actualArrival">
+                                <strong>Actual Arrival:</strong> {{ stop.actualArrival | date:'short' }}
+                            </div>
+                        </div>
+
+                        <div class="stop-notes" *ngIf="stop.notes">
+                            <strong>Notes:</strong> {{ stop.notes }}
+                        </div>
+
+                        <div class="stop-actions" *ngIf="selectedRoute.status === 'in_progress'">
+                            <button class="btn-sm"
+                                    (click)="updateStopStatus(stop.id!, 'arrived')"
+                                    *ngIf="stop.status === 'pending'">
+                                Mark Arrived
+                            </button>
+                            <button class="btn-sm"
+                                    (click)="updateStopStatus(stop.id!, 'completed')"
+                                    *ngIf="stop.status === 'arrived'">
+                                Mark Completed
+                            </button>
+                            <button class="btn-sm btn-secondary"
+                                    (click)="updateStopStatus(stop.id!, 'skipped')"
+                                    *ngIf="stop.status === 'pending' || stop.status === 'arrived'">
+                                Skip
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

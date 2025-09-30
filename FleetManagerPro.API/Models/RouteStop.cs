@@ -1,8 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Route = FleetManagerPro.API.Models.Route;
-
 
 namespace FleetManagerPro.API.Models
 {
@@ -10,19 +8,27 @@ namespace FleetManagerPro.API.Models
     public class RouteStop
     {
         [Key]
-        public string Id { get; set; } = "";
+        [Column("id")]
+        [StringLength(128)]
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
         [Required]
         [Column("route_id")]
-        public string RouteId { get; set; }
+        [StringLength(50)]
+        public string RouteId { get; set; } = string.Empty;
 
+        [Required]
         [Column("stop_order")]
         public int StopOrder { get; set; }
 
-        [Required, StringLength(500)]
+        [Required]
+        [Column("address")]
         public string Address { get; set; } = string.Empty;
 
+        [Column("latitude")]
         public decimal? Latitude { get; set; }
+
+        [Column("longitude")]
         public decimal? Longitude { get; set; }
 
         [Column("estimated_arrival")]
@@ -37,9 +43,17 @@ namespace FleetManagerPro.API.Models
         [Column("actual_departure")]
         public DateTime? ActualDeparture { get; set; }
 
-        public StopPriority Priority { get; set; } = StopPriority.Medium;
-        public StopStatus Status { get; set; } = StopStatus.Pending;
+        [Required]
+        [Column("priority")]
+        [StringLength(20)]
+        public string Priority { get; set; } = "normal";
 
+        [Required]
+        [Column("status")]
+        [StringLength(20)]
+        public string Status { get; set; } = "pending";
+
+        [Column("notes")]
         public string? Notes { get; set; }
 
         [Column("contact_name")]
@@ -50,37 +64,7 @@ namespace FleetManagerPro.API.Models
         [StringLength(20)]
         public string? ContactPhone { get; set; }
 
-        [Column("service_time")]
-        public int ServiceTime { get; set; } = 15;
-
-        [Column("delivery_instructions")]
-        public string? DeliveryInstructions { get; set; }
-
-        [Column("created_at")]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        [Column("updated_at")]
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-
-        // 🔹 Navigation
-        public Route Route { get; set; } = null!;
-    }
-
-    public enum StopPriority
-    {
-        Low,
-        Medium,
-        High,
-        Critical
-    }
-
-    public enum StopStatus
-    {
-        Pending,
-        InTransit,
-        Arrived,
-        Completed,
-        Skipped,
-        Failed
+        [ForeignKey("RouteId")]
+        public Route? Route { get; set; }
     }
 }

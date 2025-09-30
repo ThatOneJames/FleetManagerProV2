@@ -1,11 +1,16 @@
 using FleetManagerPro.API.Models;
-using Route = FleetManagerPro.API.Models.Route;
-
+using RouteModel = FleetManagerPro.API.Models.Route;
 
 namespace FleetManagerPro.API.Data.Repository
 {
-    public interface IRouteRepository : IRepository<Route>
+    public interface IRouteRepository : IRepository<RouteModel>
     {
-        Task<IEnumerable<Route>> GetRoutesByVehicleAsync(string vehicleId);
+        Task<IEnumerable<RouteModel>> GetRoutesByVehicleAsync(string vehicleId);
+        Task<IEnumerable<RouteModel>> GetRoutesByDriverAsync(string driverId);
+        Task<IEnumerable<RouteModel>> GetRoutesByStatusAsync(string status);
+        Task<RouteModel?> GetRouteWithStopsAsync(string routeId);
+        Task<IEnumerable<RouteModel>> GetActiveRoutesAsync();
+        Task<RouteStop?> GetRouteStopAsync(string stopId);
+        Task UpdateRouteStopAsync(RouteStop stop);
     }
 }

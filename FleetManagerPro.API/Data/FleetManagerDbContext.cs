@@ -32,7 +32,6 @@ namespace FleetManagerPro.API.Data
             modelBuilder.Entity<User>(entity =>
             {
                 entity.ToTable("users");
-
                 entity.Property(e => e.Id).HasColumnName("id");
                 entity.Property(e => e.Name).HasColumnName("name");
                 entity.Property(e => e.Email).HasColumnName("email");
@@ -77,7 +76,6 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
 
-                // Relationships
                 entity.HasOne(v => v.CurrentDriver)
                        .WithMany()
                        .HasForeignKey(v => v.CurrentDriverId)
@@ -115,7 +113,44 @@ namespace FleetManagerPro.API.Data
                       .HasForeignKey(rs => rs.RouteId);
             });
 
-            // MaintenanceRecord entity
+            // RouteOptimization entity
+            modelBuilder.Entity<RouteOptimization>(entity =>
+            {
+                entity.ToTable("route_optimizations");
+                entity.HasOne(ro => ro.Route)
+                      .WithOne(r => r.Optimization)
+                      .HasForeignKey<RouteOptimization>(ro => ro.RouteId);
+
+                entity.HasOne(ro => ro.OptimizedByUser)
+                      .WithMany()
+                      .HasForeignKey(ro => ro.OptimizedBy);
+            });
+
+            // Route-User Many-to-Many relationship
+            modelBuilder.Entity<Route>()
+                .HasMany(r => r.AssignedDrivers)
+                .WithMany()
+                .UsingEntity<Dictionary<string, object>>(
+                    "route_users",
+                    j => j.HasOne<User>()
+                          .WithMany()
+                          .HasForeignKey("user_id")
+                          .HasPrincipalKey(u => u.Id)
+                          .OnDelete(DeleteBehavior.Cascade),
+                    j => j.HasOne<Route>()
+                          .WithMany()
+                          .HasForeignKey("route_id")
+                          .HasPrincipalKey(r => r.Id)
+                          .OnDelete(DeleteBehavior.Cascade),
+                    j =>
+                    {
+                        j.ToTable("route_users");
+                        j.Property<string>("user_id").HasColumnName("user_id").HasColumnType("varchar(128)");
+                        j.Property<string>("route_id").HasColumnName("route_id").HasColumnType("varchar(128)");
+                        j.HasKey("route_id", "user_id");
+                    });
+
+            // Other entities (MaintenanceRecord, etc.) - keeping your existing configurations
             modelBuilder.Entity<MaintenanceRecord>(entity =>
             {
                 entity.ToTable("maintenance_records");
@@ -160,7 +195,6 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
 
-                // Relationships
                 entity.HasOne(t => t.Vehicle)
                       .WithMany()
                       .HasForeignKey(t => t.VehicleId)
@@ -177,14 +211,12 @@ namespace FleetManagerPro.API.Data
                       .OnDelete(DeleteBehavior.SetNull)
                       .IsRequired(false);
 
-                // Indexes
                 entity.HasIndex(t => t.VehicleId);
                 entity.HasIndex(t => t.Status);
                 entity.HasIndex(t => t.ScheduledDate);
                 entity.HasIndex(t => t.Priority);
             });
 
-            // MaintenanceCategory entity
             modelBuilder.Entity<MaintenanceCategory>(entity =>
             {
                 entity.ToTable("maintenance_categories");
@@ -195,11 +227,9 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.DefaultIntervalMonths).HasColumnName("default_interval_months");
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
 
-                // Unique constraint
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            // MaintenanceReminder entity
             modelBuilder.Entity<MaintenanceReminder>(entity =>
             {
                 entity.ToTable("maintenance_reminders");
@@ -217,7 +247,6 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
 
-                // Relationships
                 entity.HasOne(r => r.Vehicle)
                       .WithMany()
                       .HasForeignKey(r => r.VehicleId)
@@ -228,13 +257,11 @@ namespace FleetManagerPro.API.Data
                       .HasForeignKey(r => r.CategoryId)
                       .OnDelete(DeleteBehavior.Restrict);
 
-                // Indexes
                 entity.HasIndex(r => r.VehicleId);
                 entity.HasIndex(r => r.CategoryId);
                 entity.HasIndex(r => r.IsActive);
             });
 
-            // DriverAttendance entity
             modelBuilder.Entity<DriverAttendance>(entity =>
             {
                 entity.ToTable("attendance");
@@ -254,7 +281,6 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
 
-                // Relationships
                 entity.HasOne(a => a.Driver)
                       .WithMany()
                       .HasForeignKey(a => a.DriverId)
@@ -266,25 +292,10 @@ namespace FleetManagerPro.API.Data
                       .OnDelete(DeleteBehavior.SetNull)
                       .IsRequired(false);
 
-                // Indexes
                 entity.HasIndex(a => new { a.DriverId, a.Date }).IsUnique();
                 entity.HasIndex(a => a.Date);
                 entity.HasIndex(a => a.Status);
             });
-
-            // RouteOptimization entity
-            modelBuilder.Entity<RouteOptimization>()
-                .HasOne(ro => ro.Route)
-                .WithOne(r => r.Optimization)
-                .HasForeignKey<RouteOptimization>(ro => ro.RouteId);
-
-            modelBuilder.Entity<RouteOptimization>()
-                .HasOne(ro => ro.OptimizedByUser)
-                .WithMany()
-                .HasForeignKey(ro => ro.OptimizedBy);
-
-            // LeaveRequest entity
-            // Replace the LeaveRequest entity configuration in your DbContext with this:
 
             modelBuilder.Entity<LeaveRequest>(entity =>
             {
@@ -300,14 +311,13 @@ namespace FleetManagerPro.API.Data
                 entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
                 entity.Property(e => e.SubmittedDate).HasColumnName("submitted_date");
                 entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
-                entity.Property(e => e.ApprovedAt).HasColumnName("approved_at");  // Changed from approved_date to approved_at
+                entity.Property(e => e.ApprovedAt).HasColumnName("approved_at");
                 entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
                 entity.Property(e => e.EmergencyContact).HasColumnName("emergency_contact");
                 entity.Property(e => e.SupportingDocuments).HasColumnName("supporting_documents");
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
 
-                // Relationships
                 entity.HasOne(lr => lr.Driver)
                       .WithMany()
                       .HasForeignKey(lr => lr.DriverId)
@@ -319,35 +329,10 @@ namespace FleetManagerPro.API.Data
                       .OnDelete(DeleteBehavior.SetNull)
                       .IsRequired(false);
 
-                // Indexes
                 entity.HasIndex(lr => lr.DriverId);
                 entity.HasIndex(lr => lr.Status);
                 entity.HasIndex(lr => lr.StartDate);
             });
-
-            // Route-User Many-to-Many relationship
-            modelBuilder.Entity<Route>()
-                .HasMany(r => r.AssignedDrivers)
-                .WithMany()
-                .UsingEntity<Dictionary<string, object>>(
-                    "route_users",
-                    j => j.HasOne<User>()
-                          .WithMany()
-                          .HasForeignKey("user_id")
-                          .HasPrincipalKey(u => u.Id)
-                          .OnDelete(DeleteBehavior.Cascade),
-                    j => j.HasOne<Route>()
-                          .WithMany()
-                          .HasForeignKey("route_id")
-                          .HasPrincipalKey(r => r.Id)
-                          .OnDelete(DeleteBehavior.Cascade),
-                    j =>
-                    {
-                        j.ToTable("route_users");
-                        j.Property<string>("user_id").HasColumnName("user_id").HasColumnType("varchar(128)");
-                        j.Property<string>("route_id").HasColumnName("route_id").HasColumnType("varchar(128)");
-                        j.HasKey("route_id", "user_id");
-                    });
         }
     }
 }

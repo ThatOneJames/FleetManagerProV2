@@ -27,6 +27,8 @@ builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
 builder.Services.AddScoped<IMaintenanceTaskRepository, MaintenanceTaskRepository>();
 builder.Services.AddScoped<IMaintenanceCategoryRepository, MaintenanceCategoryRepository>();
 builder.Services.AddScoped<IMaintenanceReminderRepository, MaintenanceReminderRepository>();
+builder.Services.AddScoped<IRouteRepository, RouteRepository>();
+builder.Services.AddScoped<IRouteService, RouteService>();
 
 // Enable CORS for Angular
 builder.Services.AddCors(options =>

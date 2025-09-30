@@ -9,26 +9,68 @@ namespace FleetManagerPro.API.Models
     public class Route
     {
         [Key]
-        // This is the correct ID property.
+        [Column("id")]
+        [StringLength(128)]
         public string Id { get; set; } = Guid.NewGuid().ToString();
 
-        [Required, StringLength(150)]
+        [Required]
+        [Column("name")]
+        [StringLength(100)]
         public string Name { get; set; } = string.Empty;
 
+        [Column("description")]
+        public string? Description { get; set; }
+
+        [Required]
         [Column("vehicle_id")]
+        [StringLength(128)]
         public string VehicleId { get; set; } = string.Empty;
 
-        [ForeignKey("VehicleId")]
-        public Vehicle Vehicle { get; set; } = null!;
+        [Required]
+        [Column("driver_id")]
+        [StringLength(128)]
+        public string DriverId { get; set; } = string.Empty;
 
+        [Required]
+        [Column("status")]
+        [StringLength(20)]
+        public string Status { get; set; } = "planned";
+
+        [Required]
+        [Column("total_distance")]
+        public decimal TotalDistance { get; set; }
+
+        [Required]
+        [Column("estimated_duration")]
+        public int EstimatedDuration { get; set; }
+
+        [Required]
+        [Column("fuel_estimate")]
+        public decimal FuelEstimate { get; set; }
+
+        [Column("start_time")]
+        public DateTime? StartTime { get; set; }
+
+        [Column("end_time")]
+        public DateTime? EndTime { get; set; }
+
+        [Column("start_address")]
         [StringLength(255)]
-        public string? StartLocation { get; set; }
+        public string? StartAddress { get; set; }
 
+        [Column("destination_address")]
         [StringLength(255)]
-        public string? EndLocation { get; set; }
+        public string? DestinationAddress { get; set; }
 
-        public double? DistanceKm { get; set; }
-        public double? EstimatedDurationHours { get; set; }
+        [Column("google_maps_url")]
+        public string? GoogleMapsUrl { get; set; }
+
+        [Column("actual_duration")]
+        public int? ActualDuration { get; set; }
+
+        [Column("created_by")]
+        [StringLength(128)]
+        public string? CreatedBy { get; set; }
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -36,12 +78,20 @@ namespace FleetManagerPro.API.Models
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // 🔹 Navigation
-        public ICollection<User> AssignedDrivers { get; set; } = new List<User>();
+        // Navigation properties
+        [ForeignKey("VehicleId")]
+        public Vehicle? Vehicle { get; set; }
 
+        [ForeignKey("DriverId")]
+        public User? Driver { get; set; }
 
-        // Relationships
+        [ForeignKey("CreatedBy")]
+        public User? Creator { get; set; }
+
         public ICollection<RouteStop> Stops { get; set; } = new List<RouteStop>();
+
+        // Add these properties to match your DbContext
         public RouteOptimization? Optimization { get; set; }
+        public ICollection<User> AssignedDrivers { get; set; } = new List<User>();
     }
 }
