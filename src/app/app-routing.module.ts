@@ -16,7 +16,6 @@ import { DriverDashboardComponent } from './components/driver/dashboard/dashboar
 import { RoutesTripsComponent } from './components/driver/routes-trips/routes-trips.component';
 import { DriverAttendanceComponent } from './components/driver/attendance/attendance.component';
 import { LeaveRequestsComponent } from './components/driver/leave-requests/leave-requests.component';
-import { DriverProfileComponent } from './components/driver/profile/profile.component';
 import { NotificationsComponent } from './components/driver/notifications/notifications.component';
 
 
@@ -54,7 +53,6 @@ const routes: Routes = [
        { path: 'routes', component: RoutesTripsComponent },
        { path: 'attendance', component: DriverAttendanceComponent },
        { path: 'leave', component: LeaveRequestsComponent },
-       { path: 'profile', component: DriverProfileComponent },
        { path: 'notifications', component: NotificationsComponent },
        { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
         ]

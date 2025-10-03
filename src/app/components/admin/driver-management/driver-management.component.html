@@ -11,6 +11,9 @@
             <option>Suspended</option>
         </select>
         <button (click)="toggleAddDriverForm()" class="btn-primary">+ Add Driver</button>
+        <button (click)="refreshAttendance()" class="btn-secondary" title="Refresh attendance status">
+            🔄 Refresh Status
+        </button>
     </div>
 
     <!-- Success/Error Messages -->
@@ -233,14 +236,24 @@
                         <th>License</th>
                         <th>Experience</th>
                         <th>Status</th>
-                        <th>Available</th>
+                        <th>Clock-In Status</th>
                         <th>Safety Rating</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr *ngFor="let driver of filteredDrivers">
-                        <td>{{ driver.name }}</td>
+                        <td>
+                            <div class="driver-name-cell">
+                                <span class="driver-name">{{ driver.name }}</span>
+                                <span class="license-warning" *ngIf="isLicenseExpiringSoon(driver)" title="License expiring soon">
+                                    ⚠️
+                                </span>
+                                <span class="license-expired" *ngIf="isLicenseExpired(driver)" title="License expired">
+                                    ❌
+                                </span>
+                            </div>
+                        </td>
                         <td>{{ driver.email }}</td>
                         <td>{{ driver.phone || 'N/A' }}</td>
                         <td>{{ driver.licenseNumber || 'N/A' }}</td>
@@ -251,11 +264,27 @@
                             </span>
                         </td>
                         <td>
-                            <span class="availability-badge" [class]="(driver.isAvailable ?? true) ? 'available' : 'unavailable'">
-                                {{ (driver.isAvailable ?? true) ? 'Yes' : 'No' }}
+                            <div *ngIf="!isLoadingAttendance" class="clock-in-status">
+                                <span class="availability-badge"
+                                      [ngClass]="hasDriverClockedInToday(driver.id!) ? 'clocked-in' : 'not-clocked-in'">
+                                    {{ getAvailabilityText(driver.id!) }}
+                                </span>
+                                <div class="availability-subtitle">
+                                    {{ getAvailabilitySubtitle(driver.id!) }}
+                                </div>
+                            </div>
+                            <div *ngIf="isLoadingAttendance" class="loading-indicator">
+                                <span class="spinner-small"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="safety-rating">
+                                {{ driver.safetyRating || 'N/A' }}/5.0
+                                <span class="rating-stars" *ngIf="driver.safetyRating">
+                                    {{ getRatingStars(driver.safetyRating) }}
+                                </span>
                             </span>
                         </td>
-                        <td>{{ driver.safetyRating || 'N/A' }}/5.0</td>
                         <td class="actions">
                             <button (click)="editDriver(driver)" class="btn-edit" title="Edit">
                                 <i class="icon-edit">✏️</i>

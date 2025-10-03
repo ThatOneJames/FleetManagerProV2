@@ -67,7 +67,6 @@ export class SidebarComponent implements OnChanges {
         {
             title: 'Personal',
             items: [
-                { title: 'Profile', icon: 'person', route: '/driver/profile' },
                 { title: 'Notifications', icon: 'notifications', route: '/driver/notifications' }
             ]
         }

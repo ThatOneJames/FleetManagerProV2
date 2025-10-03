@@ -37,6 +37,7 @@ export interface Route {
     endTime?: Date;
     actualDuration?: number;
     createdAt?: Date;
+    googleMapsUrl?: string; // Added this property for Google Maps integration
     stops: RouteStop[];
 }
 
@@ -45,6 +46,9 @@ export interface CreateRoute {
     description?: string;
     vehicleId: string;
     driverId: string;
+    startAddress?: string;
+    destinationAddress?: string;
+    googleMapsUrl?: string; // Added this property to match backend DTO
     stops: CreateRouteStop[];
 }
 
@@ -55,6 +59,8 @@ export interface CreateRouteStop {
     longitude?: number;
     estimatedArrival?: Date;
     estimatedDeparture?: Date;
+    startAddress?: string;
+    destinationAddress?: string;
     priority: string;
     notes?: string;
     contactName?: string;
@@ -132,5 +138,29 @@ export class RouteService {
 
     optimizeRoute(id: string): Observable<Route> {
         return this.http.post<Route>(`${this.apiUrl}/${id}/optimize`, {}, { headers: this.getHeaders() });
+    }
+
+    // Helper method to generate Google Maps URL on the frontend as fallback
+    generateGoogleMapsUrl(route: Route): string {
+        if (!route.stops || route.stops.length === 0) {
+            return '';
+        }
+
+        const baseUrl = 'https://www.google.com/maps/dir/';
+        const waypoints = route.stops
+            .sort((a, b) => a.stopOrder - b.stopOrder)
+            .map(stop => encodeURIComponent(stop.address))
+            .join('/');
+
+        return baseUrl + waypoints;
+    }
+
+    openInGoogleMaps(route: Route): void {
+        const url = route.googleMapsUrl || this.generateGoogleMapsUrl(route);
+        if (url) {
+            window.open(url, '_blank');
+        } else {
+            console.warn('Unable to generate Google Maps URL: no stops found');
+        }
     }
 }

@@ -1,8 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { DriverService } from '../../../services/driver.service';
 import { User, UserStatus, UserRole } from '../../../models/user.model';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+
 
 @Component({
     selector: 'app-driver-management',
@@ -13,6 +16,10 @@ export class DriverManagementComponent implements OnInit {
     drivers: User[] = [];
     searchText: string = '';
     filterStatus: string = 'All';
+
+    // Attendance tracking
+    driversAttendance: Map<string, boolean> = new Map();
+    isLoadingAttendance: boolean = false;
 
     // Form states
     showAddDriverForm: boolean = false;
@@ -85,59 +92,132 @@ export class DriverManagementComponent implements OnInit {
     loadDrivers(): void {
         this.driverService.getAllDrivers().subscribe({
             next: (data: User[]) => {
-                console.log('Raw driver data from API:', data); // Debug log
                 this.drivers = data;
-                console.log('Drivers assigned to component:', this.drivers); // Debug log
+                this.loadDriversAttendance(); // Load attendance after drivers load
                 this.clearMessages();
             },
             error: (err) => {
-                console.error('Error loading drivers:', err); // Debug log
+                console.error('Error loading drivers:', err);
                 this.errorMessage = 'Failed to load drivers. Please try again.';
             }
         });
     }
 
+    private loadDriversAttendance(): void {
+        this.isLoadingAttendance = true;
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+            console.error('No authentication token found');
+            this.isLoadingAttendance = false;
+            return;
+        }
+
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        // Create array of observables for all driver attendance checks
+        const attendanceRequests = this.drivers.map(driver =>
+            this.http.get<any>(`${this.apiUrl}/attendance/driver/${driver.id}/today`, { headers }).pipe(
+                // Catch errors and return null instead of failing
+                catchError(error => {
+                    console.log(`No attendance found for driver ${driver.name}`);
+                    return of(null);
+                })
+            )
+        );
+
+        // Execute all requests in parallel
+        forkJoin(attendanceRequests).subscribe({
+            next: (responses) => {
+                console.log('🔍 Attendance responses:', responses);
+                responses.forEach((response, index) => {
+                    const driver = this.drivers[index];
+
+                    // If response is null (404 error), driver hasn't clocked in
+                    if (response === null) {
+                        console.log(`👤 Driver ${driver.name}: ❌ Not Clocked In (No record)`);
+                        this.driversAttendance.set(driver.id!, false);
+                        return;
+                    }
+
+                    // Check multiple possible response structures
+                    let hasClockedIn = false;
+
+                    // Check if response has data property
+                    if (response?.data) {
+                        hasClockedIn = response.data.clockIn != null;
+                    }
+                    // Check if response directly has clockIn
+                    else if (response?.clockIn != null) {
+                        hasClockedIn = true;
+                    }
+                    // Check if response has status === 'Present'
+                    else if (response?.status === 'Present' || response?.data?.status === 'Present') {
+                        hasClockedIn = true;
+                    }
+
+                    console.log(`👤 Driver ${driver.name}: ${hasClockedIn ? '✅ Clocked In' : '❌ Not Clocked In'}`, response);
+
+                    this.driversAttendance.set(driver.id!, hasClockedIn);
+                });
+                this.isLoadingAttendance = false;
+            },
+            error: (error) => {
+                console.error('❌ Error loading attendance data:', error);
+                // Set all drivers as unavailable if error occurs
+                this.drivers.forEach(driver => {
+                    this.driversAttendance.set(driver.id!, false);
+                });
+                this.isLoadingAttendance = false;
+            }
+        });
+    }
+
+
+    // Check if driver has clocked in today
+    hasDriverClockedInToday(driverId: string): boolean {
+        return this.driversAttendance.get(driverId) ?? false;
+    }
+
+    // Get availability status text
+    getAvailabilityText(driverId: string): string {
+        return this.hasDriverClockedInToday(driverId) ? 'Available' : 'Unavailable';
+    }
+
+    // Get availability subtitle
+    getAvailabilitySubtitle(driverId: string): string {
+        return this.hasDriverClockedInToday(driverId) ? 'Clocked In' : 'Not Clocked In';
+    }
+
     get filteredDrivers(): User[] {
-        console.log('All drivers:', this.drivers); // Debug log
-        console.log('Filter status:', this.filterStatus); // Debug log
-        console.log('Search text:', this.searchText); // Debug log
-
         return this.drivers.filter(driver => {
-            // Status filter - both are strings now
             const matchesStatus = this.filterStatus === 'All' || driver.status === this.filterStatus;
-
-            // Search filter
             const searchLower = this.searchText.toLowerCase();
             const matchesSearch = !this.searchText ||
                 driver.name?.toLowerCase().includes(searchLower) ||
                 driver.email?.toLowerCase().includes(searchLower) ||
                 driver.licenseNumber?.toLowerCase().includes(searchLower);
 
-            console.log(`Driver ${driver.name}: Status=${driver.status}, Status match=${matchesStatus}, Search match=${matchesSearch}`);
-
             return matchesStatus && matchesSearch;
         });
     }
 
-    // Status helper methods
     getNumericStatus(status: string): UserStatus | undefined {
         switch (status.toLowerCase()) {
-            case 'active':
-                return UserStatus.Active;
-            case 'inactive':
-                return UserStatus.Inactive;
-            case 'suspended':
-                return UserStatus.Suspended;
-            default:
-                return undefined;
+            case 'active': return UserStatus.Active;
+            case 'inactive': return UserStatus.Inactive;
+            case 'suspended': return UserStatus.Suspended;
+            default: return undefined;
         }
     }
 
     getStringStatus(status: string): string {
-        return status; // Since status is already a string, just return it
+        return status;
     }
 
-    // Add Driver Methods
     toggleAddDriverForm(): void {
         this.showAddDriverForm = !this.showAddDriverForm;
         if (this.showAddDriverForm) {
@@ -156,14 +236,12 @@ export class DriverManagementComponent implements OnInit {
         this.clearMessages();
         const formData = this.registrationForm.value;
 
-        // Prepare the data for API
         const userDto = {
             ...formData,
             role: 'Driver',
             status: 'Active',
             isAvailable: true,
             hasHelper: false,
-            // Convert empty strings to null for optional fields
             phone: formData.phone || null,
             address: formData.address || null,
             emergencyContact: formData.emergencyContact || null,
@@ -188,13 +266,11 @@ export class DriverManagementComponent implements OnInit {
         });
     }
 
-    // Edit Driver Methods
     editDriver(driver: User): void {
         this.editingDriver = driver;
         this.showEditDriverForm = true;
         this.clearMessages();
 
-        // Populate the edit form with current driver data
         this.editForm.patchValue({
             name: driver.name || '',
             email: driver.email || '',
@@ -224,7 +300,6 @@ export class DriverManagementComponent implements OnInit {
         this.clearMessages();
         const formData = this.editForm.value;
 
-        // Prepare the update data
         const updateData = {
             ...formData,
             status: formData.status,
@@ -258,7 +333,6 @@ export class DriverManagementComponent implements OnInit {
         this.clearMessages();
     }
 
-    // Delete Driver Methods
     confirmDelete(driver: User): void {
         this.driverToDelete = driver;
         this.showDeleteConfirm = true;
@@ -288,7 +362,6 @@ export class DriverManagementComponent implements OnInit {
         this.driverToDelete = null;
     }
 
-    // Form Helper Methods
     cancelForm(): void {
         this.showAddDriverForm = false;
         this.registrationForm.reset();
@@ -305,10 +378,9 @@ export class DriverManagementComponent implements OnInit {
     private formatDate(dateString: string | Date): string {
         if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+        return date.toISOString().split('T')[0];
     }
 
-    // Message Management
     private clearMessages(): void {
         this.errorMessage = null;
         this.successMessage = null;
@@ -317,12 +389,9 @@ export class DriverManagementComponent implements OnInit {
     private hideMessages(): void {
         setTimeout(() => {
             this.clearMessages();
-        }, 5000); // Hide messages after 5 seconds
+        }, 5000);
     }
 
-    // Additional utility methods for enhanced functionality
-
-    // Quick status toggle methods
     toggleDriverAvailability(driver: User): void {
         const updateData = {
             ...driver,
@@ -342,7 +411,6 @@ export class DriverManagementComponent implements OnInit {
         });
     }
 
-    // Export drivers data (optional feature)
     exportDrivers(): void {
         const csvData = this.convertToCSV(this.filteredDrivers);
         this.downloadCSV(csvData, 'drivers_export.csv');
@@ -351,7 +419,7 @@ export class DriverManagementComponent implements OnInit {
     private convertToCSV(data: User[]): string {
         const headers = [
             'Name', 'Email', 'Phone', 'Status', 'License Number', 'License Class',
-            'Experience Years', 'Safety Rating', 'Total Miles', 'Available', 'Has Helper'
+            'Experience Years', 'Safety Rating', 'Total Miles', 'Available', 'Has Helper', 'Clocked In'
         ];
 
         const rows = data.map(driver => [
@@ -365,7 +433,8 @@ export class DriverManagementComponent implements OnInit {
             driver.safetyRating || 0,
             driver.totalMilesDriven || 0,
             driver.isAvailable ? 'Yes' : 'No',
-            driver.hasHelper ? 'Yes' : 'No'
+            driver.hasHelper ? 'Yes' : 'No',
+            this.hasDriverClockedInToday(driver.id!) ? 'Yes' : 'No'
         ]);
 
         const csvContent = [headers, ...rows]
@@ -390,7 +459,6 @@ export class DriverManagementComponent implements OnInit {
         }
     }
 
-    // Bulk operations (for future enhancement)
     selectAll(): void {
         // Implementation for selecting all drivers for bulk operations
     }
@@ -399,14 +467,12 @@ export class DriverManagementComponent implements OnInit {
         // Implementation for bulk status updates
     }
 
-    // Search and filter reset
     resetFilters(): void {
         this.searchText = '';
         this.filterStatus = 'All';
         this.clearMessages();
     }
 
-    // Validation helper for license expiry warning
     isLicenseExpiringSoon(driver: User): boolean {
         if (!driver.licenseExpiry) return false;
 
@@ -425,5 +491,15 @@ export class DriverManagementComponent implements OnInit {
         const today = new Date();
 
         return expiryDate < today;
+    }
+
+    // Refresh attendance data
+    refreshAttendance(): void {
+        this.loadDriversAttendance();
+    }
+
+    getRatingStars(rating: number): string {
+        if (!rating) return '';
+        return '⭐'.repeat(Math.round(rating));
     }
 }

@@ -34,6 +34,9 @@ export class RouteOptimizationComponent implements OnInit {
         description: '',
         vehicleId: '',
         driverId: '',
+        startAddress: '',
+        destinationAddress: '',
+        googleMapsUrl: '',
         stops: []
     };
 
@@ -82,9 +85,9 @@ export class RouteOptimizationComponent implements OnInit {
     loadVehicles(): void {
         this.vehicleService.getAllVehicles().subscribe({
             next: (data) => {
-                console.log('All vehicles loaded:', data); // Debug log
-                this.vehicles = data; // Remove the status filter
-                console.log('Vehicles for dropdown:', this.vehicles); // Debug log
+                console.log('All vehicles loaded:', data);
+                this.vehicles = data;
+                console.log('Vehicles for dropdown:', this.vehicles);
             },
             error: (error) => {
                 console.error('Error loading vehicles:', error);
@@ -130,6 +133,9 @@ export class RouteOptimizationComponent implements OnInit {
             description: '',
             vehicleId: '',
             driverId: '',
+            startAddress: '',
+            destinationAddress: '',
+            googleMapsUrl: '',
             stops: []
         };
     }
@@ -141,7 +147,14 @@ export class RouteOptimizationComponent implements OnInit {
 
     addStopToNewRoute(): void {
         if (this.newStop.address) {
-            this.newRoute.stops.push({ ...this.newStop });
+            // Add the stop with startAddress and destinationAddress
+            this.newRoute.stops.push({
+                ...this.newStop,
+                startAddress: this.newRoute.startAddress || '',
+                destinationAddress: this.newRoute.destinationAddress || ''
+            });
+
+            // Reset the newStop form
             this.newStop = {
                 stopOrder: this.newRoute.stops.length + 1,
                 address: '',
@@ -150,6 +163,9 @@ export class RouteOptimizationComponent implements OnInit {
                 contactName: '',
                 contactPhone: ''
             };
+
+            // Auto-generate Google Maps URL when stops change
+            this.updateGoogleMapsUrl();
         }
     }
 
@@ -158,6 +174,49 @@ export class RouteOptimizationComponent implements OnInit {
         this.newRoute.stops.forEach((stop, idx) => {
             stop.stopOrder = idx + 1;
         });
+        // Update Google Maps URL after removing stop
+        this.updateGoogleMapsUrl();
+    }
+
+    // Generate Google Maps URL based on startAddress, stops, and destinationAddress
+    updateGoogleMapsUrl(): void {
+        const baseUrl = 'https://www.google.com/maps/dir/';
+        const locations: string[] = [];
+
+        // Add start address if provided
+        if (this.newRoute.startAddress && this.newRoute.startAddress.trim()) {
+            locations.push(encodeURIComponent(this.newRoute.startAddress.trim()));
+        }
+
+        // Add all stops in order
+        this.newRoute.stops
+            .sort((a, b) => a.stopOrder - b.stopOrder)
+            .forEach(stop => {
+                if (stop.address && stop.address.trim()) {
+                    locations.push(encodeURIComponent(stop.address.trim()));
+                }
+            });
+
+        // Add destination address if provided (and different from last stop)
+        if (this.newRoute.destinationAddress && this.newRoute.destinationAddress.trim()) {
+            const lastLocation = locations[locations.length - 1];
+            const encodedDestination = encodeURIComponent(this.newRoute.destinationAddress.trim());
+
+            // Only add destination if it's different from the last location
+            if (lastLocation !== encodedDestination) {
+                locations.push(encodedDestination);
+            }
+        }
+
+        // Generate URL if we have at least 2 locations
+        if (locations.length >= 2) {
+            this.newRoute.googleMapsUrl = baseUrl + locations.join('/');
+        } else if (locations.length === 1) {
+            // If only one location, create a search URL instead
+            this.newRoute.googleMapsUrl = `https://www.google.com/maps/search/${locations[0]}`;
+        } else {
+            this.newRoute.googleMapsUrl = '';
+        }
     }
 
     createRoute(): void {
@@ -166,16 +225,33 @@ export class RouteOptimizationComponent implements OnInit {
             return;
         }
 
+        // Ensure all stops have startAddress and destinationAddress
+        this.newRoute.stops = this.newRoute.stops.map(stop => ({
+            ...stop,
+            startAddress: this.newRoute.startAddress || '',
+            destinationAddress: this.newRoute.destinationAddress || ''
+        }));
+
+        // Ensure Google Maps URL is generated
+        if (!this.newRoute.googleMapsUrl) {
+            this.updateGoogleMapsUrl();
+        }
+
+        console.log('Creating route with data:', this.newRoute);
+
         this.loading = true;
         this.routeService.createRoute(this.newRoute).subscribe({
             next: (route) => {
+                console.log('Route created successfully:', route);
                 this.routes.unshift(route);
                 this.closeCreateModal();
                 this.loading = false;
             },
             error: (error) => {
                 console.error('Error creating route:', error);
-                this.errorMessage = 'Failed to create route';
+                this.errorMessage = error.error?.errors
+                    ? JSON.stringify(error.error.errors)
+                    : 'Failed to create route';
                 this.loading = false;
             }
         });
@@ -189,6 +265,31 @@ export class RouteOptimizationComponent implements OnInit {
     closeStopsModal(): void {
         this.showStopsModal = false;
         this.selectedRoute = null;
+    }
+
+    // Open Google Maps with the route
+    openGoogleMaps(route: Route): void {
+        this.routeService.openInGoogleMaps(route);
+    }
+
+    // Preview Google Maps URL for new route being created
+    previewGoogleMaps(): void {
+        const hasStartOrStops = (this.newRoute.startAddress && this.newRoute.startAddress.trim()) ||
+            this.newRoute.stops.length > 0;
+
+        if (!hasStartOrStops) {
+            alert('Please add a start address or at least one stop to preview the route');
+            return;
+        }
+
+        // Generate the URL with current data
+        this.updateGoogleMapsUrl();
+
+        if (this.newRoute.googleMapsUrl) {
+            window.open(this.newRoute.googleMapsUrl, '_blank');
+        } else {
+            alert('Unable to generate Google Maps URL. Please check your addresses.');
+        }
     }
 
     updateStopStatus(stopId: string, status: string): void {
@@ -276,6 +377,21 @@ export class RouteOptimizationComponent implements OnInit {
                     this.errorMessage = 'Failed to delete route';
                 }
             });
+        }
+    }
+
+    // Copy Google Maps URL to clipboard
+    copyGoogleMapsUrl(route: Route): void {
+        const url = route.googleMapsUrl || this.routeService.generateGoogleMapsUrl(route);
+        if (url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Google Maps URL copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy URL:', err);
+                alert('Failed to copy URL to clipboard');
+            });
+        } else {
+            alert('No Google Maps URL available for this route');
         }
     }
 

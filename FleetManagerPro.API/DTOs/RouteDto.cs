@@ -21,6 +21,7 @@ namespace FleetManagerPro.API.DTOs
         public DateTime? EndTime { get; set; }
         public int? ActualDuration { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string? GoogleMapsUrl { get; set; }
         public List<RouteStopDto> Stops { get; set; } = new List<RouteStopDto>();
     }
 
@@ -92,6 +93,7 @@ namespace FleetManagerPro.API.DTOs
         public string? ContactName { get; set; }
         public string? ContactPhone { get; set; }
     }
+
 
     public class UpdateRouteDto
     {

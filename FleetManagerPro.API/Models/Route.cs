@@ -36,9 +36,18 @@ namespace FleetManagerPro.API.Models
         [StringLength(20)]
         public string Status { get; set; } = "planned";
 
+        [Column("google_maps_url")]
+        public string? GoogleMapsUrl { get; set; }
+
         [Required]
         [Column("total_distance")]
         public decimal TotalDistance { get; set; }
+
+        [Column("start_address")]
+        public string? StartAddress { get; set; }
+
+        [Column("destination_address")]
+        public string? DestinationAddress { get; set; }
 
         [Required]
         [Column("estimated_duration")]
@@ -53,17 +62,6 @@ namespace FleetManagerPro.API.Models
 
         [Column("end_time")]
         public DateTime? EndTime { get; set; }
-
-        [Column("start_address")]
-        [StringLength(255)]
-        public string? StartAddress { get; set; }
-
-        [Column("destination_address")]
-        [StringLength(255)]
-        public string? DestinationAddress { get; set; }
-
-        [Column("google_maps_url")]
-        public string? GoogleMapsUrl { get; set; }
 
         [Column("actual_duration")]
         public int? ActualDuration { get; set; }

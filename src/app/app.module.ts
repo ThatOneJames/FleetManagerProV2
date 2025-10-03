@@ -41,7 +41,6 @@ import { FleetManagementComponent } from './components/admin/fleet-management/fl
 import { RouteOptimizationComponent } from './components/admin/route-optimization/route-optimization.component';
 import { MaintenanceComponent } from './components/admin/maintenance/maintenance.component';
 import { SidebarComponent } from './components/shared/sidebar/sidebar.component';
-import { DriverProfileComponent } from './components/driver/profile/profile.component';
 import { LeaveRequestsComponent } from './components/driver/leave-requests/leave-requests.component';
 import { UserComponent } from './components/user/user.component';
 import { DriverAttendanceComponent } from './components//driver/attendance/attendance.component';
@@ -65,7 +64,6 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
         RouteOptimizationComponent,
         MaintenanceComponent,
         SidebarComponent,
-        DriverProfileComponent,
         LeaveRequestsComponent,
         UserComponent,
         LeaveManagementComponent

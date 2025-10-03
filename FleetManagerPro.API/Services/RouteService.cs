@@ -74,6 +74,9 @@ namespace FleetManagerPro.API.Services
                 Description = createDto.Description,
                 VehicleId = createDto.VehicleId,
                 DriverId = createDto.DriverId,
+                StartAddress = createDto.StartAddress,
+                DestinationAddress = createDto.DestinationAddress,
+                GoogleMapsUrl = createDto.GoogleMapsUrl,
                 Status = "planned",
                 TotalDistance = totalDistance,
                 EstimatedDuration = estimatedDuration,
@@ -104,7 +107,6 @@ namespace FleetManagerPro.API.Services
 
         public async Task<RouteDto> UpdateRouteAsync(string id, UpdateRouteDto updateDto)
         {
-            // Use direct DbContext query instead of repository
             var route = await _context.Routes.FirstOrDefaultAsync(r => r.Id == id);
             if (route == null)
                 throw new KeyNotFoundException($"Route with ID {id} not found");
@@ -147,7 +149,6 @@ namespace FleetManagerPro.API.Services
 
         public async Task<bool> DeleteRouteAsync(string id)
         {
-            // Use direct DbContext query instead of repository
             var route = await _context.Routes.FirstOrDefaultAsync(r => r.Id == id);
             if (route == null)
                 return false;
@@ -220,6 +221,7 @@ namespace FleetManagerPro.API.Services
                 EndTime = route.EndTime,
                 ActualDuration = route.ActualDuration,
                 CreatedAt = route.CreatedAt,
+                GoogleMapsUrl = route.GoogleMapsUrl,
                 Stops = route.Stops.OrderBy(s => s.StopOrder).Select(MapStopToDto).ToList()
             };
         }
@@ -244,6 +246,45 @@ namespace FleetManagerPro.API.Services
                 ContactName = stop.ContactName,
                 ContactPhone = stop.ContactPhone
             };
+        }
+
+        private string GenerateGoogleMapsUrl(RouteModel route)
+        {
+            if (route.Stops == null || !route.Stops.Any())
+                return string.Empty;
+
+            var baseUrl = "https://www.google.com/maps/dir/";
+            var locations = new List<string>();
+
+            // Add route start address if it exists
+            if (!string.IsNullOrWhiteSpace(route.StartAddress))
+            {
+                locations.Add(Uri.EscapeDataString(route.StartAddress));
+            }
+
+            // Add all stops in order
+            var orderedStops = route.Stops.OrderBy(s => s.StopOrder);
+            foreach (var stop in orderedStops)
+            {
+                if (!string.IsNullOrWhiteSpace(stop.Address))
+                {
+                    locations.Add(Uri.EscapeDataString(stop.Address));
+                }
+            }
+
+            // Add route destination address if it exists and is different from last location
+            if (!string.IsNullOrWhiteSpace(route.DestinationAddress))
+            {
+                var lastLocation = locations.LastOrDefault();
+                var encodedDestination = Uri.EscapeDataString(route.DestinationAddress);
+
+                if (lastLocation != encodedDestination)
+                {
+                    locations.Add(encodedDestination);
+                }
+            }
+
+            return locations.Count >= 2 ? baseUrl + string.Join("/", locations) : string.Empty;
         }
 
         private decimal CalculateTotalDistance(List<CreateRouteStopDto> stops)

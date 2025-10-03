@@ -1,2 +1,201 @@
-<h2>Driver - Routes & Trips</h2>
-<p>Placeholder for viewing assigned routes and trips.</p>
+﻿<div class="driver-routes-container">
+    <div class="header">
+        <h2>My Assigned Routes</h2>
+        <button class="btn-refresh" (click)="loadAssignedRoutes()">
+            <i class="icon-refresh"></i> Refresh
+        </button>
+    </div>
+
+    <div *ngIf="errorMessage" class="error-message">
+        {{ errorMessage }}
+        <button (click)="errorMessage = ''" class="close-btn">×</button>
+    </div>
+
+    <div *ngIf="loading" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Loading your routes...</p>
+    </div>
+
+    <div class="routes-grid" *ngIf="!loading">
+        <div *ngFor="let route of assignedRoutes" class="route-card">
+            <div class="route-header">
+                <h3>{{ route.name }}</h3>
+                <span class="status-badge" [ngClass]="getStatusClass(route.status!)">
+                    {{ route.status }}
+                </span>
+            </div>
+
+            <div class="route-info">
+                <div class="info-item">
+                    <i class="icon-vehicle"></i>
+                    <span>{{ route.vehiclePlate }}</span>
+                </div>
+                <div class="info-item">
+                    <i class="icon-distance"></i>
+                    <span>{{ route.totalDistance }} km</span>
+                </div>
+                <div class="info-item">
+                    <i class="icon-time"></i>
+                    <span>{{ route.estimatedDuration }} mins</span>
+                </div>
+                <div class="info-item">
+                    <i class="icon-stops"></i>
+                    <span>{{ route.stops.length }} stops</span>
+                </div>
+            </div>
+
+            <div class="route-actions">
+                <!-- Trip Control Buttons -->
+                <button class="btn-start"
+                        (click)="startTrip(route)"
+                        *ngIf="canStartTrip(route)">
+                    <i class="icon-play"></i> Start Trip
+                </button>
+
+                <button class="btn-complete"
+                        (click)="completeTrip(route)"
+                        *ngIf="canCompleteTrip(route)">
+                    <i class="icon-check"></i> Complete Trip
+                </button>
+
+                <!-- Navigation Buttons -->
+                <button class="btn-maps" (click)="openGoogleMaps(route)">
+                    <i class="icon-map"></i> Open in Maps
+                </button>
+
+                <button class="btn-details" (click)="viewRouteDetails(route)">
+                    <i class="icon-list"></i> View Details
+                </button>
+            </div>
+        </div>
+
+        <div *ngIf="assignedRoutes.length === 0" class="no-routes">
+            <div class="no-routes-icon">🚗</div>
+            <h3>No Routes Assigned</h3>
+            <p>You don't have any routes assigned yet. Check back later or contact your supervisor.</p>
+        </div>
+    </div>
+
+    <!-- Route Details Modal -->
+    <div class="modal" *ngIf="showRouteDetails && selectedRoute">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>{{ selectedRoute.name }} - Route Details</h3>
+                <button class="close-btn" (click)="closeRouteDetails()">×</button>
+            </div>
+
+            <div class="route-overview">
+                <div class="overview-item">
+                    <span class="label">Vehicle:</span>
+                    <span>{{ selectedRoute.vehiclePlate }}</span>
+                </div>
+                <div class="overview-item">
+                    <span class="label">Status:</span>
+                    <span class="status-badge" [ngClass]="getStatusClass(selectedRoute.status!)">
+                        {{ selectedRoute.status }}
+                    </span>
+                </div>
+                <div class="overview-item">
+                    <span class="label">Total Distance:</span>
+                    <span>{{ selectedRoute.totalDistance }} km</span>
+                </div>
+                <div class="overview-item">
+                    <span class="label">Estimated Duration:</span>
+                    <span>{{ selectedRoute.estimatedDuration }} minutes</span>
+                </div>
+                <div class="overview-item" *ngIf="selectedRoute.startTime">
+                    <span class="label">Started At:</span>
+                    <span>{{ selectedRoute.startTime | date:'short' }}</span>
+                </div>
+                <div class="overview-item" *ngIf="selectedRoute.endTime">
+                    <span class="label">Completed At:</span>
+                    <span>{{ selectedRoute.endTime | date:'short' }}</span>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <!-- Trip Control Buttons in Modal -->
+                <button class="btn-start-large"
+                        (click)="startTrip(selectedRoute)"
+                        *ngIf="canStartTrip(selectedRoute)">
+                    <i class="icon-play"></i> Start Trip
+                </button>
+
+                <button class="btn-complete-large"
+                        (click)="completeTrip(selectedRoute)"
+                        *ngIf="canCompleteTrip(selectedRoute)">
+                    <i class="icon-check"></i> Complete Trip
+                </button>
+
+                <!-- Navigation Button -->
+                <button class="btn-maps-large" (click)="openGoogleMaps(selectedRoute)">
+                    <i class="icon-map"></i> Navigate with Google Maps
+                </button>
+            </div>
+
+            <div class="stops-timeline">
+                <h4>Route Stops</h4>
+                <div *ngFor="let stop of selectedRoute.stops" class="timeline-item">
+                    <div class="timeline-marker" [ngClass]="getStatusClass(stop.status!)"></div>
+
+                    <div class="timeline-content">
+                        <div class="stop-header">
+                            <span class="stop-number">Stop {{ stop.stopOrder }}</span>
+                            <span class="status-badge" [ngClass]="getStatusClass(stop.status!)">
+                                {{ stop.status }}
+                            </span>
+                            <span class="priority-badge" [ngClass]="getPriorityClass(stop.priority)">
+                                {{ stop.priority }}
+                            </span>
+                        </div>
+
+                        <div class="stop-address">
+                            <i class="icon-location"></i>
+                            {{ stop.address }}
+                        </div>
+
+                        <div class="stop-contact" *ngIf="stop.contactName || stop.contactPhone">
+                            <div *ngIf="stop.contactName">
+                                <i class="icon-person"></i> {{ stop.contactName }}
+                            </div>
+                            <div *ngIf="stop.contactPhone">
+                                <i class="icon-phone"></i> {{ stop.contactPhone }}
+                            </div>
+                        </div>
+
+                        <div class="stop-times" *ngIf="stop.estimatedArrival || stop.actualArrival">
+                            <div *ngIf="stop.estimatedArrival">
+                                <strong>Est. Arrival:</strong> {{ stop.estimatedArrival | date:'short' }}
+                            </div>
+                            <div *ngIf="stop.actualArrival">
+                                <strong>Actual Arrival:</strong> {{ stop.actualArrival | date:'short' }}
+                            </div>
+                        </div>
+
+                        <div class="stop-notes" *ngIf="stop.notes">
+                            <strong>Notes:</strong> {{ stop.notes }}
+                        </div>
+
+                        <div class="stop-actions" *ngIf="selectedRoute.status === 'in_progress'">
+                            <button class="btn-sm btn-success"
+                                    (click)="updateStopStatus(stop.id!, 'arrived')"
+                                    *ngIf="stop.status === 'pending'">
+                                Mark Arrived
+                            </button>
+                            <button class="btn-sm btn-primary"
+                                    (click)="updateStopStatus(stop.id!, 'completed')"
+                                    *ngIf="stop.status === 'arrived'">
+                                Mark Completed
+                            </button>
+                            <button class="btn-sm btn-warning"
+                                    (click)="updateStopStatus(stop.id!, 'skipped')"
+                                    *ngIf="stop.status === 'pending' || stop.status === 'arrived'">
+                                Skip Stop
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
