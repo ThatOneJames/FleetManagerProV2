@@ -9,12 +9,29 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var mysqlHost = Environment.GetEnvironmentVariable("MYSQLHOST");
+var mysqlPort = Environment.GetEnvironmentVariable("MYSQLPORT");
+var mysqlDb = Environment.GetEnvironmentVariable("MYSQLDATABASE");
+var mysqlUser = Environment.GetEnvironmentVariable("MYSQLUSER");
+var mysqlPass = Environment.GetEnvironmentVariable("MYSQLPASSWORD");
+
+string connectionString;
+
+if (!string.IsNullOrEmpty(mysqlHost))
+{
+    connectionString = $"Server={mysqlHost};Port={mysqlPort};Database={mysqlDb};User={mysqlUser};Password={mysqlPass};SslMode=Required;";
+    Console.WriteLine($"[DATABASE] Using Railway MySQL: {mysqlHost}");
+}
+else
+{
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+    Console.WriteLine("[DATABASE] Using local MySQL connection");
+}
+
 builder.Services.AddDbContext<FleetManagerDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
@@ -30,18 +47,21 @@ builder.Services.AddScoped<IMaintenanceReminderRepository, MaintenanceReminderRe
 builder.Services.AddScoped<IRouteRepository, RouteRepository>();
 builder.Services.AddScoped<IRouteService, RouteService>();
 
-// Enable CORS for Angular
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngular", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        policy.WithOrigins(
+                "http://localhost:4200",
+                "https://fleetmanagerpro-31c36.web.app",
+                "https://fleetmanagerpro-31c36.firebaseapp.com"
+              )
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
-// JWT Authentication setup with debugging
 var jwtKey = builder.Configuration["Jwt:Key"];
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
@@ -57,7 +77,6 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    // Add debugging events
     options.Events = new JwtBearerEvents
     {
         OnAuthenticationFailed = context =>
@@ -108,15 +127,29 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtIssuer,
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-        ClockSkew = TimeSpan.Zero // Remove default 5 minute clock skew
+        ClockSkew = TimeSpan.Zero
     };
 });
 
 var app = builder.Build();
 
-app.UseCors("AllowAngular");
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<FleetManagerDbContext>();
+    try
+    {
+        Console.WriteLine("[DATABASE] Running migrations...");
+        db.Database.Migrate();
+        Console.WriteLine("[DATABASE] Migrations completed successfully");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[DATABASE] Migration error: {ex.Message}");
+    }
+}
 
-// Configure the HTTP request pipeline.
+app.UseCors("AllowAll");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -126,7 +159,6 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 
-// Middleware order is critical
 app.UseAuthentication();
 app.UseAuthorization();
 

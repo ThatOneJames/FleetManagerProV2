@@ -97,7 +97,7 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
         MatSnackBarModule,
         MatCheckboxModule,
         MatDatepickerModule,
-        MatNativeDateModule
+        MatNativeDateModule,
     ],
     providers: [
         AuthService,

@@ -11,5 +11,6 @@ const firebaseConfig = {
 export const environment = {
     production: false,
     apiUrl: 'http://localhost:5129/api',
-    appName: 'Fleet Manager Pro'
+    appName: 'Fleet Manager Pro',
+    firebaseConfig: firebaseConfig
 };
