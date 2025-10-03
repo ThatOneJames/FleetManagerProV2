@@ -9,7 +9,9 @@ interface Driver {
     id: string;
     name: string;
     email: string;
-    role: string;
+    role?: string;
+    phone?: string;
+    licenseNumber?: string;
 }
 
 @Component({
@@ -98,20 +100,26 @@ export class RouteOptimizationComponent implements OnInit {
     loadDrivers(): void {
         const token = this.authService.getToken();
         const headers = new HttpHeaders({
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
         });
 
-        this.http.get<any[]>(`${this.apiUrl}/users/drivers`, { headers }).subscribe({
+        this.http.get<any[]>(`${this.apiUrl}/users/available`, { headers }).subscribe({
             next: (data: any[]) => {
+                console.log('Available drivers loaded:', data);
                 this.drivers = data.map(d => ({
                     id: d.id,
                     name: d.name,
                     email: d.email,
-                    role: d.role
+                    phone: d.phone,
+                    licenseNumber: d.licenseNumber,
+                    role: 'Driver'
                 }));
+                console.log('Drivers for dropdown:', this.drivers);
             },
             error: (error: any) => {
-                console.error('Error loading drivers:', error);
+                console.error('Error loading available drivers:', error);
+                this.errorMessage = 'Failed to load available drivers. Please try again.';
                 this.drivers = [];
             }
         });
@@ -138,6 +146,7 @@ export class RouteOptimizationComponent implements OnInit {
             googleMapsUrl: '',
             stops: []
         };
+        this.loadDrivers();
     }
 
     closeCreateModal(): void {
@@ -147,14 +156,12 @@ export class RouteOptimizationComponent implements OnInit {
 
     addStopToNewRoute(): void {
         if (this.newStop.address) {
-            // Add the stop with startAddress and destinationAddress
             this.newRoute.stops.push({
                 ...this.newStop,
                 startAddress: this.newRoute.startAddress || '',
                 destinationAddress: this.newRoute.destinationAddress || ''
             });
 
-            // Reset the newStop form
             this.newStop = {
                 stopOrder: this.newRoute.stops.length + 1,
                 address: '',
@@ -164,7 +171,6 @@ export class RouteOptimizationComponent implements OnInit {
                 contactPhone: ''
             };
 
-            // Auto-generate Google Maps URL when stops change
             this.updateGoogleMapsUrl();
         }
     }
@@ -174,21 +180,17 @@ export class RouteOptimizationComponent implements OnInit {
         this.newRoute.stops.forEach((stop, idx) => {
             stop.stopOrder = idx + 1;
         });
-        // Update Google Maps URL after removing stop
         this.updateGoogleMapsUrl();
     }
 
-    // Generate Google Maps URL based on startAddress, stops, and destinationAddress
     updateGoogleMapsUrl(): void {
         const baseUrl = 'https://www.google.com/maps/dir/';
         const locations: string[] = [];
 
-        // Add start address if provided
         if (this.newRoute.startAddress && this.newRoute.startAddress.trim()) {
             locations.push(encodeURIComponent(this.newRoute.startAddress.trim()));
         }
 
-        // Add all stops in order
         this.newRoute.stops
             .sort((a, b) => a.stopOrder - b.stopOrder)
             .forEach(stop => {
@@ -197,22 +199,18 @@ export class RouteOptimizationComponent implements OnInit {
                 }
             });
 
-        // Add destination address if provided (and different from last stop)
         if (this.newRoute.destinationAddress && this.newRoute.destinationAddress.trim()) {
             const lastLocation = locations[locations.length - 1];
             const encodedDestination = encodeURIComponent(this.newRoute.destinationAddress.trim());
 
-            // Only add destination if it's different from the last location
             if (lastLocation !== encodedDestination) {
                 locations.push(encodedDestination);
             }
         }
 
-        // Generate URL if we have at least 2 locations
         if (locations.length >= 2) {
             this.newRoute.googleMapsUrl = baseUrl + locations.join('/');
         } else if (locations.length === 1) {
-            // If only one location, create a search URL instead
             this.newRoute.googleMapsUrl = `https://www.google.com/maps/search/${locations[0]}`;
         } else {
             this.newRoute.googleMapsUrl = '';
@@ -225,14 +223,12 @@ export class RouteOptimizationComponent implements OnInit {
             return;
         }
 
-        // Ensure all stops have startAddress and destinationAddress
         this.newRoute.stops = this.newRoute.stops.map(stop => ({
             ...stop,
             startAddress: this.newRoute.startAddress || '',
             destinationAddress: this.newRoute.destinationAddress || ''
         }));
 
-        // Ensure Google Maps URL is generated
         if (!this.newRoute.googleMapsUrl) {
             this.updateGoogleMapsUrl();
         }
@@ -267,12 +263,10 @@ export class RouteOptimizationComponent implements OnInit {
         this.selectedRoute = null;
     }
 
-    // Open Google Maps with the route
     openGoogleMaps(route: Route): void {
         this.routeService.openInGoogleMaps(route);
     }
 
-    // Preview Google Maps URL for new route being created
     previewGoogleMaps(): void {
         const hasStartOrStops = (this.newRoute.startAddress && this.newRoute.startAddress.trim()) ||
             this.newRoute.stops.length > 0;
@@ -282,7 +276,6 @@ export class RouteOptimizationComponent implements OnInit {
             return;
         }
 
-        // Generate the URL with current data
         this.updateGoogleMapsUrl();
 
         if (this.newRoute.googleMapsUrl) {
@@ -380,7 +373,6 @@ export class RouteOptimizationComponent implements OnInit {
         }
     }
 
-    // Copy Google Maps URL to clipboard
     copyGoogleMapsUrl(route: Route): void {
         const url = route.googleMapsUrl || this.routeService.generateGoogleMapsUrl(route);
         if (url) {

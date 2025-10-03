@@ -1,6 +1,8 @@
 using FleetManagerPro.API.Data.Repository;
+using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,12 +23,20 @@ namespace FleetManagerPro.API.Controllers
         private readonly IUserRepository _userRepository;
         private readonly PasswordHasher<User> _passwordHasher;
         private readonly IConfiguration _config;
+        private readonly FleetManagerDbContext _context;
+        private readonly ILogger<UsersController> _logger;
 
-        public UsersController(IUserRepository userRepository, IConfiguration config)
+        public UsersController(
+            IUserRepository userRepository,
+            IConfiguration config,
+            FleetManagerDbContext context,
+            ILogger<UsersController> logger)
         {
             _userRepository = userRepository;
             _passwordHasher = new PasswordHasher<User>();
             _config = config;
+            _context = context;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -37,14 +47,62 @@ namespace FleetManagerPro.API.Controllers
             return Ok(userDtos);
         }
 
-        // GET: api/users/drivers - Get only drivers
         [HttpGet("drivers")]
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAllDrivers()
         {
             var users = await _userRepository.GetAllAsync();
-            var drivers = users.Where(u => u.Role == "Driver") // String comparison
+            var drivers = users.Where(u => u.Role == "Driver")
                               .Select(u => MapToResponseDto(u));
             return Ok(drivers);
+        }
+
+        [HttpGet("available")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAvailableDrivers()
+        {
+            try
+            {
+                var today = DateTime.UtcNow.Date;
+
+                var allDrivers = await _context.Users
+                    .Where(u => u.Role == "Driver" && u.Status == "Active")
+                    .ToListAsync();
+
+                var driversOnLeave = await _context.LeaveRequests
+                    .Where(lr => lr.Status == "Approved"
+                              && lr.StartDate.Date <= today
+                              && lr.EndDate.Date >= today)
+                    .Select(lr => lr.DriverId)
+                    .Distinct()
+                    .ToListAsync();
+
+                var todayAttendance = await _context.DriverAttendances
+                    .Where(a => a.Date.Date == today && a.ClockIn != null)
+                    .Select(a => a.DriverId)
+                    .ToListAsync();
+
+                var availableDrivers = allDrivers
+                    .Where(d => !driversOnLeave.Contains(d.Id) && todayAttendance.Contains(d.Id))
+                    .Select(d => new
+                    {
+                        d.Id,
+                        d.Name,
+                        d.Email,
+                        d.Phone,
+                        d.LicenseNumber,
+                        d.LicenseClass,
+                        d.ExperienceYears,
+                        d.SafetyRating
+                    })
+                    .ToList();
+
+                return Ok(availableDrivers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving available drivers");
+                return StatusCode(500, new { message = "Error retrieving available drivers" });
+            }
         }
 
         [HttpGet("{id}")]
@@ -71,7 +129,7 @@ namespace FleetManagerPro.API.Controllers
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Name),
-                new Claim(ClaimTypes.Role, user.Role) // Direct string assignment
+                new Claim(ClaimTypes.Role, user.Role)
             };
 
             var jwtKey = _config["Jwt:Key"];
@@ -101,15 +159,15 @@ namespace FleetManagerPro.API.Controllers
                 id = user.Id,
                 name = user.Name,
                 email = user.Email,
-                role = user.Role, // Direct string assignment
+                role = user.Role,
                 phone = user.Phone,
                 address = user.Address,
                 dateOfBirth = user.DateOfBirth?.ToString("yyyy-MM-dd"),
                 hireDate = user.HireDate?.ToString("yyyy-MM-dd"),
                 emergencyContact = user.EmergencyContact,
                 profileImageUrl = user.ProfileImageUrl,
-                status = user.Status, // Direct string assignment
-                driver = user.Role == "Driver" ? new // String comparison
+                status = user.Status,
+                driver = user.Role == "Driver" ? new
                 {
                     fullName = user.Name,
                     licenseNumber = user.LicenseNumber,
@@ -125,7 +183,6 @@ namespace FleetManagerPro.API.Controllers
             });
         }
 
-        // Enhanced PUT method using UpdateUserDto
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserDto dto)
         {
@@ -136,7 +193,6 @@ namespace FleetManagerPro.API.Controllers
             if (user == null)
                 return NotFound(new { message = "User not found" });
 
-            // Update basic user fields only if provided
             if (!string.IsNullOrWhiteSpace(dto.Name)) user.Name = dto.Name;
             if (!string.IsNullOrWhiteSpace(dto.Email)) user.Email = dto.Email;
             if (!string.IsNullOrWhiteSpace(dto.Phone)) user.Phone = dto.Phone;
@@ -144,17 +200,14 @@ namespace FleetManagerPro.API.Controllers
             if (!string.IsNullOrWhiteSpace(dto.EmergencyContact)) user.EmergencyContact = dto.EmergencyContact;
             if (!string.IsNullOrWhiteSpace(dto.ProfileImageUrl)) user.ProfileImageUrl = dto.ProfileImageUrl;
 
-            // Update dates
             if (dto.DateOfBirth.HasValue) user.DateOfBirth = dto.DateOfBirth.Value;
             if (dto.HireDate.HasValue) user.HireDate = dto.HireDate.Value;
 
-            // Update status if provided - treat as string since DB stores varchar
             if (!string.IsNullOrWhiteSpace(dto.Status))
             {
-                user.Status = dto.Status; // Direct string assignment
+                user.Status = dto.Status;
             }
 
-            // Update driver-specific fields
             if (!string.IsNullOrWhiteSpace(dto.LicenseNumber)) user.LicenseNumber = dto.LicenseNumber;
             if (!string.IsNullOrWhiteSpace(dto.LicenseClass)) user.LicenseClass = dto.LicenseClass;
             if (dto.LicenseExpiry.HasValue) user.LicenseExpiry = dto.LicenseExpiry.Value;
@@ -164,7 +217,6 @@ namespace FleetManagerPro.API.Controllers
             if (dto.IsAvailable.HasValue) user.IsAvailable = dto.IsAvailable.Value;
             if (dto.HasHelper.HasValue) user.HasHelper = dto.HasHelper.Value;
 
-            // Update password if provided
             if (!string.IsNullOrWhiteSpace(dto.Password))
                 user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
 
@@ -174,12 +226,10 @@ namespace FleetManagerPro.API.Controllers
             if (!success)
                 return BadRequest(new { message = "Failed to update user" });
 
-            // Return the updated user as DTO
             var responseDto = MapToResponseDto(user);
             return Ok(responseDto);
         }
 
-        // PATCH: api/users/{id}/status - Quick status update
         [HttpPatch("{id}/status")]
         public async Task<IActionResult> UpdateUserStatus(string id, [FromBody] UpdateStatusDto statusDto)
         {
@@ -187,7 +237,7 @@ namespace FleetManagerPro.API.Controllers
             if (user == null)
                 return NotFound(new { message = "User not found" });
 
-            user.Status = statusDto.Status; // Direct string assignment
+            user.Status = statusDto.Status;
             user.UpdatedAt = DateTime.UtcNow;
 
             var success = await _userRepository.UpdateAsync(user);
@@ -197,7 +247,6 @@ namespace FleetManagerPro.API.Controllers
             return Ok(new { message = "Status updated successfully", status = user.Status });
         }
 
-        // PATCH: api/users/{id}/availability - Quick availability toggle
         [HttpPatch("{id}/availability")]
         public async Task<IActionResult> UpdateDriverAvailability(string id, [FromBody] UpdateAvailabilityDto availabilityDto)
         {
@@ -205,7 +254,7 @@ namespace FleetManagerPro.API.Controllers
             if (user == null)
                 return NotFound(new { message = "User not found" });
 
-            if (user.Role != "Driver") // String comparison
+            if (user.Role != "Driver")
                 return BadRequest(new { message = "User is not a driver" });
 
             user.IsAvailable = availabilityDto.IsAvailable;
@@ -232,7 +281,6 @@ namespace FleetManagerPro.API.Controllers
             return Ok(new { message = "User deleted successfully" });
         }
 
-        // Helper method to map User to UserResponseDto
         private UserResponseDto MapToResponseDto(User user)
         {
             return new UserResponseDto
@@ -240,14 +288,14 @@ namespace FleetManagerPro.API.Controllers
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email,
-                Role = user.Role, // Direct string assignment
+                Role = user.Role,
                 Phone = user.Phone ?? string.Empty,
                 Address = user.Address ?? string.Empty,
                 DateOfBirth = user.DateOfBirth,
                 HireDate = user.HireDate,
                 EmergencyContact = user.EmergencyContact ?? string.Empty,
                 ProfileImageUrl = user.ProfileImageUrl ?? string.Empty,
-                Status = user.Status, // Direct string assignment
+                Status = user.Status,
                 LicenseNumber = user.LicenseNumber ?? string.Empty,
                 LicenseClass = user.LicenseClass ?? string.Empty,
                 LicenseExpiry = user.LicenseExpiry,

@@ -354,6 +354,12 @@
         border: 1px solid #c41e3a;
     }
 
+    .availability-badge.on-leave {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffc107;
+    }
+
 .availability-subtitle {
     font-size: 10px;
     color: #666;

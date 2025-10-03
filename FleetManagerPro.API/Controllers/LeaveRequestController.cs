@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using FleetManagerPro.API.Services;
 using FleetManagerPro.API.Models;
 using FleetManagerPro.API.DTOs;
+using FleetManagerPro.API.Data;
 
 namespace FleetManagerPro.API.Controllers
 {
@@ -13,11 +15,16 @@ namespace FleetManagerPro.API.Controllers
     {
         private readonly ILeaveRequestService _leaveRequestService;
         private readonly ILogger<LeaveRequestsController> _logger;
+        private readonly FleetManagerDbContext _context;
 
-        public LeaveRequestsController(ILeaveRequestService leaveRequestService, ILogger<LeaveRequestsController> logger)
+        public LeaveRequestsController(
+            ILeaveRequestService leaveRequestService,
+            ILogger<LeaveRequestsController> logger,
+            FleetManagerDbContext context)
         {
             _leaveRequestService = leaveRequestService;
             _logger = logger;
+            _context = context;
         }
 
         [HttpGet]
@@ -49,6 +56,31 @@ namespace FleetManagerPro.API.Controllers
                 return StatusCode(500, new { message = "Error retrieving leave requests" });
             }
         }
+
+        [HttpGet("driver/{driverId}/active")]
+        public async Task<IActionResult> GetDriverActiveLeave(string driverId)
+        {
+            try
+            {
+                var today = DateTime.UtcNow.Date;
+
+                var activeLeaveRequests = await _context.LeaveRequests
+                    .Include(lr => lr.Driver)
+                    .Where(lr => lr.DriverId == driverId
+                              && lr.Status == "Approved"
+                              && lr.StartDate.Date <= today
+                              && lr.EndDate.Date >= today)
+                    .ToListAsync();
+
+                return Ok(activeLeaveRequests);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting active leave for driver {DriverId}", driverId);
+                return StatusCode(500, new { message = "Error retrieving active leave requests" });
+            }
+        }
+
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetLeaveRequestById(string id)
