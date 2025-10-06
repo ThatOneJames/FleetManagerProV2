@@ -53,10 +53,10 @@ namespace FleetManager.Controllers
                 // FIXED: Create claims WITHOUT duplicates - use only the standard types
                 var claims = new[]
                 {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.Name),
-                    new Claim(ClaimTypes.Role, user.Role)
-                };
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Name),
+            new Claim(ClaimTypes.Role, user.Role)
+        };
 
                 var jwtKey = _config["Jwt:Key"];
                 var jwtIssuer = _config["Jwt:Issuer"];
@@ -97,22 +97,36 @@ namespace FleetManager.Controllers
                     name = user.Name,
                     email = user.Email,
                     role = user.Role,
+                    status = user.Status,
                     phone = user.Phone,
                     address = user.Address,
-                    dateOfBirth = user.DateOfBirth?.ToString("yyyy-MM-dd"),
-                    hireDate = user.HireDate?.ToString("yyyy-MM-dd"),
+                    dateOfBirth = user.DateOfBirth,
                     emergencyContact = user.EmergencyContact,
                     profileImageUrl = user.ProfileImageUrl,
+                    vehicleId = user.CurrentVehicleId,
+
+                    licenseNumber = user.LicenseNumber,
+                    licenseClass = user.LicenseClass,
+                    licenseExpiry = user.LicenseExpiry,
+                    experienceYears = user.ExperienceYears,
+                    safetyRating = user.SafetyRating,
+
+                    createdAt = user.CreatedAt,
+                    updatedAt = user.UpdatedAt,
+
                     driver = user.Role == "Driver" ? new
                     {
                         fullName = user.Name,
                         licenseNumber = user.LicenseNumber,
                         licenseClass = user.LicenseClass,
+                        licenseExpiry = user.LicenseExpiry,
                         contactNumber = user.Phone,
                         experienceYears = user.ExperienceYears,
                         safetyRating = user.SafetyRating,
                         totalMilesDriven = user.TotalMilesDriven,
-                        currentVehicleId = user.CurrentVehicleId
+                        currentVehicleId = user.CurrentVehicleId,
+                        isAvailable = user.IsAvailable,
+                        hasHelper = user.HasHelper
                     } : null
                 });
             }
@@ -123,6 +137,7 @@ namespace FleetManager.Controllers
                 return StatusCode(500, new { message = "Internal server error during authentication" });
             }
         }
+
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] FleetManagerPro.API.DTOs.UserDto userDto)

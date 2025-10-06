@@ -1,4 +1,4 @@
-using FleetManagerPro.API.Data.Repository;
+﻿using FleetManagerPro.API.Data.Repository;
 using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -127,10 +127,10 @@ namespace FleetManagerPro.API.Controllers
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Name),
-                new Claim(ClaimTypes.Role, user.Role)
-            };
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(ClaimTypes.Name, user.Name),
+        new Claim(ClaimTypes.Role, user.Role)
+    };
 
             var jwtKey = _config["Jwt:Key"];
             if (string.IsNullOrEmpty(jwtKey))
@@ -167,11 +167,24 @@ namespace FleetManagerPro.API.Controllers
                 emergencyContact = user.EmergencyContact,
                 profileImageUrl = user.ProfileImageUrl,
                 status = user.Status,
+
+                // ✅ ADD THESE LICENSE FIELDS AT ROOT LEVEL
+                licenseNumber = user.LicenseNumber,
+                licenseClass = user.LicenseClass,
+                licenseExpiry = user.LicenseExpiry?.ToString("yyyy-MM-dd"),
+                experienceYears = user.ExperienceYears,
+                safetyRating = user.SafetyRating,
+                totalMilesDriven = user.TotalMilesDriven,
+                isAvailable = user.IsAvailable,
+                hasHelper = user.HasHelper,
+
+                // Keep the nested driver object for backward compatibility
                 driver = user.Role == "Driver" ? new
                 {
                     fullName = user.Name,
                     licenseNumber = user.LicenseNumber,
                     licenseClass = user.LicenseClass,
+                    licenseExpiry = user.LicenseExpiry?.ToString("yyyy-MM-dd"),
                     contactNumber = user.Phone,
                     experienceYears = user.ExperienceYears,
                     safetyRating = user.SafetyRating,
@@ -182,6 +195,7 @@ namespace FleetManagerPro.API.Controllers
                 } : null
             });
         }
+
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserDto dto)

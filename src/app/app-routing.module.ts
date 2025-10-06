@@ -17,6 +17,7 @@ import { RoutesTripsComponent } from './components/driver/routes-trips/routes-tr
 import { DriverAttendanceComponent } from './components/driver/attendance/attendance.component';
 import { LeaveRequestsComponent } from './components/driver/leave-requests/leave-requests.component';
 import { NotificationsComponent } from './components/driver/notifications/notifications.component';
+import { DriverProfileComponent } from './components/driver/profile/profile.component';
 
 
 // Auth Guard (to be implemented)
@@ -54,6 +55,7 @@ const routes: Routes = [
        { path: 'attendance', component: DriverAttendanceComponent },
        { path: 'leave', component: LeaveRequestsComponent },
        { path: 'notifications', component: NotificationsComponent },
+       { path: 'profile', component: DriverProfileComponent },
        { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
         ]
     }

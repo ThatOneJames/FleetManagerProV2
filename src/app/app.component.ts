@@ -54,7 +54,8 @@ export class AppComponent implements OnInit {
         {
             title: 'Personal',
             items: [
-                { title: 'Notifications', icon: 'notifications', route: '/driver/notifications' }
+                { title: 'Notifications', icon: 'notifications', route: '/driver/notifications' },
+                { title: 'Profile', icon: 'person', route: '/driver/profile' }
             ]
         }
     ];

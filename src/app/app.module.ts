@@ -45,6 +45,7 @@ import { LeaveRequestsComponent } from './components/driver/leave-requests/leave
 import { UserComponent } from './components/user/user.component';
 import { DriverAttendanceComponent } from './components//driver/attendance/attendance.component';
 import { LeaveManagementComponent } from './components/admin/leave-management/leave-management.component';
+import { DriverProfileComponent } from './components/driver/profile/profile.component';
 
 // Services
 import { AuthService } from './services/auth.service';
@@ -66,7 +67,8 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
         SidebarComponent,
         LeaveRequestsComponent,
         UserComponent,
-        LeaveManagementComponent
+        LeaveManagementComponent,
+        DriverProfileComponent
     ],
     imports: [
         BrowserModule,

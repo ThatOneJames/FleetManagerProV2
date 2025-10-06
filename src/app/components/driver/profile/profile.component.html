@@ -1,61 +1,137 @@
-﻿<!-- profile.component.html -->
-<div class="profile-container">
-    <h1>Driver Profile</h1>
+﻿<div class="profile-container">
+    <!-- Loading Spinner -->
+    <div *ngIf="isLoading" class="loading-overlay">
+        <mat-spinner diameter="50"></mat-spinner>
+    </div>
 
-    <form (ngSubmit)="saveChanges()" *ngIf="isEditing; else viewMode">
-        <div class="profile-section">
-            <label>
-                Name:
-                <input type="text" [(ngModel)]="driverDetails.name" name="name" required />
-            </label>
-            <label>
-                Email:
-                <input type="email" [(ngModel)]="driverDetails.email" name="email" required />
-            </label>
-            <label>
-                Phone:
-                <input type="text" [(ngModel)]="driverDetails.phone" name="phone" />
-            </label>
-            <label>
-                Address:
-                <input type="text" [(ngModel)]="driverDetails.address" name="address" />
-            </label>
-            <label>
-                Date of Birth:
-                <input type="date" [(ngModel)]="driverDetails.dateOfBirth" name="dob" />
-            </label>
-            <label>
-                Hire Date:
-                <input type="date" [(ngModel)]="driverDetails.hireDate" name="hireDate" />
-            </label>
-            <label>
-                Emergency Contact:
-                <input type="text" [(ngModel)]="driverDetails.emergencyContact" name="emergencyContact" />
-            </label>
-            <label>
-                Profile Image URL:
-                <input type="text" [(ngModel)]="driverDetails.profileImageUrl" name="profileImageUrl" />
-            </label>
-        </div>
+    <!-- Header -->
+    <div class="profile-header">
+        <h1><mat-icon>person</mat-icon> My Profile</h1>
+        <button mat-raised-button
+                [color]="isEditing ? 'warn' : 'primary'"
+                (click)="toggleEdit()">
+            <mat-icon>{{ isEditing ? 'close' : 'edit' }}</mat-icon>
+            {{ isEditing ? 'Cancel' : 'Edit Profile' }}
+        </button>
+    </div>
 
-        <button type="submit">Save</button>
-        <button type="button" (click)="toggleEdit()">Cancel</button>
-    </form>
+    <!-- Messages -->
+    <mat-card *ngIf="errorMessage" class="message-card error">
+        <mat-icon>error</mat-icon>
+        {{ errorMessage }}
+    </mat-card>
 
-    <!-- Read-only mode -->
-    <ng-template #viewMode>
-        <div class="profile-section" *ngIf="driverDetails">
-            <p><strong>ID:</strong> {{ driverDetails.id }}</p>
-            <p><strong>Name:</strong> {{ driverDetails.name }}</p>
-            <p><strong>Email:</strong> {{ driverDetails.email }}</p>
-            <p><strong>Phone:</strong> {{ driverDetails.phone ?? 'N/A' }}</p>
-            <p><strong>Address:</strong> {{ driverDetails.address || 'N/A' }}</p>
-            <p><strong>Date of Birth:</strong> {{ driverDetails.dateOfBirth || 'N/A' }}</p>
-            <p><strong>Hire Date:</strong> {{ driverDetails.hireDate || 'N/A' }}</p>
-            <p><strong>Emergency Contact:</strong> {{ driverDetails.emergencyContact || 'N/A' }}</p>
-            <p><strong>Profile Image:</strong> {{ driverDetails.profileImageUrl || 'N/A' }}</p>
-        </div>
-        <button (click)="toggleEdit()">Edit</button>
-    </ng-template>
+    <mat-card *ngIf="successMessage" class="message-card success">
+        <mat-icon>check_circle</mat-icon>
+        {{ successMessage }}
+    </mat-card>
 
+    <!-- Profile Form -->
+    <mat-card class="profile-card">
+        <form [formGroup]="profileForm" (ngSubmit)="saveChanges()">
+
+            <!-- Personal Information Section -->
+            <div class="section-header">
+                <mat-icon>person_outline</mat-icon>
+                <h2>Personal Information</h2>
+            </div>
+
+            <div class="form-grid">
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Full Name</mat-label>
+                    <input matInput formControlName="name" [readonly]="!isEditing">
+                    <mat-icon matPrefix>badge</mat-icon>
+                    <mat-error *ngIf="name?.hasError('required')">Name is required</mat-error>
+                    <mat-error *ngIf="name?.hasError('minlength')">Name must be at least 2 characters</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Email</mat-label>
+                    <input matInput type="email" formControlName="email" [readonly]="!isEditing">
+                    <mat-icon matPrefix>email</mat-icon>
+                    <mat-error *ngIf="email?.hasError('required')">Email is required</mat-error>
+                    <mat-error *ngIf="email?.hasError('email')">Please enter a valid email</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>Phone Number</mat-label>
+                    <input matInput formControlName="phone" [readonly]="!isEditing">
+                    <mat-icon matPrefix>phone</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>Date of Birth</mat-label>
+                    <input matInput type="date" formControlName="dateOfBirth" [readonly]="!isEditing">
+                    <mat-icon matPrefix>cake</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Address</mat-label>
+                    <textarea matInput rows="2" formControlName="address" [readonly]="!isEditing"></textarea>
+                    <mat-icon matPrefix>home</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Emergency Contact</mat-label>
+                    <input matInput formControlName="emergencyContact" [readonly]="!isEditing">
+                    <mat-icon matPrefix>emergency</mat-icon>
+                </mat-form-field>
+            </div>
+
+            <!-- Driver License Section -->
+            <div class="section-header">
+                <mat-icon>directions_car</mat-icon>
+                <h2>Driver License Information</h2>
+            </div>
+
+            <div class="form-grid">
+                <mat-form-field appearance="outline">
+                    <mat-label>License Number</mat-label>
+                    <input matInput formControlName="licenseNumber" [readonly]="!isEditing">
+                    <mat-icon matPrefix>credit_card</mat-icon>
+                </mat-form-field>
+
+                <!-- LICENSE CLASS - DROPDOWN WHEN EDITING, TEXT WHEN READONLY -->
+                <mat-form-field appearance="outline" *ngIf="!isEditing">
+                    <mat-label>License Class</mat-label>
+                    <input matInput formControlName="licenseClass" [readonly]="true">
+                    <mat-icon matPrefix>category</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" *ngIf="isEditing">
+                    <mat-label>License Class</mat-label>
+                    <mat-select formControlName="licenseClass">
+                        <mat-option value="">Select License Class</mat-option>
+                        <mat-option *ngFor="let licenseClass of licenseClasses" [value]="licenseClass">
+                            {{ licenseClass }}
+                        </mat-option>
+                    </mat-select>
+                    <mat-icon matPrefix>category</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>License Expiry</mat-label>
+                    <input matInput type="date" formControlName="licenseExpiry" [readonly]="!isEditing">
+                    <mat-icon matPrefix>event</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>Experience (Years)</mat-label>
+                    <input matInput type="number" formControlName="experienceYears" [readonly]="!isEditing">
+                    <mat-icon matPrefix>timeline</mat-icon>
+                </mat-form-field>
+            </div>
+
+            <!-- Action Buttons (Only show in edit mode) -->
+            <div class="form-actions" *ngIf="isEditing">
+                <button mat-raised-button type="button" (click)="toggleEdit()">
+                    Cancel
+                </button>
+                <button mat-raised-button color="primary" type="submit" [disabled]="profileForm.invalid || isLoading">
+                    <mat-icon>save</mat-icon>
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </mat-card>
 </div>
