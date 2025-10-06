@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { User } from './models/user.model';
+import { MatSidenav } from '@angular/material/sidenav';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 
 @Component({
     selector: 'app-root',
@@ -9,10 +11,13 @@ import { User } from './models/user.model';
     styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
+    @ViewChild('sidenav') sidenav!: MatSidenav;
+
     title = 'FleetManager Pro';
     currentUser: User | null = null;
     isLoading = true;
     sidebarOpen = true;
+    isMobile = false;
 
     // Admin navigation
     adminNavigationItems = [
@@ -30,10 +35,6 @@ export class AppComponent implements OnInit {
                 { title: 'Maintenance', icon: 'build', route: '/admin/maintenance' }
             ]
         },
-        {
-            title: 'System',
-            items: [{ title: 'Settings', icon: 'settings', route: '/admin/settings' }]
-        }
     ];
 
     // Driver navigation
@@ -53,7 +54,6 @@ export class AppComponent implements OnInit {
         {
             title: 'Personal',
             items: [
-                { title: 'Profile', icon: 'person', route: '/driver/profile' },
                 { title: 'Notifications', icon: 'notifications', route: '/driver/notifications' }
             ]
         }
@@ -61,10 +61,27 @@ export class AppComponent implements OnInit {
 
     constructor(
         private authService: AuthService,
-        private router: Router
+        private router: Router,
+        private breakpointObserver: BreakpointObserver
     ) { }
 
     ngOnInit(): void {
+        // Detect mobile/tablet
+        this.breakpointObserver.observe([
+            Breakpoints.Handset,
+            Breakpoints.Tablet
+        ]).subscribe(result => {
+            this.isMobile = result.matches;
+            this.sidebarOpen = !this.isMobile; // Auto-close on mobile
+        });
+
+        // Close sidebar on route change (mobile only)
+        this.router.events.subscribe(event => {
+            if (event instanceof NavigationEnd && this.isMobile && this.sidenav) {
+                this.sidenav.close();
+            }
+        });
+
         // Subscribe to authentication state changes
         this.authService.currentUser$.subscribe({
             next: (user: User | null) => {
@@ -76,7 +93,7 @@ export class AppComponent implements OnInit {
                 } else {
                     // Redirect to appropriate dashboard based on role
                     if (this.router.url === '/login' || this.router.url === '/') {
-                        const defaultRoute = user.role === 'Admin' ? '/admin/dashboard' : '/driver/dashboard'; // String comparison
+                        const defaultRoute = user.role === 'Admin' ? '/admin/dashboard' : '/driver/dashboard';
                         this.router.navigate([defaultRoute]);
                     }
                 }
@@ -90,13 +107,19 @@ export class AppComponent implements OnInit {
     }
 
     get navigationItems() {
-        return this.currentUser?.role === 'Admin' // String comparison
+        return this.currentUser?.role === 'Admin'
             ? this.adminNavigationItems
             : this.driverNavigationItems;
     }
 
+    get sidenavMode() {
+        return this.isMobile ? 'over' : 'side';
+    }
+
     toggleSidebar(): void {
-        this.sidebarOpen = !this.sidebarOpen;
+        if (this.sidenav) {
+            this.sidenav.toggle();
+        }
     }
 
     onLogout(): void {

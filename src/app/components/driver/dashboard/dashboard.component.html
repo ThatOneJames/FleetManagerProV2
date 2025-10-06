@@ -1,17 +1,16 @@
 ﻿<div class="p-6 space-y-6">
 
-    <!-- Header -->
     <div class="flex items-start justify-between">
         <div>
-            <h1 class="mb-2">Welcome back, John!</h1>
+            <h1 class="mb-2">Welcome back, {{ getDriverName() }}!</h1>
             <p class="text-gray-500">Here's your dashboard for today</p>
         </div>
         <div class="flex items-center gap-3">
             <span class="px-2 py-1 bg-gray-200 rounded flex items-center gap-1">
-                🚚 V001
+                🚚 {{ assignedVehicle }}
             </span>
             <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
-                👤
+                {{ getDriverName().charAt(0).toUpperCase() }}
             </div>
         </div>
     </div>
@@ -43,26 +42,36 @@
     <!-- Current Trip -->
     <div class="p-4 border rounded shadow">
         <h3 class="font-medium mb-2">Current Trip</h3>
-        <div class="flex justify-between mb-3">
-            <div>
-                <div class="font-medium">{{ currentTrip.destination }}</div>
-                <div class="text-gray-500 text-sm">ETA: {{ currentTrip.estimatedArrival }}</div>
+
+        <div *ngIf="currentTrip; else noTrip">
+            <div class="flex justify-between mb-3">
+                <div>
+                    <div class="font-medium">{{ currentTrip.destination }}</div>
+                    <div class="text-gray-500 text-sm">ETA: {{ currentTrip.estimatedArrival }}</div>
+                </div>
+                <span class="px-2 py-1 bg-gray-200 rounded">{{ currentTrip.distance }}</span>
             </div>
-            <span class="px-2 py-1 bg-gray-200 rounded">{{ currentTrip.distance }}</span>
+
+            <div *ngFor="let stop of currentTrip.stops; let i = index" class="flex items-center gap-3 mb-2">
+                <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                     [ngClass]="getStatusColor(stop.status)">
+                    {{ i + 1 }}
+                </div>
+                <div>
+                    <div class="text-sm">{{ stop.address }}</div>
+                    <span class="px-1 py-0.5 text-xs rounded" [ngClass]="getStatusColor(stop.status)">
+                        {{ stop.status }}
+                    </span>
+                </div>
+            </div>
         </div>
 
-        <div *ngFor="let stop of currentTrip.stops; let i = index" class="flex items-center gap-3 mb-2">
-            <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs"
-                 [ngClass]="getStatusColor(stop.status)">
-                {{ i + 1 }}
+        <ng-template #noTrip>
+            <div class="text-center py-8 text-gray-500">
+                <p>No active trip at the moment</p>
+                <p class="text-sm">Your assigned routes will appear here</p>
             </div>
-            <div>
-                <div class="text-sm">{{ stop.address }}</div>
-                <span class="px-1 py-0.5 text-xs rounded" [ngClass]="getStatusColor(stop.status)">
-                    {{ stop.status }}
-                </span>
-            </div>
-        </div>
+        </ng-template>
     </div>
 
     <!-- Today's Schedule -->

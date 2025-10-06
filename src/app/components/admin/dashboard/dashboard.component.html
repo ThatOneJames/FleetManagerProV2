@@ -1,28 +1,48 @@
-<div class="dashboard-container">
+﻿<div class="dashboard-container">
+    <!-- Loading Overlay -->
+    <div *ngIf="isLoading" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Loading dashboard data...</p>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="error-banner">
+        <span>⚠️ {{ errorMessage }}</span>
+        <button (click)="refreshData()">Retry</button>
+    </div>
 
     <!-- Main Content -->
     <main class="main-content">
         <header>
-            <h1>Fleet Dashboard</h1>
-            <p class="subtitle">Real-time overview of your fleet operations</p>
+            <div>
+                <h1>Fleet Dashboard</h1>
+                <p class="subtitle">Real-time overview of your fleet operations</p>
+            </div>
+            <button class="refresh-btn" (click)="refreshData()" [disabled]="isLoading">
+                <span class="icon">🔄</span> Refresh
+            </button>
         </header>
 
         <!-- Stats Cards -->
         <section class="stats-cards">
             <div class="card">
-                <h2>25</h2>
+                <div class="icon">🚗</div>
+                <h2>{{ stats.totalVehicles }}</h2>
                 <p>Total Vehicles</p>
             </div>
             <div class="card">
-                <h2>18</h2>
+                <div class="icon">👥</div>
+                <h2>{{ stats.totalDrivers }}</h2>
                 <p>Active Drivers</p>
             </div>
             <div class="card">
-                <h2>12</h2>
+                <div class="icon">🗺️</div>
+                <h2>{{ stats.activeRoutes }}</h2>
                 <p>Active Routes</p>
             </div>
-            <div class="card">
-                <h2>3</h2>
+            <div class="card maintenance">
+                <div class="icon">🔧</div>
+                <h2>{{ stats.maintenanceDue }}</h2>
                 <p>Maintenance Due</p>
             </div>
         </section>
@@ -30,33 +50,38 @@
         <!-- Vehicle Status -->
         <section class="panel">
             <h2>Vehicle Status</h2>
-            <table>
+            <div *ngIf="displayVehicles.length === 0" class="empty-state">
+                No vehicles available
+            </div>
+            <table *ngIf="displayVehicles.length > 0">
                 <thead>
                     <tr>
-                        <th>Plate</th>
+                        <th>License Plate</th>
                         <th>Driver</th>
-                        <th>Route</th>
-                        <th>Progress</th>
+                        <th>Location</th>
+                        <th>Fuel Level</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>ABC-123</td>
-                        <td>John Smith</td>
-                        <td>Downtown Route</td>
-                        <td>85%</td>
-                    </tr>
-                    <tr>
-                        <td>XYZ-456</td>
-                        <td>Jane Doe</td>
-                        <td>Service Center</td>
-                        <td>45%</td>
-                    </tr>
-                    <tr>
-                        <td>DEF-789</td>
-                        <td>Mike Johnson</td>
-                        <td>Highway 101</td>
-                        <td>92%</td>
+                    <tr *ngFor="let vehicle of displayVehicles">
+                        <td><strong>{{ vehicle.licensePlate }}</strong></td>
+                        <td>{{ vehicle.driver }}</td>
+                        <td>{{ vehicle.location }}</td>
+                        <td>
+                            <div class="fuel-bar">
+                                <div class="fuel-fill"
+                                     [style.width.%]="vehicle.fuelLevel"
+                                     [ngClass]="getFuelLevelColor(vehicle.fuelLevel)">
+                                </div>
+                                <span>{{ vehicle.fuelLevel }}%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-badge" [ngClass]="getStatusColor(vehicle.status)">
+                                {{ vehicle.status | titlecase }}
+                            </span>
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -65,18 +90,42 @@
         <!-- Recent Activities -->
         <section class="panel">
             <h2>Recent Activities</h2>
-            <ul class="activity-list">
-                <li>John Smith completed Route #RT001 <span>Just now</span></li>
-                <li>Vehicle ABC-123 scheduled for maintenance <span>5m ago</span></li>
-                <li>Jane Doe checked in for duty <span>10m ago</span></li>
+            <div *ngIf="recentActivities.length === 0" class="empty-state">
+                No recent activities
+            </div>
+            <ul class="activity-list" *ngIf="recentActivities.length > 0">
+                <li *ngFor="let activity of recentActivities">
+                    <div class="activity-content">
+                        <span class="activity-icon" [ngClass]="activity.color">
+                            {{ activity.icon === 'check_circle' ? '✓' : activity.icon === 'build' ? '🔧' : '👤' }}
+                        </span>
+                        <span>{{ activity.message }}</span>
+                    </div>
+                    <span class="activity-time">{{ getRelativeTime(activity.timestamp) }}</span>
+                </li>
             </ul>
         </section>
 
-        <!-- Fuel Consumption -->
         <section class="panel">
-            <h2>Weekly Fuel Consumption</h2>
-            <div class="chart-placeholder">[ Chart visualization here ]</div>
-            <p class="fuel-total">Total this week: <strong>2,456.78 gallons</strong></p>
+            <h2>Fleet Summary</h2>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-label">Avg Fuel Level</div>
+                    <div class="summary-value">{{ stats.fuelConsumption | number:'1.0-0' }}%</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Total Mileage</div>
+                    <div class="summary-value">{{ stats.totalMileage | number }} km</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Vehicles Active</div>
+                    <div class="summary-value">{{ chartData.vehicleStatus[0].value }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Needs Attention</div>
+                    <div class="summary-value">{{ stats.maintenanceDue }}</div>
+                </div>
+            </div>
         </section>
     </main>
 </div>

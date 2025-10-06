@@ -9,12 +9,13 @@ import {
     CreateMaintenanceTaskDto,
     UpdateMaintenanceTaskDto
 } from '../models/maintenance.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({
     providedIn: 'root'
 })
 export class MaintenanceService {
-    private apiUrl = 'http://localhost:5129/api/maintenance';
+    private readonly apiUrl = `${environment.apiUrl}/maintenance`;
 
     constructor(private http: HttpClient) { }
 

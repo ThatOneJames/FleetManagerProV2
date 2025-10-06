@@ -7,3 +7,10 @@ const firebaseConfig = {
     appId: "1:855420387222:web:0024156eb6354ddac9e7b7",
     measurementId: "G-5LEGRBK597"
 };
+
+export const environment = {
+    production: true,
+    apiUrl: 'https://fleetmanagerprov2-production.up.railway.app/api',
+    appName: 'Fleet Manager Pro',
+    firebaseConfig: firebaseConfig
+};

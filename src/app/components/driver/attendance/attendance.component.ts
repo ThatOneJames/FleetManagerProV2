@@ -54,7 +54,7 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
     async testDebugClaims(): Promise<void> {
         try {
             console.log('Testing debug claims endpoint...');
-            const response = await this.http.get('http://localhost:5129/api/attendance/debug/claims').toPromise();
+            const response = await this.http.get('https://fleetmanagerprov2-production.up.railway.app/api/attendance/debug/claims').toPromise();
             console.log('✅ Debug claims response:', response);
         } catch (error) {
             console.error('❌ Debug claims error:', error);

@@ -16,10 +16,10 @@
     <div *ngIf="currentUser" class="main-layout">
 
         <!-- Sidebar -->
-        <mat-sidenav-container class="sidenav-container">
+        <mat-sidenav-container class="sidenav-container" [hasBackdrop]="isMobile">
             <mat-sidenav #sidenav
                          [opened]="sidebarOpen"
-                         mode="side"
+                         [mode]="sidenavMode"
                          class="sidebar"
                          [fixedInViewport]="true">
 
@@ -35,6 +35,7 @@
                         </div>
                     </div>
                 </div>
+
                 <!-- Navigation Menu -->
                 <div class="nav-content">
                     <div *ngFor="let group of navigationItems" class="nav-group">
@@ -50,6 +51,7 @@
                         </mat-nav-list>
                     </div>
                 </div>
+
                 <!-- Sidebar Footer -->
                 <div class="sidebar-footer">
                     <mat-divider></mat-divider>
@@ -70,6 +72,7 @@
                     </button>
                 </div>
             </mat-sidenav>
+
             <!-- Main Content Area -->
             <mat-sidenav-content class="main-content">
                 <!-- Top Toolbar -->
@@ -79,22 +82,22 @@
                             class="menu-button">
                         <mat-icon>menu</mat-icon>
                     </button>
+
+                    <span class="toolbar-title" *ngIf="isMobile">FleetManager</span>
                     <span class="toolbar-spacer"></span>
+
                     <!-- User Actions -->
                     <button mat-icon-button [matMenuTriggerFor]="userMenu">
                         <mat-icon>account_circle</mat-icon>
                     </button>
                     <mat-menu #userMenu="matMenu">
-                        <button mat-menu-item routerLink="/profile">
-                            <mat-icon>person</mat-icon>
-                            <span>Profile</span>
-                        </button>
                         <button mat-menu-item (click)="onLogout()">
                             <mat-icon>logout</mat-icon>
                             <span>Logout</span>
                         </button>
                     </mat-menu>
                 </mat-toolbar>
+
                 <!-- Page Content -->
                 <div class="page-content">
                     <router-outlet></router-outlet>

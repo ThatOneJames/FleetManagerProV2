@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { User } from '../models/user.model';
+import { environment } from '../../environments/environment';
 
 export interface LoginResponse {
     token: any;
@@ -39,7 +40,7 @@ export interface LoginResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-    private readonly apiUrl = 'http://localhost:5129/api/auth';
+    private readonly apiUrl = `${environment.apiUrl}/auth`;
     private currentUserSubject = new BehaviorSubject<User | null>(null);
     public currentUser$ = this.currentUserSubject.asObservable();
 
@@ -102,11 +103,10 @@ export class AuthService {
                 throw new Error('Token not found');
             }
 
-            // Store token
+            // Debug
             localStorage.setItem('token', tokenString);
             console.log('💾 Token stored in localStorage');
 
-            // Verify token storage immediately
             const storedToken = localStorage.getItem('token');
             console.log('✅ Verification - token retrieved from storage:', storedToken ? 'Success' : 'Failed');
 

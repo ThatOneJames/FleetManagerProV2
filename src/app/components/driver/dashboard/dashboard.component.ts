@@ -1,44 +1,348 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Subject, forkJoin, of } from 'rxjs';
+import { takeUntil, catchError } from 'rxjs/operators';
+import { AuthService } from '../../../services/auth.service';
+import { RouteService } from '../../../services/route.service';
+import { AttendanceService } from '../../../services/attendance.service';
+import { LeaveRequestService } from '../../../services/leaverequest.service';
+import { environment } from '../../../../environments/environment';
+
+interface TripStop {
+    address: string;
+    status: 'completed' | 'current' | 'pending';
+}
+
+interface CurrentTrip {
+    destination: string;
+    estimatedArrival: string;
+    distance: string;
+    stops: TripStop[];
+}
+
+interface ScheduleItem {
+    time: string;
+    task: string;
+    status: 'completed' | 'in-progress' | 'pending';
+}
+
+interface Notification {
+    id: number;
+    message: string;
+    time: string;
+    priority: 'high' | 'medium' | 'low';
+}
+
+interface DriverStats {
+    milesThisWeek: number;
+    tripsCompleted: number;
+    onTimeDeliveries: number;
+    fuelEfficiency: number;
+    hoursWorked: number;
+}
 
 @Component({
     selector: 'app-driver-dashboard',
     templateUrl: './dashboard.component.html',
     styleUrls: ['./dashboard.component.css']
 })
-export class DriverDashboardComponent {
+export class DriverDashboardComponent implements OnInit, OnDestroy {
+    private destroy$ = new Subject<void>();
 
-    currentTrip = {
-        destination: "Downtown Hub",
-        estimatedArrival: "2:45 PM",
-        distance: "12.5 miles",
-        stops: [
-            { address: "123 Main St", status: "completed" },
-            { address: "456 Oak Ave", status: "current" },
-            { address: "789 Pine St", status: "pending" }
-        ]
+    currentUser: any = null;
+    currentTrip: CurrentTrip | null = null;
+    todaySchedule: ScheduleItem[] = [];
+    notifications: Notification[] = [];
+    driverStats: DriverStats = {
+        milesThisWeek: 0,
+        tripsCompleted: 0,
+        onTimeDeliveries: 0,
+        fuelEfficiency: 0,
+        hoursWorked: 0
     };
 
-    todaySchedule = [
-        { time: "9:00 AM", task: "Vehicle Inspection", status: "completed" },
-        { time: "9:30 AM", task: "Route: Downtown Circuit", status: "in-progress" },
-        { time: "2:00 PM", task: "Lunch Break", status: "pending" },
-        { time: "3:00 PM", task: "Route: Industrial Zone", status: "pending" },
-        { time: "6:00 PM", task: "End of Shift", status: "pending" }
-    ];
+    isLoading = true;
+    errorMessage = '';
 
-    notifications = [
-        { id: 1, message: "New route assigned for tomorrow", time: "10 min ago", priority: "medium" },
-        { id: 2, message: "Vehicle inspection due next week", time: "1 hour ago", priority: "high" },
-        { id: 3, message: "Schedule updated for Friday", time: "2 hours ago", priority: "low" }
-    ];
+    assignedVehicle: string = 'Not Assigned';
 
-    driverStats = {
-        milesThisWeek: 245,
-        tripsCompleted: 18,
-        onTimeDeliveries: 16,
-        fuelEfficiency: 8.4,
-        hoursWorked: 32
-    };
+    constructor(
+        private http: HttpClient,
+        private authService: AuthService,
+        private routeService: RouteService,
+        private attendanceService: AttendanceService,
+        private leaveRequestService: LeaveRequestService
+    ) { }
+
+    ngOnInit(): void {
+        this.loadCurrentUser();
+        this.loadDashboardData();
+    }
+
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
+    }
+
+    private loadCurrentUser(): void {
+        const user = this.authService.getCurrentUser();
+        if (user) {
+            this.currentUser = user;
+        }
+    }
+
+    private getHttpOptions() {
+        const token = this.authService.getToken();
+        return {
+            headers: new HttpHeaders({
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            })
+        };
+    }
+
+    private loadDashboardData(): void {
+        this.isLoading = true;
+
+        forkJoin({
+            routes: this.routeService.getAllRoutes().pipe(
+                catchError(err => {
+                    console.error('Error loading routes:', err);
+                    return of([]);
+                })
+            ),
+            attendance: this.attendanceService.getMyTodayAttendance().pipe(
+                catchError(err => {
+                    console.error('Error loading attendance:', err);
+                    return of(null);
+                })
+            ),
+            leaveRequests: this.http.get<any[]>(`${environment.apiUrl}/leaverequests/driver/${this.currentUser?.id}/active`, this.getHttpOptions()).pipe(
+                catchError(err => {
+                    console.error('Error loading leave requests:', err);
+                    return of([]);
+                })
+            )
+        }).pipe(
+            takeUntil(this.destroy$)
+        ).subscribe({
+            next: (data) => {
+                this.processRoutes(data.routes);
+                this.processAttendance(data.attendance);
+                this.processLeaveRequests(data.leaveRequests);
+                this.generateSchedule(data);
+                this.generateNotifications(data);
+                this.isLoading = false;
+            },
+            error: (error) => {
+                console.error('Error loading dashboard:', error);
+                this.errorMessage = 'Failed to load dashboard data';
+                this.isLoading = false;
+            }
+        });
+    }
+
+    private processRoutes(routes: any[]): void {
+        // Find driver's routes (assigned to current user)
+        const myRoutes = routes.filter(r => r.driverId === this.currentUser?.id);
+
+        // Find current in-progress route
+        const activeRoute = myRoutes.find(r => r.status === 'in_progress');
+
+        if (activeRoute) {
+            this.currentTrip = {
+                destination: activeRoute.destinationAddress || 'Unknown',
+                estimatedArrival: this.calculateETA(activeRoute),
+                distance: this.calculateDistance(activeRoute),
+                stops: this.mapStops(activeRoute.stops || [])
+            };
+
+            this.assignedVehicle = activeRoute.vehiclePlate || 'Unknown';
+        }
+
+        // Calculate stats
+        const completedRoutes = myRoutes.filter(r => r.status === 'completed');
+        this.driverStats.tripsCompleted = completedRoutes.length;
+        this.driverStats.onTimeDeliveries = completedRoutes.filter(r => this.isOnTime(r)).length;
+
+        // Calculate miles (simplified - based on route count)
+        this.driverStats.milesThisWeek = completedRoutes.reduce((sum, r) => {
+            return sum + (r.stops?.length * 5 || 10); // 5 miles per stop estimate
+        }, 0);
+
+        // Mock fuel efficiency
+        this.driverStats.fuelEfficiency = 8.4;
+    }
+
+    private processAttendance(attendance: any): void {
+        // The attendance structure is: response?.data
+        // Where data contains: { clockIn, clockOut, date, status, totalHours, ... }
+
+        if (!attendance || !attendance.clockIn) {
+            this.driverStats.hoursWorked = 0;
+            return;
+        }
+
+        const now = new Date();
+        const today = now.toISOString().split('T')[0]; // Get YYYY-MM-DD
+
+        // Parse clock-in time: attendance.clockIn is like "08:30:00" or "08:30:00.0000000"
+        try {
+            const clockInStr = attendance.clockIn.split('.')[0]; // Remove fractional seconds if present
+            const clockInDateTime = new Date(`${today}T${clockInStr}`);
+
+            // Calculate difference in milliseconds
+            const diffMs = now.getTime() - clockInDateTime.getTime();
+
+            // Convert to hours (only if positive and reasonable)
+            if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) { // Less than 24 hours
+                this.driverStats.hoursWorked = Math.floor(diffMs / (1000 * 60 * 60));
+            } else {
+                this.driverStats.hoursWorked = 0;
+            }
+        } catch (error) {
+            console.error('Error parsing clock-in time:', error);
+            this.driverStats.hoursWorked = 0;
+        }
+    }
+
+
+    private processLeaveRequests(leaveRequests: any[]): void {
+        // Leave requests will be shown in notifications
+    }
+
+    private generateSchedule(data: any): void {
+        const schedule: ScheduleItem[] = [];
+        const now = new Date();
+        const currentHour = now.getHours();
+
+        // Morning inspection
+        schedule.push({
+            time: '8:00 AM',
+            task: 'Vehicle Inspection',
+            status: currentHour > 8 ? 'completed' : currentHour === 8 ? 'in-progress' : 'pending'
+        });
+
+        // Add routes to schedule
+        data.routes?.forEach((route: any, index: number) => {
+            if (route.driverId === this.currentUser?.id && route.status !== 'cancelled') {
+                const startTime = route.startTime ? new Date(route.startTime) : null;
+                const timeStr = startTime ? startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : `${9 + index}:00 AM`;
+
+                schedule.push({
+                    time: timeStr,
+                    task: `Route: ${route.name}`,
+                    status: route.status === 'completed' ? 'completed' : route.status === 'in_progress' ? 'in-progress' : 'pending'
+                });
+            }
+        });
+
+        // Lunch break
+        schedule.push({
+            time: '12:00 PM',
+            task: 'Lunch Break',
+            status: currentHour > 12 ? 'completed' : currentHour === 12 ? 'in-progress' : 'pending'
+        });
+
+        // End of shift
+        schedule.push({
+            time: '5:00 PM',
+            task: 'End of Shift',
+            status: currentHour >= 17 ? 'completed' : 'pending'
+        });
+
+        this.todaySchedule = schedule.sort((a, b) => {
+            const timeA = this.convertTo24Hour(a.time);
+            const timeB = this.convertTo24Hour(b.time);
+            return timeA - timeB;
+        });
+    }
+
+    private generateNotifications(data: any): void {
+        const notifications: Notification[] = [];
+        let idCounter = 1;
+
+        // Upcoming routes
+        const upcomingRoutes = data.routes?.filter((r: any) =>
+            r.driverId === this.currentUser?.id && r.status === 'planned'
+        ) || [];
+
+        if (upcomingRoutes.length > 0) {
+            notifications.push({
+                id: idCounter++,
+                message: `${upcomingRoutes.length} new route(s) assigned`,
+                time: '10 min ago',
+                priority: 'medium'
+            });
+        }
+
+        // Leave requests
+        data.leaveRequests?.forEach((lr: any) => {
+            if (lr.status === 'Approved') {
+                notifications.push({
+                    id: idCounter++,
+                    message: `Leave request approved for ${new Date(lr.startDate).toLocaleDateString()}`,
+                    time: '1 hour ago',
+                    priority: 'medium'
+                });
+            } else if (lr.status === 'Pending') {
+                notifications.push({
+                    id: idCounter++,
+                    message: 'Leave request pending approval',
+                    time: '2 hours ago',
+                    priority: 'low'
+                });
+            }
+        });
+
+        // Default notification if none
+        if (notifications.length === 0) {
+            notifications.push({
+                id: 1,
+                message: 'All caught up! No new notifications.',
+                time: 'Just now',
+                priority: 'low'
+            });
+        }
+
+        this.notifications = notifications;
+    }
+
+    private mapStops(stops: any[]): TripStop[] {
+        return stops.map((stop, index) => ({
+            address: stop.address,
+            status: stop.status === 'completed' ? 'completed' :
+                stop.status === 'in_progress' ? 'current' : 'pending'
+        }));
+    }
+
+    private calculateETA(route: any): string {
+        // Simple ETA calculation
+        const now = new Date();
+        now.setHours(now.getHours() + 2); // Add 2 hours
+        return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    private calculateDistance(route: any): string {
+        const stops = route.stops?.length || 0;
+        return `${(stops * 3.5).toFixed(1)} km`; // 3.5 km per stop estimate
+    }
+
+    private isOnTime(route: any): boolean {
+        // Mock on-time check
+        return Math.random() > 0.2; // 80% on-time rate
+    }
+
+    private convertTo24Hour(time: string): number {
+        const [timeStr, period] = time.split(' ');
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        let hour24 = hours;
+
+        if (period === 'PM' && hours !== 12) hour24 += 12;
+        if (period === 'AM' && hours === 12) hour24 = 0;
+
+        return hour24 * 60 + minutes;
+    }
 
     getStatusColor(status: string): string {
         switch (status) {
@@ -60,7 +364,11 @@ export class DriverDashboardComponent {
     }
 
     getOnTimeRate(): number {
+        if (this.driverStats.tripsCompleted === 0) return 0;
         return Math.round((this.driverStats.onTimeDeliveries / this.driverStats.tripsCompleted) * 100);
     }
 
+    getDriverName(): string {
+        return this.currentUser?.name || 'Driver';
+    }
 }

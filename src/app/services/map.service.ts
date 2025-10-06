@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
     providedIn: 'root'
 })
 export class MapService {
-    private apiUrl = 'http://localhost:5000/api/maps';
+    private readonly apiUrl = 'https://fleetmanagerprov2-production.up.railway.app/api/maps';
 
     constructor(private http: HttpClient) { }
 

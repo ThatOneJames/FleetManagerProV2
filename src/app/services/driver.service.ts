@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { User, UserRole } from '../models/user.model';
+import { environment } from '../../environments/environment';
 
 export interface CreateDriverDto {
     name: string;
@@ -57,7 +58,7 @@ export interface UpdateAvailabilityDto {
     providedIn: 'root'
 })
 export class DriverService {
-    private readonly apiUrl = 'http://localhost:5129/api';
+    private readonly apiUrl = `${ environment.apiUrl }`;
 
     constructor(private http: HttpClient) { }
 

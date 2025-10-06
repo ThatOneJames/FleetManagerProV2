@@ -38,7 +38,7 @@ export class DriverManagementComponent implements OnInit {
     errorMessage: string | null = null;
     successMessage: string | null = null;
 
-    private readonly apiUrl = 'http://localhost:5129/api';
+    private readonly apiUrl = 'https://fleetmanagerprov2-production.up.railway.app/api';
 
     constructor(
         private driverService: DriverService,

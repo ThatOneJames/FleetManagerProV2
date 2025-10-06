@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 export interface LeaveRequest {
     id: string;
@@ -12,8 +13,8 @@ export interface LeaveRequest {
     endDate: string;
     totalDays: number;
     reason: string;
-    status: string;          // String status like "Pending", "Approved"
-    statusEnum: LeaveStatus; // Enum status like 0, 1, 2
+    status: string;
+    statusEnum: LeaveStatus;
     approvedBy?: string;
     approvedAt?: string;
     rejectionReason?: string;
@@ -88,7 +89,7 @@ export interface LeaveTypeInfo {
     providedIn: 'root'
 })
 export class LeaveRequestService {
-    private readonly apiUrl = 'http://localhost:5129/api/leaverequests';
+    private readonly apiUrl = `${environment.apiUrl}/leaverequests`;
 
     private httpOptions = {
         headers: new HttpHeaders({

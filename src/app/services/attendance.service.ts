@@ -4,6 +4,7 @@ import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface AttendanceRecord {
     id: number;
@@ -62,7 +63,7 @@ export interface WeeklyAttendance {
     providedIn: 'root'
 })
 export class AttendanceService {
-    private apiUrl = 'http://localhost:5129/api/attendance'; // Match your auth service URL pattern
+    private readonly apiUrl = `${environment.apiUrl}/attendance`;
 
     constructor(
         private http: HttpClient,

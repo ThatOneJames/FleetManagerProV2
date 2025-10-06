@@ -30,7 +30,7 @@ export class UserComponent {
         this.errorMessage = null;
         this.successMessage = null;
 
-        const apiUrl = 'http://localhost:5129/api/auth/register';
+        const apiUrl = 'https://fleetmanagerprov2-production.up.railway.app/api/auth/register';
         const userDto = this.registrationForm.value;
 
         this.http.post(apiUrl, userDto).subscribe({

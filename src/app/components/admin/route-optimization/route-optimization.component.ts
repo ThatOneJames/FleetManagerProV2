@@ -54,7 +54,7 @@ export class RouteOptimizationComponent implements OnInit {
     loading: boolean = false;
     errorMessage: string = '';
 
-    private apiUrl = 'http://localhost:5129/api';
+    private readonly apiUrl = 'https://fleetmanagerprov2-production.up.railway.app/api';
 
     constructor(
         private routeService: RouteService,
