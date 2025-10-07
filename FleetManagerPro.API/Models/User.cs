@@ -82,9 +82,6 @@ namespace FleetManagerPro.API.Models
         [Column("has_helper")]
         public bool HasHelper { get; set; } = false;
 
-        [Column("license_class")]
-        public string? LicenseClass { get; set; }
-
         [Column("last_location_lat")]
         public decimal? LastLocationLat { get; set; }
 
