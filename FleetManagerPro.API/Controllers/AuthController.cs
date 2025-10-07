@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
+using System.Linq;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -50,13 +52,12 @@ namespace FleetManager.Controllers
 
                 Console.WriteLine($"[AUTH] User found: {user.Id}, Role: {user.Role}");
 
-                // FIXED: Create claims WITHOUT duplicates - use only the standard types
                 var claims = new[]
                 {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Name),
-            new Claim(ClaimTypes.Role, user.Role)
-        };
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim(ClaimTypes.Name, user.Name),
+                    new Claim(ClaimTypes.Role, user.Role)
+                };
 
                 var jwtKey = _config["Jwt:Key"];
                 var jwtIssuer = _config["Jwt:Issuer"];
@@ -70,7 +71,6 @@ namespace FleetManager.Controllers
                     return StatusCode(500, "JWT configuration is missing");
                 }
 
-                // Use HmacSha256 to match Program.cs
                 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
                 var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -88,7 +88,6 @@ namespace FleetManager.Controllers
                 var tokenString = tokenHandler.WriteToken(token);
 
                 Console.WriteLine($"[AUTH] Token created successfully for user: {user.Id}");
-                Console.WriteLine($"[AUTH] Token (first 50 chars): {tokenString.Substring(0, Math.Min(50, tokenString.Length))}...");
 
                 return Ok(new
                 {
@@ -104,16 +103,13 @@ namespace FleetManager.Controllers
                     emergencyContact = user.EmergencyContact,
                     profileImageUrl = user.ProfileImageUrl,
                     vehicleId = user.CurrentVehicleId,
-
                     licenseNumber = user.LicenseNumber,
                     licenseClass = user.LicenseClass,
                     licenseExpiry = user.LicenseExpiry,
                     experienceYears = user.ExperienceYears,
                     safetyRating = user.SafetyRating,
-
                     createdAt = user.CreatedAt,
                     updatedAt = user.UpdatedAt,
-
                     driver = user.Role == "Driver" ? new
                     {
                         fullName = user.Name,
@@ -138,7 +134,6 @@ namespace FleetManager.Controllers
             }
         }
 
-
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] FleetManagerPro.API.DTOs.UserDto userDto)
         {
@@ -151,14 +146,17 @@ namespace FleetManager.Controllers
 
                 var hashedPassword = await _authService.HashPassword(userDto.Password);
 
+                // Generate auto-increment EID
+                var nextEmployeeId = await GenerateNextEmployeeId();
+
                 var user = new User
                 {
-                    // Don't need to set Id here - constructor handles it with EID- format
+                    Id = nextEmployeeId, // EID-000001, EID-000002, etc.
                     Email = userDto.Email,
                     Name = userDto.Name,
                     PasswordHash = hashedPassword,
                     Role = userDto.Role,
-                    Status = userDto.Status ?? "Active", // FIXED: Use the status from form
+                    Status = string.IsNullOrWhiteSpace(userDto.Status) ? "Active" : userDto.Status,
                     Phone = userDto.Phone,
                     Address = userDto.Address,
                     DateOfBirth = userDto.DateOfBirth,
@@ -169,10 +167,10 @@ namespace FleetManager.Controllers
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                // If registering a driver, capture ALL driver-specific fields from the form
+                // If registering a driver, capture ALL driver-specific fields
                 if (user.Role == "Driver")
                 {
-                    user.LicenseNumber = string.IsNullOrWhiteSpace(userDto.LicenseNumber) ? null : userDto.LicenseNumber; // NO HASHING!
+                    user.LicenseNumber = string.IsNullOrWhiteSpace(userDto.LicenseNumber) ? null : userDto.LicenseNumber;
                     user.LicenseClass = string.IsNullOrWhiteSpace(userDto.LicenseClass) ? null : userDto.LicenseClass;
                     user.LicenseExpiry = userDto.LicenseExpiry;
                     user.ExperienceYears = userDto.ExperienceYears;
@@ -197,15 +195,28 @@ namespace FleetManager.Controllers
             }
         }
 
-
-        // Helper method for generating EID format
-        private static string GenerateUserId()
+        // Auto-increment EID generation
+        private async Task<string> GenerateNextEmployeeId()
         {
-            var timestamp = DateTime.UtcNow.Ticks.ToString().Substring(8);
-            var random = new Random().Next(1000, 9999);
-            return $"EID-{timestamp}{random}";
-        }
+            var existingIds = await _context.Users
+                .Where(u => u.Id.StartsWith("EID-"))
+                .Select(u => u.Id)
+                .ToListAsync();
 
+            int maxNumber = 0;
+            foreach (var id in existingIds)
+            {
+                var numericPart = id.Replace("EID-", "");
+                if (int.TryParse(numericPart, out int number))
+                {
+                    if (number > maxNumber)
+                        maxNumber = number;
+                }
+            }
+
+            int nextNumber = maxNumber + 1;
+            return $"EID-{nextNumber:D6}"; // EID-000001, EID-000002, etc.
+        }
 
         [HttpGet("test")]
         [AllowAnonymous]

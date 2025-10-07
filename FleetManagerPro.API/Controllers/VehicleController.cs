@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Linq;
+using System.Collections.Generic;
 using FleetManagerPro.API.Models;
 using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Services;
@@ -43,6 +45,7 @@ namespace FleetManager.Controllers
         [HttpPost]
         public async Task<ActionResult<Vehicle>> Create([FromBody] CreateVehicleDto vehicleDto)
         {
+            // VehicleService handles auto-increment VEH- ID generation
             var createdVehicle = await _vehicleService.CreateAsync(vehicleDto);
             return CreatedAtAction(nameof(GetById), new { id = createdVehicle.Id }, createdVehicle);
         }

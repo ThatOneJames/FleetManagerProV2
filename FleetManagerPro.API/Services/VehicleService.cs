@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using FleetManagerPro.API.Data;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using FleetManagerPro.API.DTOs.Vehicles;
 
@@ -38,19 +39,22 @@ namespace FleetManagerPro.API.Services
 
         public async Task<Vehicle> CreateAsync(CreateVehicleDto vehicleDto)
         {
+            // Generate auto-increment VEH ID
+            var nextVehicleId = await GenerateNextVehicleId();
+
             var vehicle = new Vehicle
             {
-                Id = Guid.NewGuid().ToString(),
+                Id = nextVehicleId, // VEH-000001, VEH-000002, etc.
                 CategoryId = vehicleDto.CategoryId,
                 Make = vehicleDto.Make,
                 Model = vehicleDto.Model,
                 Year = vehicleDto.Year,
                 LicensePlate = vehicleDto.LicensePlate,
                 Color = vehicleDto.Color,
-                FuelType = vehicleDto.FuelType ?? "Gasoline", // Direct string assignment
+                FuelType = vehicleDto.FuelType ?? "Gasoline",
                 FuelCapacity = (decimal?)vehicleDto.FuelCapacity,
                 CurrentMileage = (decimal)vehicleDto.CurrentMileage,
-                Status = vehicleDto.Status ?? "Ready", // Direct string assignment
+                Status = vehicleDto.Status ?? "Ready",
                 FuelLevel = (decimal)vehicleDto.FuelLevel,
                 RegistrationExpiry = vehicleDto.RegistrationExpiry,
                 InsuranceExpiry = vehicleDto.InsuranceExpiry,
@@ -104,12 +108,35 @@ namespace FleetManagerPro.API.Services
             return true;
         }
 
+        // Auto-increment VEH generation
+        private async Task<string> GenerateNextVehicleId()
+        {
+            var existingIds = await _context.Vehicles
+                .Where(v => v.Id.StartsWith("VEH-"))
+                .Select(v => v.Id)
+                .ToListAsync();
+
+            int maxNumber = 0;
+            foreach (var id in existingIds)
+            {
+                var numericPart = id.Replace("VEH-", "");
+                if (int.TryParse(numericPart, out int number))
+                {
+                    if (number > maxNumber)
+                        maxNumber = number;
+                }
+            }
+
+            int nextNumber = maxNumber + 1;
+            return $"VEH-{nextNumber:D6}"; // VEH-000001, VEH-000002, etc.
+        }
+
         // Additional helper methods for vehicle management
         public async Task<IEnumerable<Vehicle>> GetAvailableVehiclesAsync()
         {
             return await _context.Vehicles
                 .Include(v => v.CurrentDriver)
-                .Where(v => v.Status == "Ready") // String comparison
+                .Where(v => v.Status == "Ready")
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -128,7 +155,7 @@ namespace FleetManagerPro.API.Services
             var vehicle = await _context.Vehicles.FindAsync(vehicleId);
             var user = await _context.Users.FindAsync(driverId);
 
-            if (vehicle == null || user == null || user.Role != "Driver") // String comparison
+            if (vehicle == null || user == null || user.Role != "Driver")
                 return false;
 
             vehicle.CurrentDriverId = driverId;

@@ -8,7 +8,7 @@ namespace FleetManagerPro.API.Models
     {
         [Key]
         [Column("id")]
-        public string Id { get; set; } = GenerateUserId();
+        public string Id { get; set; } = ""; // Empty - will be set in controller
 
         [Required]
         [Column("name")]
@@ -56,7 +56,7 @@ namespace FleetManagerPro.API.Models
 
         // Driver-specific fields
         [Column("license_number")]
-        public string? LicenseNumber { get; set; } // REMOVED HASHING - Store plain license number
+        public string? LicenseNumber { get; set; } // Plain text - NO HASHING
 
         [Column("license_class")]
         public string? LicenseClass { get; set; }
@@ -96,14 +96,6 @@ namespace FleetManagerPro.API.Models
 
         public bool IsDriver => Role == "Driver";
         public bool IsAdmin => Role == "Admin";
-
-        // Generate user ID with EID- prefix
-        private static string GenerateUserId()
-        {
-            var timestamp = DateTime.UtcNow.Ticks.ToString().Substring(8); // Last 10 digits
-            var random = new Random().Next(1000, 9999);
-            return $"EID-{timestamp}{random}";
-        }
 
         public void UpdateDriverInfo(string? licenseNumber = null, string? licenseClass = null,
             DateTime? licenseExpiry = null, int? experienceYears = null, decimal? safetyRating = null)
