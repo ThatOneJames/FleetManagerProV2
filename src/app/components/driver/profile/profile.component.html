@@ -91,23 +91,27 @@
                     <mat-icon matPrefix>credit_card</mat-icon>
                 </mat-form-field>
 
-                <!-- LICENSE CLASS - DROPDOWN WHEN EDITING, TEXT WHEN READONLY -->
-                <mat-form-field appearance="outline" *ngIf="!isEditing">
-                    <mat-label>License Class</mat-label>
-                    <input matInput formControlName="licenseClass" [readonly]="true">
+                <!-- ✅ LICENSE CLASSES - READ-ONLY VIEW -->
+                <mat-form-field appearance="outline" class="full-width" *ngIf="!isEditing">
+                    <mat-label>License Classes</mat-label>
+                    <input matInput [value]="licenseClassesFormArray.value.join(', ')" [readonly]="true">
                     <mat-icon matPrefix>category</mat-icon>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" *ngIf="isEditing">
-                    <mat-label>License Class</mat-label>
-                    <mat-select formControlName="licenseClass">
-                        <mat-option value="">Select License Class</mat-option>
-                        <mat-option *ngFor="let licenseClass of licenseClasses" [value]="licenseClass">
-                            {{ licenseClass }}
-                        </mat-option>
-                    </mat-select>
-                    <mat-icon matPrefix>category</mat-icon>
-                </mat-form-field>
+                <!-- ✅ LICENSE CLASSES - CHECKBOXES (EDIT MODE) -->
+                <div class="form-group license-checkboxes full-width" *ngIf="isEditing">
+                    <label class="mat-label">License Classes * (Select at least one)</label>
+                    <div class="checkbox-group">
+                        <mat-checkbox *ngFor="let licenseClass of availableLicenseClasses"
+                                      [checked]="isLicenseClassSelected(licenseClass.code)"
+                                      (change)="onLicenseClassChange(licenseClass.code, $event)">
+                            <strong>{{ licenseClass.code }}</strong> - {{ licenseClass.name }}
+                        </mat-checkbox>
+                    </div>
+                    <mat-error *ngIf="licenseClassesFormArray.invalid && licenseClassesFormArray.touched">
+                        Please select at least one license class
+                    </mat-error>
+                </div>
 
                 <mat-form-field appearance="outline">
                     <mat-label>License Expiry</mat-label>

@@ -1,7 +1,7 @@
 ﻿import { Component, OnInit } from '@angular/core';
 import { DriverService } from '../../../services/driver.service';
 import { User, UserStatus, UserRole } from '../../../models/user.model';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -38,6 +38,14 @@ export class DriverManagementComponent implements OnInit {
     errorMessage: string | null = null;
     successMessage: string | null = null;
 
+    // ✅ TRUCK-RELATED LICENSE CLASSES (Philippines)
+    availableLicenseClasses = [
+        { code: 'B1', name: 'Light Trucks (Up to 4,500 kg)' },
+        { code: 'B2', name: 'Heavy Trucks (Over 4,500 kg)' },
+        { code: 'C', name: 'Trucks with Trailer' },
+        { code: 'CE', name: 'Articulated Trucks' }
+    ];
+
     private readonly apiUrl = 'https://fleetmanagerprov2-production.up.railway.app/api';
 
     constructor(
@@ -53,41 +61,88 @@ export class DriverManagementComponent implements OnInit {
     }
 
     private initializeForms(): void {
-        // Registration form for adding new drivers
+        // ✅ Registration form with FormArray for license classes
         this.registrationForm = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]],
             password: ['', [Validators.required, Validators.minLength(6)]],
-            phone: [''],
+            phone: ['', [Validators.required]],
             address: [''],
             dateOfBirth: [''],
-            emergencyContact: [''],
-            status: ['Active', Validators.required], // ADDED: Status field
-            licenseNumber: [''],
-            licenseClass: [''],
-            licenseExpiry: [''],
+            emergencyContact: ['', [Validators.required]],
+            status: ['Active', Validators.required],
+            licenseNumber: ['', [Validators.required]],
+            licenseClasses: this.fb.array([], Validators.required), // ✅ FormArray
+            licenseExpiry: ['', [Validators.required]],
             experienceYears: [0, [Validators.min(0)]],
             safetyRating: [0, [Validators.min(0), Validators.max(5)]]
         });
 
-        // Edit form for updating existing drivers
+        // ✅ Edit form with FormArray for license classes
         this.editForm = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]],
-            phone: [''],
+            phone: ['', [Validators.required]],
             address: [''],
             dateOfBirth: [''],
-            emergencyContact: [''],
+            emergencyContact: ['', [Validators.required]],
             status: ['Active', Validators.required],
-            licenseNumber: [''],
-            licenseClass: [''],
-            licenseExpiry: [''],
+            licenseNumber: ['', [Validators.required]],
+            licenseClasses: this.fb.array([], Validators.required), // ✅ FormArray
+            licenseExpiry: ['', [Validators.required]],
             experienceYears: [0, [Validators.min(0)]],
             safetyRating: [0, [Validators.min(0), Validators.max(5)]],
             totalMilesDriven: [0, [Validators.min(0)]],
             isAvailable: [true],
             hasHelper: [false]
         });
+    }
+
+    // ✅ Getters for license classes FormArrays
+    get registrationLicenseClasses(): FormArray {
+        return this.registrationForm.get('licenseClasses') as FormArray;
+    }
+
+    get editLicenseClasses(): FormArray {
+        return this.editForm.get('licenseClasses') as FormArray;
+    }
+
+    // ✅ Check if license class is selected (Registration)
+    isRegistrationLicenseSelected(code: string): boolean {
+        return this.registrationLicenseClasses.value.includes(code);
+    }
+
+    // ✅ Check if license class is selected (Edit)
+    isEditLicenseSelected(code: string): boolean {
+        return this.editLicenseClasses.value.includes(code);
+    }
+
+    // ✅ Toggle license class checkbox (Registration)
+    onRegistrationLicenseChange(code: string, event: any): void {
+        const formArray = this.registrationLicenseClasses;
+
+        if (event.target.checked) {
+            formArray.push(new FormControl(code));
+        } else {
+            const index = formArray.controls.findIndex(x => x.value === code);
+            if (index >= 0) {
+                formArray.removeAt(index);
+            }
+        }
+    }
+
+    // ✅ Toggle license class checkbox (Edit)
+    onEditLicenseChange(code: string, event: any): void {
+        const formArray = this.editLicenseClasses;
+
+        if (event.target.checked) {
+            formArray.push(new FormControl(code));
+        } else {
+            const index = formArray.controls.findIndex(x => x.value === code);
+            if (index >= 0) {
+                formArray.removeAt(index);
+            }
+        }
     }
 
     loadDrivers(): void {
@@ -280,7 +335,8 @@ export class DriverManagementComponent implements OnInit {
         this.showAddDriverForm = !this.showAddDriverForm;
         if (this.showAddDriverForm) {
             this.registrationForm.reset();
-            this.registrationForm.patchValue({ status: 'Active' }); // Set default status
+            this.registrationForm.patchValue({ status: 'Active' });
+            this.registrationLicenseClasses.clear(); // ✅ Clear checkboxes
             this.clearMessages();
         }
     }
@@ -292,20 +348,29 @@ export class DriverManagementComponent implements OnInit {
             return;
         }
 
+        // ✅ Validate at least one license class selected
+        if (this.registrationLicenseClasses.length === 0) {
+            this.errorMessage = 'Please select at least one license class.';
+            return;
+        }
+
         this.clearMessages();
         const formData = this.registrationForm.value;
+
+        // ✅ Convert license classes array to comma-separated string
+        const licenseClassString = this.registrationLicenseClasses.value.join(',');
 
         const userDto = {
             ...formData,
             role: 'Driver',
-            status: formData.status || 'Active', // Use selected status
+            status: formData.status || 'Active',
             isAvailable: true,
             hasHelper: false,
+            licenseClass: licenseClassString, // ✅ "B1,B2,C"
             phone: formData.phone || null,
             address: formData.address || null,
             emergencyContact: formData.emergencyContact || null,
-            licenseNumber: formData.licenseNumber || null, // Plain license number (no hashing)
-            licenseClass: formData.licenseClass || null,
+            licenseNumber: formData.licenseNumber || null,
             licenseExpiry: formData.licenseExpiry || null,
             dateOfBirth: formData.dateOfBirth || null
         };
@@ -315,6 +380,7 @@ export class DriverManagementComponent implements OnInit {
                 this.successMessage = 'Driver added successfully!';
                 this.loadDrivers();
                 this.registrationForm.reset();
+                this.registrationLicenseClasses.clear();
                 this.showAddDriverForm = false;
                 this.hideMessages();
             },
@@ -330,6 +396,14 @@ export class DriverManagementComponent implements OnInit {
         this.showEditDriverForm = true;
         this.clearMessages();
 
+        // ✅ Parse existing license classes and populate checkboxes
+        const licenseClasses = driver.licenseClass ? driver.licenseClass.split(',') : [];
+
+        this.editLicenseClasses.clear();
+        licenseClasses.forEach(code => {
+            this.editLicenseClasses.push(new FormControl(code.trim()));
+        });
+
         this.editForm.patchValue({
             name: driver.name || '',
             email: driver.email || '',
@@ -338,8 +412,7 @@ export class DriverManagementComponent implements OnInit {
             dateOfBirth: driver.dateOfBirth ? this.formatDate(driver.dateOfBirth) : '',
             emergencyContact: driver.emergencyContact || '',
             status: this.getStringStatus(driver.status),
-            licenseNumber: driver.licenseNumber || '', // Display unhashed license number
-            licenseClass: driver.licenseClass || '',
+            licenseNumber: driver.licenseNumber || '',
             licenseExpiry: driver.licenseExpiry ? this.formatDate(driver.licenseExpiry) : '',
             experienceYears: driver.experienceYears || 0,
             safetyRating: driver.safetyRating || 0,
@@ -356,17 +429,26 @@ export class DriverManagementComponent implements OnInit {
             return;
         }
 
+        // ✅ Validate at least one license class selected
+        if (this.editLicenseClasses.length === 0) {
+            this.errorMessage = 'Please select at least one license class.';
+            return;
+        }
+
         this.clearMessages();
         const formData = this.editForm.value;
 
+        // ✅ Convert license classes array to comma-separated string
+        const licenseClassString = this.editLicenseClasses.value.join(',');
+
         const updateData = {
             ...formData,
+            licenseClass: licenseClassString, // ✅ "B1,B2,C"
             status: formData.status,
             phone: formData.phone || null,
             address: formData.address || null,
             emergencyContact: formData.emergencyContact || null,
-            licenseNumber: formData.licenseNumber || null, // Plain license number (no hashing)
-            licenseClass: formData.licenseClass || null,
+            licenseNumber: formData.licenseNumber || null,
             licenseExpiry: formData.licenseExpiry || null,
             dateOfBirth: formData.dateOfBirth || null
         };
@@ -389,6 +471,7 @@ export class DriverManagementComponent implements OnInit {
         this.showEditDriverForm = false;
         this.editingDriver = null;
         this.editForm.reset();
+        this.editLicenseClasses.clear();
         this.clearMessages();
     }
 
@@ -424,6 +507,7 @@ export class DriverManagementComponent implements OnInit {
     cancelForm(): void {
         this.showAddDriverForm = false;
         this.registrationForm.reset();
+        this.registrationLicenseClasses.clear();
         this.clearMessages();
     }
 
@@ -482,12 +566,12 @@ export class DriverManagementComponent implements OnInit {
         ];
 
         const rows = data.map(driver => [
-            driver.id || '', // Show new EID- format
+            driver.id || '',
             driver.name || '',
             driver.email || '',
             driver.phone || '',
             this.getStringStatus(driver.status),
-            driver.licenseNumber || '', // Show unhashed license number
+            driver.licenseNumber || '',
             driver.licenseClass || '',
             driver.experienceYears || 0,
             driver.safetyRating || 0,

@@ -62,15 +62,23 @@
                     <input formControlName="licenseNumber" placeholder="Enter license number" />
                 </div>
 
-                <div class="form-group">
-                    <label>License Class</label>
-                    <select formControlName="licenseClass">
-                        <option value="">Select License Class</option>
-                        <option value="A">Class A</option>
-                        <option value="B">Class B</option>
-                        <option value="C">Class C</option>
-                        <option value="CDL">CDL</option>
-                    </select>
+                <!-- ✅ LICENSE CLASSES - CHECKBOXES -->
+                <div class="form-group full-width">
+                    <label>License Classes * (Select at least one)</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item" *ngFor="let licenseClass of availableLicenseClasses">
+                            <input type="checkbox"
+                                   [id]="'reg-' + licenseClass.code"
+                                   [checked]="isRegistrationLicenseSelected(licenseClass.code)"
+                                   (change)="onRegistrationLicenseChange(licenseClass.code, $event)" />
+                            <label [for]="'reg-' + licenseClass.code">
+                                <strong>{{ licenseClass.code }}</strong> - {{ licenseClass.name }}
+                            </label>
+                        </div>
+                    </div>
+                    <div *ngIf="registrationForm.get('licenseClasses')?.invalid && registrationForm.get('licenseClasses')?.touched" class="error-text">
+                        Please select at least one license class
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -163,15 +171,23 @@
                     <input formControlName="licenseNumber" placeholder="Enter license number" />
                 </div>
 
-                <div class="form-group">
-                    <label>License Class</label>
-                    <select formControlName="licenseClass">
-                        <option value="">Select License Class</option>
-                        <option value="A">Class A</option>
-                        <option value="B">Class B</option>
-                        <option value="C">Class C</option>
-                        <option value="CDL">CDL</option>
-                    </select>
+                <!-- ✅ LICENSE CLASSES - CHECKBOXES (EDIT MODE) -->
+                <div class="form-group full-width">
+                    <label>License Classes * (Select at least one)</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item" *ngFor="let licenseClass of availableLicenseClasses">
+                            <input type="checkbox"
+                                   [id]="'edit-' + licenseClass.code"
+                                   [checked]="isEditLicenseSelected(licenseClass.code)"
+                                   (change)="onEditLicenseChange(licenseClass.code, $event)" />
+                            <label [for]="'edit-' + licenseClass.code">
+                                <strong>{{ licenseClass.code }}</strong> - {{ licenseClass.name }}
+                            </label>
+                        </div>
+                    </div>
+                    <div *ngIf="editForm.get('licenseClasses')?.invalid && editForm.get('licenseClasses')?.touched" class="error-text">
+                        Please select at least one license class
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -265,7 +281,12 @@
                         </td>
                         <td>{{ driver.email }}</td>
                         <td>{{ driver.phone || 'N/A' }}</td>
-                        <td>{{ driver.licenseNumber || 'N/A' }}</td>
+                        <td>
+                            <div class="license-info">
+                                <div>{{ driver.licenseNumber || 'N/A' }}</div>
+                                <div class="license-classes">{{ driver.licenseClass || 'N/A' }}</div>
+                            </div>
+                        </td>
                         <td>{{ driver.experienceYears || 0 }} years</td>
                         <td>
                             <span class="status-badge" [class]="getStringStatus(driver.status).toLowerCase()">
