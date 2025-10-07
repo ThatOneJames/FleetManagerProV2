@@ -16,29 +16,25 @@ export class DriverManagementComponent implements OnInit {
     searchText: string = '';
     filterStatus: string = 'All';
 
-    // Attendance tracking
-    driversAttendance: Map<string, boolean> = new Map();
+    driversAttendance: Map<string, { clockedIn: boolean; clockedOut: boolean }> = new Map();
+    // ✅ NEW: Store full attendance data with times
+    driversAttendanceData: Map<string, any> = new Map();
     driversOnLeave: Map<string, any> = new Map();
     isLoadingAttendance: boolean = false;
 
-    // Form states
     showAddDriverForm: boolean = false;
     showEditDriverForm: boolean = false;
     showDeleteConfirm: boolean = false;
 
-    // Forms
     registrationForm!: FormGroup;
     editForm!: FormGroup;
 
-    // Current editing/deleting driver
     editingDriver: User | null = null;
     driverToDelete: User | null = null;
 
-    // Messages
     errorMessage: string | null = null;
     successMessage: string | null = null;
 
-    // ✅ TRUCK-RELATED LICENSE CLASSES (Philippines)
     availableLicenseClasses = [
         { code: 'B1', name: 'Light Trucks (Up to 4,500 kg)' },
         { code: 'B2', name: 'Heavy Trucks (Over 4,500 kg)' },
@@ -61,7 +57,6 @@ export class DriverManagementComponent implements OnInit {
     }
 
     private initializeForms(): void {
-        // ✅ Registration form with FormArray for license classes
         this.registrationForm = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]],
@@ -70,15 +65,14 @@ export class DriverManagementComponent implements OnInit {
             address: [''],
             dateOfBirth: [''],
             emergencyContact: ['', [Validators.required]],
-            status: ['Active', Validators.required],
+            status: ['Active', [Validators.required]],
             licenseNumber: ['', [Validators.required]],
-            licenseClasses: this.fb.array([], Validators.required), // ✅ FormArray
+            licenseClasses: this.fb.array([], Validators.required),
             licenseExpiry: ['', [Validators.required]],
             experienceYears: [0, [Validators.min(0)]],
             safetyRating: [0, [Validators.min(0), Validators.max(5)]]
         });
 
-        // ✅ Edit form with FormArray for license classes
         this.editForm = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]],
@@ -86,9 +80,9 @@ export class DriverManagementComponent implements OnInit {
             address: [''],
             dateOfBirth: [''],
             emergencyContact: ['', [Validators.required]],
-            status: ['Active', Validators.required],
+            status: ['Active', [Validators.required]],
             licenseNumber: ['', [Validators.required]],
-            licenseClasses: this.fb.array([], Validators.required), // ✅ FormArray
+            licenseClasses: this.fb.array([], Validators.required),
             licenseExpiry: ['', [Validators.required]],
             experienceYears: [0, [Validators.min(0)]],
             safetyRating: [0, [Validators.min(0), Validators.max(5)]],
@@ -98,7 +92,6 @@ export class DriverManagementComponent implements OnInit {
         });
     }
 
-    // ✅ Getters for license classes FormArrays
     get registrationLicenseClasses(): FormArray {
         return this.registrationForm.get('licenseClasses') as FormArray;
     }
@@ -107,20 +100,16 @@ export class DriverManagementComponent implements OnInit {
         return this.editForm.get('licenseClasses') as FormArray;
     }
 
-    // ✅ Check if license class is selected (Registration)
     isRegistrationLicenseSelected(code: string): boolean {
         return this.registrationLicenseClasses.value.includes(code);
     }
 
-    // ✅ Check if license class is selected (Edit)
     isEditLicenseSelected(code: string): boolean {
         return this.editLicenseClasses.value.includes(code);
     }
 
-    // ✅ Toggle license class checkbox (Registration)
     onRegistrationLicenseChange(code: string, event: any): void {
         const formArray = this.registrationLicenseClasses;
-
         if (event.target.checked) {
             formArray.push(new FormControl(code));
         } else {
@@ -131,10 +120,8 @@ export class DriverManagementComponent implements OnInit {
         }
     }
 
-    // ✅ Toggle license class checkbox (Edit)
     onEditLicenseChange(code: string, event: any): void {
         const formArray = this.editLicenseClasses;
-
         if (event.target.checked) {
             formArray.push(new FormControl(code));
         } else {
@@ -175,53 +162,71 @@ export class DriverManagementComponent implements OnInit {
         });
 
         const attendanceRequests = this.drivers.map(driver =>
-            this.http.get<any>(`${this.apiUrl}/attendance/driver/${driver.id}/today`, { headers }).pipe(
-                catchError(error => {
-                    console.log(`No attendance found for driver ${driver.name}`);
-                    return of(null);
-                })
-            )
+            this.http.get<any>(`${this.apiUrl}/attendance/driver/${driver.id}/today`, { headers })
+                .pipe(
+                    catchError(error => {
+                        console.log(`No attendance found for driver ${driver.name}`);
+                        return of(null);
+                    })
+                )
         );
 
         const leaveRequests = this.drivers.map(driver =>
-            this.http.get<any>(`${this.apiUrl}/leaverequests/driver/${driver.id}/active`, { headers }).pipe(
-                catchError(error => {
-                    return of(null);
-                })
-            )
+            this.http.get<any>(`${this.apiUrl}/leaverequests/driver/${driver.id}/active`, { headers })
+                .pipe(
+                    catchError(error => {
+                        return of(null);
+                    })
+                )
         );
 
-        forkJoin([
-            forkJoin(attendanceRequests),
-            forkJoin(leaveRequests)
-        ]).subscribe({
+        forkJoin([forkJoin(attendanceRequests), forkJoin(leaveRequests)]).subscribe({
             next: ([attendanceResponses, leaveResponses]) => {
                 attendanceResponses.forEach((response, index) => {
                     const driver = this.drivers[index];
+
                     if (response === null) {
-                        this.driversAttendance.set(driver.id!, false);
+                        this.driversAttendance.set(driver.id!, { clockedIn: false, clockedOut: false });
+                        this.driversAttendanceData.set(driver.id!, null);
                         return;
                     }
 
                     let hasClockedIn = false;
+                    let hasClockedOut = false;
+                    let attendanceData = null;
+
                     if (response?.data) {
-                        hasClockedIn = response.data.clockIn != null;
-                    } else if (response?.clockIn != null) {
+                        hasClockedIn = response.data.clockIn !== null;
+                        hasClockedOut = response.data.clockOut !== null;
+                        attendanceData = response.data;
+                    } else if (response?.clockIn !== null) {
                         hasClockedIn = true;
+                        hasClockedOut = response?.clockOut !== null;
+                        attendanceData = response;
                     } else if (response?.status === 'Present' || response?.data?.status === 'Present') {
                         hasClockedIn = true;
+                        attendanceData = response?.data || response;
                     }
-                    this.driversAttendance.set(driver.id!, hasClockedIn);
+
+                    this.driversAttendance.set(driver.id!, {
+                        clockedIn: hasClockedIn,
+                        clockedOut: hasClockedOut
+                    });
+
+                    // ✅ Store full attendance data including times
+                    this.driversAttendanceData.set(driver.id!, attendanceData);
                 });
 
                 leaveResponses.forEach((response, index) => {
                     const driver = this.drivers[index];
+
                     if (response === null || !response) {
                         this.driversOnLeave.set(driver.id!, null);
                         return;
                     }
 
                     let activeLeave = null;
+
                     if (Array.isArray(response)) {
                         activeLeave = response.find((leave: any) =>
                             leave.status === 'Approved' && this.isLeaveActiveToday(leave)
@@ -237,6 +242,7 @@ export class DriverManagementComponent implements OnInit {
                             activeLeave = response.data;
                         }
                     }
+
                     this.driversOnLeave.set(driver.id!, activeLeave);
                 });
 
@@ -245,7 +251,8 @@ export class DriverManagementComponent implements OnInit {
             error: (error) => {
                 console.error('Error loading data:', error);
                 this.drivers.forEach(driver => {
-                    this.driversAttendance.set(driver.id!, false);
+                    this.driversAttendance.set(driver.id!, { clockedIn: false, clockedOut: false });
+                    this.driversAttendanceData.set(driver.id!, null);
                     this.driversOnLeave.set(driver.id!, null);
                 });
                 this.isLoadingAttendance = false;
@@ -253,8 +260,41 @@ export class DriverManagementComponent implements OnInit {
         });
     }
 
+    // ✅ NEW: Format time for CSV (convert UTC to Philippine time)
+    private formatTimeForCSV(timeStr?: string): string {
+        if (!timeStr) return 'N/A';
+
+        try {
+            const cleanTime = timeStr.split('.')[0];
+
+            if (cleanTime.length <= 8 && !cleanTime.includes('T') && !cleanTime.includes('Z')) {
+                const parts = cleanTime.split(':');
+                if (parts.length >= 2) {
+                    let hours = parseInt(parts[0], 10);
+                    const minutes = parseInt(parts[1], 10);
+
+                    // Add 8 hours for Philippine timezone (UTC+8)
+                    hours = (hours + 8) % 24;
+
+                    const period = hours >= 12 ? 'PM' : 'AM';
+                    const displayHours = hours % 12 || 12;
+                    const displayMinutes = minutes.toString().padStart(2, '0');
+
+                    return `${displayHours}:${displayMinutes} ${period}`;
+                }
+            }
+
+            return 'N/A';
+        } catch (error) {
+            console.error('Error formatting time:', timeStr, error);
+            return 'N/A';
+        }
+    }
+
     private isLeaveActiveToday(leave: any): boolean {
-        if (!leave || !leave.startDate || !leave.endDate) return false;
+        if (!leave || !leave.startDate || !leave.endDate) {
+            return false;
+        }
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -280,14 +320,31 @@ export class DriverManagementComponent implements OnInit {
     }
 
     hasDriverClockedInToday(driverId: string): boolean {
-        return this.driversAttendance.get(driverId) ?? false;
+        const attendance = this.driversAttendance.get(driverId);
+        return attendance?.clockedIn ?? false;
+    }
+
+    hasDriverClockedOutToday(driverId: string): boolean {
+        const attendance = this.driversAttendance.get(driverId);
+        return attendance?.clockedOut ?? false;
     }
 
     getAvailabilityText(driverId: string): string {
         if (this.isDriverOnLeave(driverId)) {
             return 'On Leave';
         }
-        return this.hasDriverClockedInToday(driverId) ? 'Available' : 'Unavailable';
+
+        const attendance = this.driversAttendance.get(driverId);
+
+        if (attendance?.clockedOut) {
+            return 'Unavailable';
+        }
+
+        if (attendance?.clockedIn) {
+            return 'Available';
+        }
+
+        return 'Unavailable';
     }
 
     getAvailabilitySubtitle(driverId: string): string {
@@ -295,14 +352,36 @@ export class DriverManagementComponent implements OnInit {
             const leaveType = this.getDriverLeaveType(driverId);
             return leaveType ? `${leaveType} Leave` : 'On Leave';
         }
-        return this.hasDriverClockedInToday(driverId) ? 'Clocked In' : 'Not Clocked In';
+
+        const attendance = this.driversAttendance.get(driverId);
+
+        if (attendance?.clockedOut) {
+            return 'Clocked Out';
+        }
+
+        if (attendance?.clockedIn) {
+            return 'Clocked In';
+        }
+
+        return 'Not Clocked In';
     }
 
     getAvailabilityClass(driverId: string): string {
         if (this.isDriverOnLeave(driverId)) {
             return 'on-leave';
         }
-        return this.hasDriverClockedInToday(driverId) ? 'clocked-in' : 'not-clocked-in';
+
+        const attendance = this.driversAttendance.get(driverId);
+
+        if (attendance?.clockedOut) {
+            return 'clocked-out';
+        }
+
+        if (attendance?.clockedIn) {
+            return 'clocked-in';
+        }
+
+        return 'not-clocked-in';
     }
 
     get filteredDrivers(): User[] {
@@ -336,9 +415,9 @@ export class DriverManagementComponent implements OnInit {
         if (this.showAddDriverForm) {
             this.registrationForm.reset();
             this.registrationForm.patchValue({ status: 'Active' });
-            this.registrationLicenseClasses.clear(); // ✅ Clear checkboxes
-            this.clearMessages();
+            this.registrationLicenseClasses.clear();
         }
+        this.clearMessages();
     }
 
     addDriver(): void {
@@ -348,16 +427,14 @@ export class DriverManagementComponent implements OnInit {
             return;
         }
 
-        // ✅ Validate at least one license class selected
         if (this.registrationLicenseClasses.length === 0) {
             this.errorMessage = 'Please select at least one license class.';
             return;
         }
 
         this.clearMessages();
-        const formData = this.registrationForm.value;
 
-        // ✅ Convert license classes array to comma-separated string
+        const formData = this.registrationForm.value;
         const licenseClassString = this.registrationLicenseClasses.value.join(',');
 
         const userDto = {
@@ -366,7 +443,7 @@ export class DriverManagementComponent implements OnInit {
             status: formData.status || 'Active',
             isAvailable: true,
             hasHelper: false,
-            licenseClass: licenseClassString, // ✅ "B1,B2,C"
+            licenseClass: licenseClassString,
             phone: formData.phone || null,
             address: formData.address || null,
             emergencyContact: formData.emergencyContact || null,
@@ -396,9 +473,7 @@ export class DriverManagementComponent implements OnInit {
         this.showEditDriverForm = true;
         this.clearMessages();
 
-        // ✅ Parse existing license classes and populate checkboxes
         const licenseClasses = driver.licenseClass ? driver.licenseClass.split(',') : [];
-
         this.editLicenseClasses.clear();
         licenseClasses.forEach(code => {
             this.editLicenseClasses.push(new FormControl(code.trim()));
@@ -429,21 +504,19 @@ export class DriverManagementComponent implements OnInit {
             return;
         }
 
-        // ✅ Validate at least one license class selected
         if (this.editLicenseClasses.length === 0) {
             this.errorMessage = 'Please select at least one license class.';
             return;
         }
 
         this.clearMessages();
-        const formData = this.editForm.value;
 
-        // ✅ Convert license classes array to comma-separated string
+        const formData = this.editForm.value;
         const licenseClassString = this.editLicenseClasses.value.join(',');
 
         const updateData = {
             ...formData,
-            licenseClass: licenseClassString, // ✅ "B1,B2,C"
+            licenseClass: licenseClassString,
             status: formData.status,
             phone: formData.phone || null,
             address: formData.address || null,
@@ -544,7 +617,7 @@ export class DriverManagementComponent implements OnInit {
         this.http.put(`${this.apiUrl}/users/${driver.id}`, updateData).subscribe({
             next: () => {
                 driver.isAvailable = !driver.isAvailable;
-                this.successMessage = `Driver availability updated successfully!`;
+                this.successMessage = 'Driver availability updated successfully!';
                 this.hideMessages();
             },
             error: (err: any) => {
@@ -559,11 +632,16 @@ export class DriverManagementComponent implements OnInit {
         this.downloadCSV(csvData, 'drivers_export.csv');
     }
 
+    downloadAttendanceCSV(): void {
+        const csvData = this.convertAttendanceToCSV(this.filteredDrivers);
+        const today = new Date().toISOString().split('T')[0];
+        this.downloadCSV(csvData, `driver_attendance_${today}.csv`);
+    }
+
     private convertToCSV(data: User[]): string {
-        const headers = [
-            'ID', 'Name', 'Email', 'Phone', 'Status', 'License Number', 'License Class',
-            'Experience Years', 'Safety Rating', 'Total Miles', 'Available', 'Has Helper', 'Clocked In', 'On Leave'
-        ];
+        const headers = ['ID', 'Name', 'Email', 'Phone', 'Status', 'License Number', 'License Class',
+            'Experience Years', 'Safety Rating', 'Total Miles', 'Available', 'Has Helper',
+            'Clocked In', 'Clocked Out', 'On Leave'];
 
         const rows = data.map(driver => [
             driver.id || '',
@@ -579,8 +657,63 @@ export class DriverManagementComponent implements OnInit {
             driver.isAvailable ? 'Yes' : 'No',
             driver.hasHelper ? 'Yes' : 'No',
             this.hasDriverClockedInToday(driver.id!) ? 'Yes' : 'No',
+            this.hasDriverClockedOutToday(driver.id!) ? 'Yes' : 'No',
             this.isDriverOnLeave(driver.id!) ? 'Yes' : 'No'
         ]);
+
+        const csvContent = [headers, ...rows]
+            .map(row => row.map(field => `"${field}"`).join(','))
+            .join('\n');
+
+        return csvContent;
+    }
+
+    // ✅ FIXED: Include clock-in and clock-out times
+    private convertAttendanceToCSV(data: User[]): string {
+        const today = new Date().toISOString().split('T')[0];
+
+        const headers = [
+            'Driver ID',
+            'Driver Name',
+            'Email',
+            'Phone',
+            'License Number',
+            'Date',
+            'Clocked In',
+            'Clock-In Time',
+            'Clocked Out',
+            'Clock-Out Time',
+            'Total Hours',
+            'Availability Status',
+            'On Leave',
+            'Leave Type',
+            'Driver Status'
+        ];
+
+        const rows = data.map(driver => {
+            const attendance = this.driversAttendance.get(driver.id!);
+            const attendanceData = this.driversAttendanceData.get(driver.id!);
+            const onLeave = this.isDriverOnLeave(driver.id!);
+            const leaveType = onLeave ? this.getDriverLeaveType(driver.id!) : 'N/A';
+
+            return [
+                driver.id || '',
+                driver.name || '',
+                driver.email || '',
+                driver.phone || 'N/A',
+                driver.licenseNumber || 'N/A',
+                today,
+                attendance?.clockedIn ? 'Yes' : 'No',
+                attendanceData?.clockIn ? this.formatTimeForCSV(attendanceData.clockIn) : 'N/A',
+                attendance?.clockedOut ? 'Yes' : 'No',
+                attendanceData?.clockOut ? this.formatTimeForCSV(attendanceData.clockOut) : 'N/A',
+                attendanceData?.totalHours ? `${attendanceData.totalHours}h` : 'N/A',
+                this.getAvailabilityText(driver.id!),
+                onLeave ? 'Yes' : 'No',
+                leaveType,
+                this.getStringStatus(driver.status)
+            ];
+        });
 
         const csvContent = [headers, ...rows]
             .map(row => row.map(field => `"${field}"`).join(','))
@@ -605,7 +738,7 @@ export class DriverManagementComponent implements OnInit {
     }
 
     selectAll(): void {
-        // Implementation for selecting all drivers for bulk operations
+        // Implementation for selecting all drivers
     }
 
     bulkStatusUpdate(newStatus: string): void {

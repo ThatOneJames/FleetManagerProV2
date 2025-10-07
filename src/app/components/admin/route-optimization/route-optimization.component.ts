@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { RouteService, Route, CreateRoute, CreateRouteStop } from '../../../services/route.service';
 import { VehicleService } from '../../../services/vehicle.service';
@@ -104,33 +104,60 @@ export class RouteOptimizationComponent implements OnInit {
             'Content-Type': 'application/json'
         });
 
-        this.http.get<any[]>(`${this.apiUrl}/users/available`, { headers }).subscribe({
-            next: (data: any[]) => {
-                console.log('Available drivers loaded:', data);
-                this.drivers = data.map(d => ({
-                    id: d.id,
-                    name: d.name,
-                    email: d.email,
-                    phone: d.phone,
-                    licenseNumber: d.licenseNumber,
-                    role: 'Driver'
-                }));
-                console.log('Drivers for dropdown:', this.drivers);
-            },
-            error: (error: any) => {
-                console.error('Error loading available drivers:', error);
-                this.errorMessage = 'Failed to load available drivers. Please try again.';
-                this.drivers = [];
-            }
-        });
+        this.http.get<any>(`${this.apiUrl}/users/drivers`, { headers })
+            .subscribe({
+                next: (allDrivers: any) => {
+                    console.log('📋 All drivers loaded:', allDrivers);
+
+                    const attendanceRequests = allDrivers.map((driver: any) =>
+                        this.http.get<any>(`${this.apiUrl}/attendance/driver/${driver.id}/today`, { headers })
+                            .toPromise()
+                            .catch(() => null)
+                    );
+
+                    Promise.all(attendanceRequests).then(attendanceResponses => {
+                        this.drivers = allDrivers.filter((driver: any, index: number) => {
+                            const attendance = attendanceResponses[index];
+
+                            if (!attendance) {
+                                console.log(`❌ ${driver.name}: No attendance record`);
+                                return false;
+                            }
+
+                            const clockedIn = attendance?.data?.clockIn || attendance?.clockIn;
+                            const clockedOut = attendance?.data?.clockOut || attendance?.clockOut;
+
+                            const isAvailable = clockedIn && !clockedOut;
+
+                            console.log(`${isAvailable ? '✅' : '❌'} ${driver.name}: Clocked In: ${!!clockedIn}, Clocked Out: ${!!clockedOut}`);
+
+                            return isAvailable;
+                        }).map((d: any) => ({
+                            id: d.id,
+                            name: d.name,
+                            email: d.email,
+                            phone: d.phone,
+                            licenseNumber: d.licenseNumber,
+                            role: 'Driver'
+                        }));
+
+                        console.log('✅ Available drivers (clocked in, not clocked out):', this.drivers);
+                    });
+                },
+                error: (error: any) => {
+                    console.error('Error loading drivers:', error);
+                    this.errorMessage = 'Failed to load available drivers. Please try again.';
+                    this.drivers = [];
+                }
+            });
     }
 
-    filteredRoutes(): Route[] {
+    get filteredRoutes(): Route[] {
         return this.routes.filter(route =>
-            (this.searchRoute === '' ||
+            (!this.searchRoute ||
                 route.name.toLowerCase().includes(this.searchRoute.toLowerCase()) ||
                 route.vehiclePlate?.toLowerCase().includes(this.searchRoute.toLowerCase())) &&
-            (this.filterStatus === '' || route.status === this.filterStatus)
+            (!this.filterStatus || route.status === this.filterStatus)
         );
     }
 
@@ -234,8 +261,8 @@ export class RouteOptimizationComponent implements OnInit {
         }
 
         console.log('Creating route with data:', this.newRoute);
-
         this.loading = true;
+
         this.routeService.createRoute(this.newRoute).subscribe({
             next: (route) => {
                 console.log('Route created successfully:', route);
@@ -245,9 +272,7 @@ export class RouteOptimizationComponent implements OnInit {
             },
             error: (error) => {
                 console.error('Error creating route:', error);
-                this.errorMessage = error.error?.errors
-                    ? JSON.stringify(error.error.errors)
-                    : 'Failed to create route';
+                this.errorMessage = error.error?.errors ? JSON.stringify(error.error.errors) : 'Failed to create route';
                 this.loading = false;
             }
         });
@@ -268,8 +293,7 @@ export class RouteOptimizationComponent implements OnInit {
     }
 
     previewGoogleMaps(): void {
-        const hasStartOrStops = (this.newRoute.startAddress && this.newRoute.startAddress.trim()) ||
-            this.newRoute.stops.length > 0;
+        const hasStartOrStops = (this.newRoute.startAddress && this.newRoute.startAddress.trim()) || this.newRoute.stops.length > 0;
 
         if (!hasStartOrStops) {
             alert('Please add a start address or at least one stop to preview the route');
@@ -286,11 +310,11 @@ export class RouteOptimizationComponent implements OnInit {
     }
 
     updateStopStatus(stopId: string, status: string): void {
-        this.routeService.updateStopStatus(stopId, {
-            status,
-            actualArrival: status === 'arrived' ? new Date() : undefined,
-            actualDeparture: status === 'completed' ? new Date() : undefined
-        }).subscribe({
+        const updateData = {
+            status: status
+        };
+
+        this.routeService.updateStopStatus(stopId, updateData).subscribe({
             next: () => {
                 if (this.selectedRoute) {
                     this.routeService.getRouteById(this.selectedRoute.id!).subscribe({
@@ -300,6 +324,10 @@ export class RouteOptimizationComponent implements OnInit {
                             if (index !== -1) {
                                 this.routes[index] = updatedRoute;
                             }
+                        },
+                        error: (error) => {
+                            console.error('Error refreshing route:', error);
+                            this.errorMessage = 'Failed to refresh route data';
                         }
                     });
                 }
@@ -312,10 +340,7 @@ export class RouteOptimizationComponent implements OnInit {
     }
 
     startRoute(routeId: string): void {
-        this.routeService.updateRoute(routeId, {
-            status: 'in_progress',
-            startTime: new Date()
-        }).subscribe({
+        this.routeService.updateRoute(routeId, { status: 'in_progress', startTime: new Date() }).subscribe({
             next: () => {
                 this.loadRoutes();
             },
@@ -327,10 +352,7 @@ export class RouteOptimizationComponent implements OnInit {
     }
 
     completeRoute(routeId: string): void {
-        this.routeService.updateRoute(routeId, {
-            status: 'completed',
-            endTime: new Date()
-        }).subscribe({
+        this.routeService.updateRoute(routeId, { status: 'completed', endTime: new Date() }).subscribe({
             next: () => {
                 this.loadRoutes();
             },
@@ -339,6 +361,36 @@ export class RouteOptimizationComponent implements OnInit {
                 this.errorMessage = 'Failed to complete route';
             }
         });
+    }
+
+    // ✅ NEW: Set route to pending
+    setPendingRoute(routeId: string): void {
+        if (confirm('Are you sure you want to set this route back to pending?')) {
+            this.routeService.updateRoute(routeId, { status: 'planned' }).subscribe({
+                next: () => {
+                    this.loadRoutes();
+                },
+                error: (error) => {
+                    console.error('Error setting route to pending:', error);
+                    this.errorMessage = 'Failed to set route to pending';
+                }
+            });
+        }
+    }
+
+    // ✅ NEW: Cancel route
+    cancelRoute(routeId: string): void {
+        if (confirm('Are you sure you want to cancel this route?')) {
+            this.routeService.updateRoute(routeId, { status: 'cancelled' }).subscribe({
+                next: () => {
+                    this.loadRoutes();
+                },
+                error: (error) => {
+                    console.error('Error cancelling route:', error);
+                    this.errorMessage = 'Failed to cancel route';
+                }
+            });
+        }
     }
 
     optimizeRoute(routeId: string): void {
@@ -375,6 +427,7 @@ export class RouteOptimizationComponent implements OnInit {
 
     copyGoogleMapsUrl(route: Route): void {
         const url = route.googleMapsUrl || this.routeService.generateGoogleMapsUrl(route);
+
         if (url) {
             navigator.clipboard.writeText(url).then(() => {
                 alert('Google Maps URL copied to clipboard!');

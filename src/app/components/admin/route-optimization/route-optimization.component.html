@@ -30,7 +30,7 @@
     </div>
 
     <div class="route-list" *ngIf="!loading">
-        <div *ngFor="let route of filteredRoutes()" class="route-card">
+        <div *ngFor="let route of filteredRoutes" class="route-card">
             <div class="route-header">
                 <h3>{{ route.name }}</h3>
                 <span class="status-badge" [ngClass]="getStatusClass(route.status!)">
@@ -66,36 +66,56 @@
             </div>
 
             <div class="route-actions">
-                <!-- Google Maps Integration Buttons -->
+                <!-- Google Maps Buttons -->
                 <button class="btn-maps"
                         (click)="openGoogleMaps(route)"
                         *ngIf="route.stops && route.stops.length > 0">
                     <i class="icon-map"></i> Open in Maps
                 </button>
-
                 <button class="btn-copy"
                         (click)="copyGoogleMapsUrl(route)"
                         *ngIf="route.stops && route.stops.length > 0">
                     <i class="icon-copy"></i> Copy Map Link
                 </button>
 
-                <!-- Existing Action Buttons -->
+                <!-- View Stops -->
                 <button class="btn-view" (click)="viewRouteStops(route)">
                     <i class="icon-list"></i> View Stops
                 </button>
+
+                <!-- Status Control Buttons -->
                 <button class="btn-start"
                         (click)="startRoute(route.id!)"
                         *ngIf="route.status === 'planned'">
                     <i class="icon-play"></i> Start Route
                 </button>
+
                 <button class="btn-complete"
                         (click)="completeRoute(route.id!)"
                         *ngIf="route.status === 'in_progress'">
                     <i class="icon-check"></i> Complete
                 </button>
+
+                <!-- ✅ NEW: Set to Pending Button (for completed or cancelled routes) -->
+                <button class="btn-pending"
+                        (click)="setPendingRoute(route.id!)"
+                        *ngIf="route.status === 'completed' || route.status === 'cancelled'">
+                    <i class="icon-reset"></i> Set to Pending
+                </button>
+
+                <!-- ✅ NEW: Cancel Route Button (for planned or in-progress routes) -->
+                <button class="btn-cancel"
+                        (click)="cancelRoute(route.id!)"
+                        *ngIf="route.status === 'planned' || route.status === 'in_progress'">
+                    <i class="icon-cancel"></i> Cancel Route
+                </button>
+
+                <!-- Optimize -->
                 <button class="btn-optimize" (click)="optimizeRoute(route.id!)">
                     <i class="icon-route"></i> Optimize
                 </button>
+
+                <!-- Delete (not allowed during in_progress) -->
                 <button class="btn-delete"
                         (click)="deleteRoute(route.id!)"
                         *ngIf="route.status !== 'in_progress'">
@@ -104,7 +124,7 @@
             </div>
         </div>
 
-        <div *ngIf="filteredRoutes().length === 0" class="no-routes">
+        <div *ngIf="filteredRoutes.length === 0" class="no-routes">
             <div class="no-routes-icon">🗺️</div>
             <h3>No Routes Found</h3>
             <p>No routes match your search criteria. Try adjusting your filters or create a new route!</p>
@@ -159,7 +179,6 @@
                     </div>
                 </div>
 
-                <!-- Optional start and destination addresses -->
                 <div class="form-row">
                     <div class="form-group">
                         <label>Start Address</label>
@@ -168,7 +187,6 @@
                                name="startAddress"
                                placeholder="Starting location (optional)" />
                     </div>
-
                     <div class="form-group">
                         <label>Destination Address</label>
                         <input type="text"
@@ -181,7 +199,6 @@
                 <div class="stops-section">
                     <div class="stops-header">
                         <h4>Route Stops *</h4>
-                        <!-- Preview button for Google Maps -->
                         <button type="button"
                                 class="btn-preview"
                                 (click)="previewGoogleMaps()"
@@ -206,14 +223,12 @@
                                     <option value="high">High Priority</option>
                                 </select>
                             </div>
-
                             <div class="form-group">
                                 <input type="text"
                                        [(ngModel)]="newStop.contactName"
                                        name="contactName"
                                        placeholder="Contact name (optional)" />
                             </div>
-
                             <div class="form-group">
                                 <input type="tel"
                                        [(ngModel)]="newStop.contactPhone"
@@ -234,7 +249,6 @@
                         </button>
                     </div>
 
-                    <!-- Google Maps URL Display (Optional) -->
                     <div class="google-maps-url" *ngIf="newRoute.googleMapsUrl">
                         <label>Generated Google Maps URL:</label>
                         <div class="url-display">
@@ -295,7 +309,6 @@
                 <button class="close-btn" (click)="closeStopsModal()">×</button>
             </div>
 
-            <!-- Route Actions Bar -->
             <div class="route-actions-bar">
                 <button class="btn-maps-large" (click)="openGoogleMaps(selectedRoute)">
                     <i class="icon-map"></i> Navigate with Google Maps
@@ -340,7 +353,6 @@
                 <h4>Route Stops</h4>
                 <div *ngFor="let stop of selectedRoute.stops" class="timeline-item">
                     <div class="timeline-marker" [ngClass]="getStatusClass(stop.status!)"></div>
-
                     <div class="timeline-content">
                         <div class="stop-header">
                             <span class="stop-number">Stop {{ stop.stopOrder }}</span>

@@ -1,4 +1,4 @@
-.route-optimization-container {
+﻿.route-optimization-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
@@ -200,6 +200,12 @@
     padding: 60px 20px;
     color: #999;
     font-size: 16px;
+    grid-column: 1 / -1;
+}
+
+.no-routes-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
 }
 
 /* Buttons */
@@ -235,7 +241,8 @@ button {
         background-color: #5a6268;
     }
 
-.btn-view {
+.btn-maps,
+.btn-copy {
     background-color: #17a2b8;
     color: white;
     border: none;
@@ -244,8 +251,22 @@ button {
     font-size: 13px;
 }
 
-    .btn-view:hover {
+    .btn-maps:hover,
+    .btn-copy:hover {
         background-color: #138496;
+    }
+
+.btn-view {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+    .btn-view:hover {
+        background-color: #5a6268;
     }
 
 .btn-start {
@@ -272,6 +293,34 @@ button {
 
     .btn-complete:hover {
         background-color: #0056b3;
+    }
+
+/* ✅ NEW: Set to Pending button */
+.btn-pending {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+    .btn-pending:hover {
+        background-color: #138496;
+    }
+
+/* ✅ NEW: Cancel Route button */
+.btn-cancel {
+    background-color: #e67e22;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+    .btn-cancel:hover {
+        background-color: #d35400;
     }
 
 .btn-optimize {
@@ -312,6 +361,31 @@ button {
     .btn-sm:hover {
         background-color: #0056b3;
     }
+
+    .btn-sm.btn-success {
+        background-color: #28a745;
+    }
+
+        .btn-sm.btn-success:hover {
+            background-color: #218838;
+        }
+
+    .btn-sm.btn-primary {
+        background-color: #007bff;
+    }
+
+        .btn-sm.btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+    .btn-sm.btn-warning {
+        background-color: #ffc107;
+        color: #333;
+    }
+
+        .btn-sm.btn-warning:hover {
+            background-color: #e0a800;
+        }
 
     .btn-sm.btn-secondary {
         background-color: #6c757d;
@@ -402,6 +476,7 @@ button {
         border: 1px solid #ddd;
         border-radius: 5px;
         font-size: 14px;
+        box-sizing: border-box;
     }
 
     .form-group textarea {
@@ -426,6 +501,31 @@ button {
         color: #333;
     }
 
+.stops-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.btn-preview {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+    .btn-preview:hover {
+        background-color: #138496;
+    }
+
+    .btn-preview:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+    }
+
 .stop-form {
     background-color: #f8f9fa;
     padding: 15px;
@@ -446,6 +546,48 @@ button {
 
     .btn-add-stop:hover {
         background-color: #218838;
+    }
+
+.google-maps-url {
+    margin-top: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+}
+
+    .google-maps-url label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #555;
+        font-size: 14px;
+    }
+
+.url-display {
+    display: flex;
+    gap: 10px;
+}
+
+    .url-display input {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 13px;
+        background-color: white;
+    }
+
+.btn-url-action {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+    .btn-url-action:hover {
+        background-color: #138496;
     }
 
 .stops-list {
@@ -494,6 +636,19 @@ button {
     align-items: center;
     font-size: 12px;
     color: #666;
+    flex-wrap: wrap;
+}
+
+.stop-notes {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #666;
+}
+
+.contact-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .btn-remove {
@@ -521,10 +676,71 @@ button {
     margin-top: 25px;
 }
 
+/* Route Actions Bar */
+.route-actions-bar {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #eee;
+}
+
+.btn-maps-large,
+.btn-copy-large {
+    flex: 1;
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+    .btn-maps-large:hover,
+    .btn-copy-large:hover {
+        background-color: #138496;
+    }
+
+/* Route Overview */
+.route-overview {
+    padding: 20px;
+    background-color: #f8f9fa;
+}
+
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.overview-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+    .overview-item .label {
+        font-weight: 600;
+        color: #666;
+        font-size: 13px;
+    }
+
+    .overview-item span:not(.label) {
+        color: #333;
+        font-size: 14px;
+    }
+
 /* Stops Timeline */
 .stops-timeline {
     padding: 20px;
 }
+
+    .stops-timeline h4 {
+        margin: 0 0 20px 0;
+        color: #333;
+        font-size: 18px;
+    }
 
 .timeline-item {
     display: flex;
@@ -596,13 +812,17 @@ button {
 }
 
 .stop-info,
-.stop-times,
-.stop-notes {
+.stop-times {
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px solid #f0f0f0;
     font-size: 13px;
     color: #666;
+}
+
+.contact-item,
+.time-item {
+    margin-bottom: 5px;
 }
 
 .stop-actions {
@@ -630,5 +850,27 @@ button {
         flex-direction: column;
         gap: 15px;
         align-items: flex-start;
+    }
+
+    .route-actions {
+        flex-direction: column;
+    }
+
+        .route-actions button {
+            width: 100%;
+        }
+
+    .overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .route-actions-bar {
+        flex-direction: column;
+    }
+
+    .stops-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
     }
 }
