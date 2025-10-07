@@ -8,7 +8,7 @@ namespace FleetManagerPro.API.Models
     {
         [Key]
         [Column("id")]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Id { get; set; } = GenerateUserId();
 
         [Required]
         [Column("name")]
@@ -24,7 +24,7 @@ namespace FleetManagerPro.API.Models
 
         [Required]
         [Column("role")]
-        public string Role { get; set; } = ""; // Changed from enum to string
+        public string Role { get; set; } = "";
 
         [Column("phone")]
         public string? Phone { get; set; }
@@ -43,7 +43,7 @@ namespace FleetManagerPro.API.Models
 
         [Required]
         [Column("status")]
-        public string Status { get; set; } = "Active"; // Changed from enum to string
+        public string Status { get; set; } = "Active";
 
         [Column("profile_image_url")]
         public string? ProfileImageUrl { get; set; }
@@ -56,7 +56,7 @@ namespace FleetManagerPro.API.Models
 
         // Driver-specific fields
         [Column("license_number")]
-        public string? LicenseNumber { get; set; }
+        public string? LicenseNumber { get; set; } // REMOVED HASHING - Store plain license number
 
         [Column("license_class")]
         public string? LicenseClass { get; set; }
@@ -91,13 +91,19 @@ namespace FleetManagerPro.API.Models
         [Column("last_location_updated")]
         public DateTime? LastLocationUpdated { get; set; }
 
-        //public ICollection<Vehicle> AssignedVehicles { get; set; } = new List<Vehicle>();
-        //public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
         public ICollection<DriverAttendance> AttendanceRecords { get; set; } = new List<DriverAttendance>();
         public ICollection<LeaveRequest> LeaveRequests { get; set; } = new List<LeaveRequest>();
 
-        public bool IsDriver => Role == "Driver"; // String comparison
-        public bool IsAdmin => Role == "Admin"; // String comparison
+        public bool IsDriver => Role == "Driver";
+        public bool IsAdmin => Role == "Admin";
+
+        // Generate user ID with EID- prefix
+        private static string GenerateUserId()
+        {
+            var timestamp = DateTime.UtcNow.Ticks.ToString().Substring(8); // Last 10 digits
+            var random = new Random().Next(1000, 9999);
+            return $"EID-{timestamp}{random}";
+        }
 
         public void UpdateDriverInfo(string? licenseNumber = null, string? licenseClass = null,
             DateTime? licenseExpiry = null, int? experienceYears = null, decimal? safetyRating = null)
@@ -113,6 +119,7 @@ namespace FleetManagerPro.API.Models
             }
         }
     }
+
     public enum UserRole
     {
         Admin = 0,

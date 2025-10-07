@@ -1,2 +1,145 @@
-﻿<h2>🔔 Notifications</h2>
-<p>This is a placeholder for driver notifications.</p>
+﻿<div class="notifications-container">
+    <!-- Header -->
+    <div class="notifications-header">
+        <h2>Notifications</h2>
+        <p class="subtitle">Stay updated with important messages and alerts</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-bell"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ totalNotifications }}</h3>
+                <p>Total Notifications</p>
+                <span class="stat-label">All notifications</span>
+            </div>
+        </div>
+
+        <div class="stat-card unread">
+            <div class="stat-icon">
+                <i class="fas fa-bell"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ unreadCount }}</h3>
+                <p>Unread</p>
+                <span class="stat-label">Need attention</span>
+            </div>
+        </div>
+
+        <div class="stat-card action">
+            <div class="stat-icon">
+                <i class="fas fa-bell"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ actionRequiredCount }}</h3>
+                <p>Action Required</p>
+                <span class="stat-label">Require response</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="actions-bar">
+        <button class="btn-mark-all" (click)="markAllAsRead()">
+            <i class="fas fa-check-double"></i> Mark All Read
+        </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <button class="tab"
+                [class.active]="activeTab === 'all'"
+                (click)="setActiveTab('all')">
+            All Notifications
+        </button>
+        <button class="tab"
+                [class.active]="activeTab === 'unread'"
+                (click)="setActiveTab('unread')">
+            Unread ({{ unreadCount }})
+        </button>
+        <button class="tab"
+                [class.active]="activeTab === 'action'"
+                (click)="setActiveTab('action')">
+            Action Required ({{ actionRequiredCount }})
+        </button>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-container">
+        <div class="spinner"></div>
+        <p>Loading notifications...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="errorMessage && !loading" class="error-container">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>{{ errorMessage }}</p>
+        <button class="btn-retry" (click)="loadNotifications()">Retry</button>
+    </div>
+
+    <!-- Notifications List -->
+    <div *ngIf="!loading && !errorMessage" class="notifications-list">
+        <div *ngFor="let notification of filteredNotifications"
+             class="notification-card"
+             [class.unread]="!notification.isRead"
+             [class.action-required]="notification.actionRequired">
+
+            <!-- Icon -->
+            <div class="notification-icon" [ngClass]="getCategoryClass(notification.category)">
+                <i *ngIf="notification.type === 'trip'" class="fas fa-route"></i>
+                <i *ngIf="notification.type === 'leave'" class="fas fa-user"></i>
+                <i *ngIf="notification.type === 'maintenance'" class="fas fa-wrench"></i>
+            </div>
+
+            <!-- Content -->
+            <div class="notification-content">
+                <div class="notification-header-row">
+                    <h3>{{ notification.title }}</h3>
+                    <span class="timestamp">{{ formatTimestamp(notification.timestamp) }}</span>
+                </div>
+
+                <div class="notification-badges">
+                    <span class="badge" [ngClass]="getPriorityClass(notification.priority)">
+                        {{ notification.priority | titlecase }}
+                    </span>
+                    <span class="badge category-badge">{{ notification.category }}</span>
+                    <span *ngIf="notification.actionRequired" class="badge action-badge">
+                        Action Required
+                    </span>
+                </div>
+
+                <p class="notification-message">{{ notification.message }}</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="notification-actions">
+                <button *ngIf="!notification.isRead"
+                        class="btn-action"
+                        (click)="markAsRead(notification)"
+                        title="Mark as read">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="btn-action delete"
+                        (click)="deleteNotification(notification)"
+                        title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+
+            <!-- Blue indicator dot for unread -->
+            <div *ngIf="!notification.isRead" class="unread-indicator"></div>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="filteredNotifications.length === 0" class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h3>No notifications</h3>
+            <p *ngIf="activeTab === 'all'">You're all caught up!</p>
+            <p *ngIf="activeTab === 'unread'">No unread notifications</p>
+            <p *ngIf="activeTab === 'action'">No actions required</p>
+        </div>
+    </div>
+</div>

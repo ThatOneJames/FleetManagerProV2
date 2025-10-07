@@ -153,43 +153,60 @@ namespace FleetManager.Controllers
 
                 var user = new User
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    // Don't need to set Id here - constructor handles it with EID- format
                     Email = userDto.Email,
                     Name = userDto.Name,
                     PasswordHash = hashedPassword,
                     Role = userDto.Role,
-                    Status = "Active",
+                    Status = userDto.Status ?? "Active", // FIXED: Use the status from form
+                    Phone = userDto.Phone,
+                    Address = userDto.Address,
+                    DateOfBirth = userDto.DateOfBirth,
+                    HireDate = userDto.HireDate,
+                    EmergencyContact = userDto.EmergencyContact,
+                    ProfileImageUrl = userDto.ProfileImageUrl,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                // If registering a driver, initialize driver-specific fields
+                // If registering a driver, capture ALL driver-specific fields from the form
                 if (user.Role == "Driver")
                 {
-                    user.LicenseNumber = Guid.NewGuid().ToString();
-                    user.LicenseClass = "N/A";
-                    user.ExperienceYears = 0;
-                    user.SafetyRating = 0;
-                    user.TotalMilesDriven = 0;
-                    user.IsAvailable = true;
-                    user.HasHelper = false;
+                    user.LicenseNumber = string.IsNullOrWhiteSpace(userDto.LicenseNumber) ? null : userDto.LicenseNumber; // NO HASHING!
+                    user.LicenseClass = string.IsNullOrWhiteSpace(userDto.LicenseClass) ? null : userDto.LicenseClass;
+                    user.LicenseExpiry = userDto.LicenseExpiry;
+                    user.ExperienceYears = userDto.ExperienceYears;
+                    user.SafetyRating = userDto.SafetyRating;
+                    user.TotalMilesDriven = userDto.TotalMilesDriven;
+                    user.IsAvailable = userDto.IsAvailable;
+                    user.HasHelper = userDto.HasHelper;
                 }
 
                 await _context.Users.AddAsync(user);
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"[AUTH] User registered successfully: {user.Email}");
+                Console.WriteLine($"[AUTH] User registered successfully: {user.Email} with ID: {user.Id}");
 
-                return Ok(new { message = "User registered successfully" });
+                return Ok(new { message = "User registered successfully", userId = user.Id });
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[AUTH] Registration error: {ex.Message}");
-                return StatusCode(500, new { message = "Internal server error during registration" });
+                Console.WriteLine($"[AUTH] Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { message = "Internal server error during registration", error = ex.Message });
             }
         }
 
-        // Debug endpoint to verify auth controller is working
+
+        // Helper method for generating EID format
+        private static string GenerateUserId()
+        {
+            var timestamp = DateTime.UtcNow.Ticks.ToString().Substring(8);
+            var random = new Random().Next(1000, 9999);
+            return $"EID-{timestamp}{random}";
+        }
+
+
         [HttpGet("test")]
         [AllowAnonymous]
         public IActionResult Test()

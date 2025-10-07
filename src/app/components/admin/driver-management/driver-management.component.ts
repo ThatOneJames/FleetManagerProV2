@@ -18,7 +18,7 @@ export class DriverManagementComponent implements OnInit {
 
     // Attendance tracking
     driversAttendance: Map<string, boolean> = new Map();
-    driversOnLeave: Map<string, any> = new Map(); // Track leave status
+    driversOnLeave: Map<string, any> = new Map();
     isLoadingAttendance: boolean = false;
 
     // Form states
@@ -62,6 +62,7 @@ export class DriverManagementComponent implements OnInit {
             address: [''],
             dateOfBirth: [''],
             emergencyContact: [''],
+            status: ['Active', Validators.required], // ADDED: Status field
             licenseNumber: [''],
             licenseClass: [''],
             licenseExpiry: [''],
@@ -93,7 +94,7 @@ export class DriverManagementComponent implements OnInit {
         this.driverService.getAllDrivers().subscribe({
             next: (data: User[]) => {
                 this.drivers = data;
-                this.loadDriversAttendanceAndLeave(); // Load both attendance and leave status
+                this.loadDriversAttendanceAndLeave();
                 this.clearMessages();
             },
             error: (err) => {
@@ -103,7 +104,6 @@ export class DriverManagementComponent implements OnInit {
         });
     }
 
-    // Load both attendance and leave status for all drivers
     private loadDriversAttendanceAndLeave(): void {
         this.isLoadingAttendance = true;
         const token = localStorage.getItem('token');
@@ -119,7 +119,6 @@ export class DriverManagementComponent implements OnInit {
             'Content-Type': 'application/json'
         });
 
-        // Create array of observables for attendance checks
         const attendanceRequests = this.drivers.map(driver =>
             this.http.get<any>(`${this.apiUrl}/attendance/driver/${driver.id}/today`, { headers }).pipe(
                 catchError(error => {
@@ -129,7 +128,6 @@ export class DriverManagementComponent implements OnInit {
             )
         );
 
-        // Create array of observables for leave status checks
         const leaveRequests = this.drivers.map(driver =>
             this.http.get<any>(`${this.apiUrl}/leaverequests/driver/${driver.id}/active`, { headers }).pipe(
                 catchError(error => {
@@ -138,26 +136,19 @@ export class DriverManagementComponent implements OnInit {
             )
         );
 
-        // Execute all requests in parallel
         forkJoin([
             forkJoin(attendanceRequests),
             forkJoin(leaveRequests)
         ]).subscribe({
             next: ([attendanceResponses, leaveResponses]) => {
-                console.log('🔍 Attendance responses:', attendanceResponses);
-                console.log('🏖️ Leave responses:', leaveResponses);
-
-                // Process attendance responses
                 attendanceResponses.forEach((response, index) => {
                     const driver = this.drivers[index];
-
                     if (response === null) {
                         this.driversAttendance.set(driver.id!, false);
                         return;
                     }
 
                     let hasClockedIn = false;
-
                     if (response?.data) {
                         hasClockedIn = response.data.clockIn != null;
                     } else if (response?.clockIn != null) {
@@ -165,22 +156,17 @@ export class DriverManagementComponent implements OnInit {
                     } else if (response?.status === 'Present' || response?.data?.status === 'Present') {
                         hasClockedIn = true;
                     }
-
                     this.driversAttendance.set(driver.id!, hasClockedIn);
                 });
 
                 leaveResponses.forEach((response, index) => {
                     const driver = this.drivers[index];
-
                     if (response === null || !response) {
                         this.driversOnLeave.set(driver.id!, null);
                         return;
                     }
 
-                    // Check if driver has active approved leave
                     let activeLeave = null;
-
-                    // Response might be an array or single object
                     if (Array.isArray(response)) {
                         activeLeave = response.find((leave: any) =>
                             leave.status === 'Approved' && this.isLeaveActiveToday(leave)
@@ -196,18 +182,13 @@ export class DriverManagementComponent implements OnInit {
                             activeLeave = response.data;
                         }
                     }
-
                     this.driversOnLeave.set(driver.id!, activeLeave);
-
-                    if (activeLeave) {
-                        console.log(`🏖️ Driver ${driver.name} is ON LEAVE:`, activeLeave);
-                    }
                 });
 
                 this.isLoadingAttendance = false;
             },
             error: (error) => {
-                console.error('❌ Error loading data:', error);
+                console.error('Error loading data:', error);
                 this.drivers.forEach(driver => {
                     this.driversAttendance.set(driver.id!, false);
                     this.driversOnLeave.set(driver.id!, null);
@@ -217,7 +198,6 @@ export class DriverManagementComponent implements OnInit {
         });
     }
 
-    // Check if leave is active today
     private isLeaveActiveToday(leave: any): boolean {
         if (!leave || !leave.startDate || !leave.endDate) return false;
 
@@ -233,25 +213,21 @@ export class DriverManagementComponent implements OnInit {
         return today >= startDate && today <= endDate;
     }
 
-    // Check if driver is on leave
     isDriverOnLeave(driverId: string): boolean {
         const leave = this.driversOnLeave.get(driverId);
         return leave !== null && leave !== undefined;
     }
 
-    // Get leave type
     getDriverLeaveType(driverId: string): string {
         const leave = this.driversOnLeave.get(driverId);
         if (!leave) return '';
         return leave.leaveType || leave.type || '';
     }
 
-    // Check if driver has clocked in today
     hasDriverClockedInToday(driverId: string): boolean {
         return this.driversAttendance.get(driverId) ?? false;
     }
 
-    // Get availability status text - UPDATED
     getAvailabilityText(driverId: string): string {
         if (this.isDriverOnLeave(driverId)) {
             return 'On Leave';
@@ -259,7 +235,6 @@ export class DriverManagementComponent implements OnInit {
         return this.hasDriverClockedInToday(driverId) ? 'Available' : 'Unavailable';
     }
 
-    // Get availability subtitle - UPDATED
     getAvailabilitySubtitle(driverId: string): string {
         if (this.isDriverOnLeave(driverId)) {
             const leaveType = this.getDriverLeaveType(driverId);
@@ -268,7 +243,6 @@ export class DriverManagementComponent implements OnInit {
         return this.hasDriverClockedInToday(driverId) ? 'Clocked In' : 'Not Clocked In';
     }
 
-    // Get availability CSS class - UPDATED
     getAvailabilityClass(driverId: string): string {
         if (this.isDriverOnLeave(driverId)) {
             return 'on-leave';
@@ -306,6 +280,7 @@ export class DriverManagementComponent implements OnInit {
         this.showAddDriverForm = !this.showAddDriverForm;
         if (this.showAddDriverForm) {
             this.registrationForm.reset();
+            this.registrationForm.patchValue({ status: 'Active' }); // Set default status
             this.clearMessages();
         }
     }
@@ -323,13 +298,13 @@ export class DriverManagementComponent implements OnInit {
         const userDto = {
             ...formData,
             role: 'Driver',
-            status: 'Active',
+            status: formData.status || 'Active', // Use selected status
             isAvailable: true,
             hasHelper: false,
             phone: formData.phone || null,
             address: formData.address || null,
             emergencyContact: formData.emergencyContact || null,
-            licenseNumber: formData.licenseNumber || null,
+            licenseNumber: formData.licenseNumber || null, // Plain license number (no hashing)
             licenseClass: formData.licenseClass || null,
             licenseExpiry: formData.licenseExpiry || null,
             dateOfBirth: formData.dateOfBirth || null
@@ -363,7 +338,7 @@ export class DriverManagementComponent implements OnInit {
             dateOfBirth: driver.dateOfBirth ? this.formatDate(driver.dateOfBirth) : '',
             emergencyContact: driver.emergencyContact || '',
             status: this.getStringStatus(driver.status),
-            licenseNumber: driver.licenseNumber || '',
+            licenseNumber: driver.licenseNumber || '', // Display unhashed license number
             licenseClass: driver.licenseClass || '',
             licenseExpiry: driver.licenseExpiry ? this.formatDate(driver.licenseExpiry) : '',
             experienceYears: driver.experienceYears || 0,
@@ -390,7 +365,7 @@ export class DriverManagementComponent implements OnInit {
             phone: formData.phone || null,
             address: formData.address || null,
             emergencyContact: formData.emergencyContact || null,
-            licenseNumber: formData.licenseNumber || null,
+            licenseNumber: formData.licenseNumber || null, // Plain license number (no hashing)
             licenseClass: formData.licenseClass || null,
             licenseExpiry: formData.licenseExpiry || null,
             dateOfBirth: formData.dateOfBirth || null
@@ -502,16 +477,17 @@ export class DriverManagementComponent implements OnInit {
 
     private convertToCSV(data: User[]): string {
         const headers = [
-            'Name', 'Email', 'Phone', 'Status', 'License Number', 'License Class',
+            'ID', 'Name', 'Email', 'Phone', 'Status', 'License Number', 'License Class',
             'Experience Years', 'Safety Rating', 'Total Miles', 'Available', 'Has Helper', 'Clocked In', 'On Leave'
         ];
 
         const rows = data.map(driver => [
+            driver.id || '', // Show new EID- format
             driver.name || '',
             driver.email || '',
             driver.phone || '',
             this.getStringStatus(driver.status),
-            driver.licenseNumber || '',
+            driver.licenseNumber || '', // Show unhashed license number
             driver.licenseClass || '',
             driver.experienceYears || 0,
             driver.safetyRating || 0,
@@ -578,7 +554,6 @@ export class DriverManagementComponent implements OnInit {
         return expiryDate < today;
     }
 
-    // Refresh attendance and leave data
     refreshAttendance(): void {
         this.loadDriversAttendanceAndLeave();
     }
