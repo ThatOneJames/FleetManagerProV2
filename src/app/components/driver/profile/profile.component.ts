@@ -18,7 +18,6 @@ export class DriverProfileComponent implements OnInit {
     profileForm!: FormGroup;
     currentUser: any = null;
 
-    // Read-only fields
     hireDate: string = '';
     safetyRating: number = 0;
     totalMilesDriven: number = 0;
@@ -27,7 +26,6 @@ export class DriverProfileComponent implements OnInit {
     driverId: string = '';
     joinedDate: string = '';
 
-    // ✅ TRUCK-RELATED LICENSE CLASSES (Philippines)
     availableLicenseClasses = [
         { code: 'B1', name: 'Light Trucks (Up to 4,500 kg)' },
         { code: 'B2', name: 'Heavy Trucks (Over 4,500 kg)' },
@@ -53,106 +51,63 @@ export class DriverProfileComponent implements OnInit {
         this.profileForm = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]],
-            phone: ['', [Validators.required, Validators.pattern(/^[0-9]{10,11}$/)]],
+            phone: [''],
             address: [''],
             dateOfBirth: [''],
-            emergencyContact: ['', [Validators.required]],
+            emergencyContact: [''],
             licenseNumber: ['', [Validators.required]],
-            licenseClasses: this.fb.array([], Validators.required), // ✅ FormArray for multiple checkboxes
+            licenseClasses: this.fb.array([], Validators.required),
             licenseExpiry: ['', [Validators.required]],
             experienceYears: [0, [Validators.min(0), Validators.max(50)]]
         });
     }
 
-    // ✅ FORM CONTROL GETTERS (Required for HTML validation)
-    get name() {
-        return this.profileForm.get('name');
-    }
+    get name() { return this.profileForm.get('name'); }
+    get email() { return this.profileForm.get('email'); }
+    get phone() { return this.profileForm.get('phone'); }
+    get address() { return this.profileForm.get('address'); }
+    get dateOfBirth() { return this.profileForm.get('dateOfBirth'); }
+    get emergencyContact() { return this.profileForm.get('emergencyContact'); }
+    get licenseNumber() { return this.profileForm.get('licenseNumber'); }
+    get licenseExpiry() { return this.profileForm.get('licenseExpiry'); }
+    get experienceYears() { return this.profileForm.get('experienceYears'); }
 
-    get email() {
-        return this.profileForm.get('email');
-    }
-
-    get phone() {
-        return this.profileForm.get('phone');
-    }
-
-    get address() {
-        return this.profileForm.get('address');
-    }
-
-    get dateOfBirth() {
-        return this.profileForm.get('dateOfBirth');
-    }
-
-    get emergencyContact() {
-        return this.profileForm.get('emergencyContact');
-    }
-
-    get licenseNumber() {
-        return this.profileForm.get('licenseNumber');
-    }
-
-    get licenseExpiry() {
-        return this.profileForm.get('licenseExpiry');
-    }
-
-    get experienceYears() {
-        return this.profileForm.get('experienceYears');
-    }
-
-    // ✅ Getter for license classes FormArray
     get licenseClassesFormArray(): FormArray {
         return this.profileForm.get('licenseClasses') as FormArray;
     }
 
-    // ✅ BACKWARD COMPATIBILITY: For old HTML that uses licenseClasses
     get licenseClasses() {
         return this.availableLicenseClasses;
     }
 
-    // ✅ Check if a license class is selected
     isLicenseClassSelected(code: string): boolean {
         return this.licenseClassesFormArray.value.includes(code);
     }
 
-    // ✅ Toggle license class checkbox
     onLicenseClassChange(code: string, event: any): void {
         const formArray = this.licenseClassesFormArray;
+        const isChecked = event.checked;
 
-        if (event.target.checked) {
-            formArray.push(new FormControl(code));
+        if (isChecked) {
+            if (!formArray.value.includes(code)) {
+                formArray.push(new FormControl(code));
+            }
         } else {
             const index = formArray.controls.findIndex(x => x.value === code);
             if (index >= 0) {
                 formArray.removeAt(index);
             }
         }
+
+        formArray.markAsTouched();
+        console.log('✅ License classes updated:', formArray.value);
     }
 
+    // ✅ FIXED: ALWAYS LOAD FRESH DATA FROM API
     private loadCurrentUserProfile(): void {
         this.isLoading = true;
         this.clearMessages();
 
-        this.authService.currentUser$.subscribe({
-            next: (user) => {
-                if (user && user.id) {
-                    console.log('✅ User loaded from AuthService:', user);
-                    this.populateForm(user);
-                    this.isLoading = false;
-                } else {
-                    console.log('⚠️ User not in AuthService, fetching from API');
-                    this.fetchUserFromApi();
-                }
-            },
-            error: (err) => {
-                console.error('❌ Error loading user from AuthService:', err);
-                this.fetchUserFromApi();
-            }
-        });
-    }
-
-    private fetchUserFromApi(): void {
         const token = this.authService.getToken();
         if (!token) {
             this.errorMessage = 'Not authenticated. Please log in.';
@@ -164,11 +119,32 @@ export class DriverProfileComponent implements OnInit {
             'Authorization': `Bearer ${token}`
         });
 
+        // ✅ Always fetch from API, don't use cached currentUser$
+        console.log('📡 Fetching fresh user data from API...');
+
         this.http.get<any>(`${this.apiUrl}/current`, { headers }).subscribe({
             next: (response) => {
-                console.log('✅ User loaded from API:', response);
-                this.populateForm(response);
-                this.isLoading = false;
+                console.log('✅ Fresh user data from /current:', response);
+
+                // If license data is missing, fetch full details
+                if (!response.licenseClass && response.id) {
+                    console.log('⚠️ License class missing, fetching full details...');
+                    this.http.get<any>(`${this.apiUrl}/${response.id}`, { headers }).subscribe({
+                        next: (fullUser) => {
+                            console.log('✅ Full user details loaded:', fullUser);
+                            this.populateForm(fullUser);
+                            this.isLoading = false;
+                        },
+                        error: (err) => {
+                            console.error('❌ Error loading full user:', err);
+                            this.populateForm(response);
+                            this.isLoading = false;
+                        }
+                    });
+                } else {
+                    this.populateForm(response);
+                    this.isLoading = false;
+                }
             },
             error: (err) => {
                 console.error('❌ Error loading user from API:', err);
@@ -184,23 +160,30 @@ export class DriverProfileComponent implements OnInit {
 
     private populateForm(user: any): void {
         console.log('📝 Populating form with user data:', {
-            licenseExpiry: user.licenseExpiry,
-            licenseClass: user.licenseClass,
-            licenseNumber: user.licenseNumber
+            id: user.id,
+            name: user.name,
+            licenseClass: user.licenseClass
         });
 
         this.currentUser = user;
-        this.driverId = `Driver ID: ${user.id ? user.id.substring(0, 8) : '2'}`;
+        this.driverId = `Driver ID: ${user.id || 'N/A'}`;
 
-        // ✅ Parse license classes (stored as "B1,B2,C")
-        const licenseClasses = user.licenseClass ? user.licenseClass.split(',') : [];
+        // ✅ Parse license classes from comma-separated string
+        const licenseClassString = user.licenseClass || '';
+        const licenseClasses = licenseClassString
+            .split(',')
+            .map((c: string) => c.trim())
+            .filter((c: string) => c.length > 0);
 
-        // Clear and rebuild FormArray
+        console.log('✅ Parsed license classes:', licenseClasses);
+
+        // ✅ Clear and rebuild FormArray
         this.licenseClassesFormArray.clear();
         licenseClasses.forEach((code: string) => {
-            this.licenseClassesFormArray.push(new FormControl(code.trim()));
+            this.licenseClassesFormArray.push(new FormControl(code));
         });
 
+        // ✅ Patch form values
         this.profileForm.patchValue({
             name: user.name || '',
             email: user.email || '',
@@ -211,13 +194,9 @@ export class DriverProfileComponent implements OnInit {
             licenseNumber: user.licenseNumber || '',
             licenseExpiry: user.licenseExpiry ? this.formatDate(user.licenseExpiry) : '',
             experienceYears: user.experienceYears || 0
-        });
+        }, { emitEvent: false });
 
-        console.log('✅ Form populated with values:', {
-            ...this.profileForm.value,
-            licenseClasses: this.licenseClassesFormArray.value
-        });
-        console.log('📅 License Expiry after formatting:', this.profileForm.get('licenseExpiry')?.value);
+        console.log('✅ Form populated. License classes in FormArray:', this.licenseClassesFormArray.value);
 
         // Set read-only fields
         this.hireDate = user.hireDate ? this.formatDisplayDate(user.hireDate) : user.createdAt ? this.formatDisplayDate(user.createdAt) : '6/15/2023';
@@ -231,26 +210,25 @@ export class DriverProfileComponent implements OnInit {
     }
 
     private formatDate(dateString: string | Date): string {
-        if (!dateString) {
-            console.log('📅 No date to format');
-            return '';
-        }
-
+        if (!dateString) return '';
         try {
             const date = new Date(dateString);
-            const formatted = date.toISOString().split('T')[0];
-            console.log(`📅 Formatted date: ${dateString} => ${formatted}`);
-            return formatted;
+            if (isNaN(date.getTime())) return '';
+            return date.toISOString().split('T')[0];
         } catch (error) {
-            console.error('❌ Error formatting date:', error);
             return '';
         }
     }
 
     private formatDisplayDate(dateString: string | Date): string {
         if (!dateString) return '';
-        const date = new Date(dateString);
-        return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '';
+            return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+        } catch (error) {
+            return '';
+        }
     }
 
     toggleEdit(): void {
@@ -262,13 +240,20 @@ export class DriverProfileComponent implements OnInit {
     }
 
     saveChanges(): void {
+        this.markFormGroupTouched(this.profileForm);
+
         if (this.profileForm.invalid) {
-            this.markFormGroupTouched(this.profileForm);
             this.errorMessage = 'Please fill out all required fields correctly.';
+            console.log('❌ Form invalid');
+            Object.keys(this.profileForm.controls).forEach(key => {
+                const control = this.profileForm.get(key);
+                if (control?.invalid) {
+                    console.log(`❌ ${key} is invalid:`, control.errors);
+                }
+            });
             return;
         }
 
-        // ✅ Validate at least one license class selected
         if (this.licenseClassesFormArray.length === 0) {
             this.errorMessage = 'Please select at least one license class.';
             return;
@@ -284,8 +269,6 @@ export class DriverProfileComponent implements OnInit {
         this.isLoading = true;
 
         const formData = this.profileForm.value;
-
-        // ✅ Convert license classes array to comma-separated string
         const licenseClassString = this.licenseClassesFormArray.value.join(',');
 
         const updatePayload = {
@@ -295,7 +278,7 @@ export class DriverProfileComponent implements OnInit {
             address: formData.address || null,
             emergencyContact: formData.emergencyContact || null,
             licenseNumber: formData.licenseNumber || null,
-            licenseClass: licenseClassString, // ✅ "B1,B2,C"
+            licenseClass: licenseClassString,
             licenseExpiry: formData.licenseExpiry || null,
             dateOfBirth: formData.dateOfBirth || null,
             experienceYears: formData.experienceYears || 0
@@ -316,7 +299,10 @@ export class DriverProfileComponent implements OnInit {
                     this.successMessage = 'Profile updated successfully!';
                     this.isEditing = false;
                     this.isLoading = false;
-                    this.populateForm(response);
+
+                    // ✅ Reload fresh data from API after save
+                    this.loadCurrentUserProfile();
+
                     this.hideMessages();
                 },
                 error: (err) => {
@@ -331,6 +317,10 @@ export class DriverProfileComponent implements OnInit {
         Object.keys(formGroup.controls).forEach(field => {
             const control = formGroup.get(field);
             control?.markAsTouched({ onlySelf: true });
+
+            if (control instanceof FormArray) {
+                control.controls.forEach(c => c.markAsTouched());
+            }
         });
     }
 
@@ -345,13 +335,11 @@ export class DriverProfileComponent implements OnInit {
         }, 5000);
     }
 
-    // Helper to get rating stars
     getRatingStars(rating: number): string {
         if (!rating) return '';
         return '⭐'.repeat(Math.round(rating));
     }
 
-    // Helper to format miles
     formatMiles(miles: number): string {
         return miles ? miles.toLocaleString() : '0';
     }

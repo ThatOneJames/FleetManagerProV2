@@ -1,5 +1,4 @@
-﻿// src/app/components/driver/attendance/attendance.component.ts
-import { Component, OnInit, OnDestroy } from '@angular/core';
+﻿import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subject, takeUntil, interval } from 'rxjs';
 import { AttendanceService, AttendanceRecord, WeeklyAttendance } from '../../../services/attendance.service';
 import { AuthService } from '../../../services/auth.service';
@@ -14,64 +13,34 @@ import { HttpClient } from '@angular/common/http';
 export class DriverAttendanceComponent implements OnInit, OnDestroy {
     private destroy$ = new Subject<void>();
 
-    // Current user and time
     currentUser: User | null = null;
     currentTime: string = '';
     currentDate: string = '';
 
-    // Attendance state
     todayAttendance: AttendanceRecord | null = null;
     isClockingIn: boolean = false;
     isClockingOut: boolean = false;
 
-    // Calendar and selection
     selectedDate: Date = new Date();
     selectedDateStr: string = '';
     selectedDateAttendance: AttendanceRecord | null = null;
 
-    // Weekly data
     weeklyAttendance: WeeklyAttendance | null = null;
     weekDays: Date[] = [];
-
-    // Recent attendance records
     recentAttendance: AttendanceRecord[] = [];
 
-    // Loading states
     isLoading = true;
     isLoadingToday = false;
     isLoadingWeekly = false;
 
-    // Error handling
     errorMessage: string = '';
     successMessage: string = '';
 
     constructor(
         private attendanceService: AttendanceService,
         private authService: AuthService,
-        private http: HttpClient 
+        private http: HttpClient
     ) { }
-
-    async testDebugClaims(): Promise<void> {
-        try {
-            console.log('Testing debug claims endpoint...');
-            const response = await this.http.get('https://fleetmanagerprov2-production.up.railway.app/api/attendance/debug/claims').toPromise();
-            console.log('✅ Debug claims response:', response);
-        } catch (error) {
-            console.error('❌ Debug claims error:', error);
-        }
-    }
-
-    // Add this method to test just authentication
-    async testAuth(): Promise<void> {
-        try {
-            console.log('Testing authentication...');
-            console.log('Current token:', this.authService.getToken());
-            console.log('Is authenticated:', this.authService.isAuthenticated());
-            console.log('Current user:', this.authService.getCurrentUserSync());
-        } catch (error) {
-            console.error('Auth test error:', error);
-        }
-    }
 
     ngOnInit(): void {
         this.initializeComponent();
@@ -84,7 +53,6 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
 
     private async initializeComponent(): Promise<void> {
         try {
-            // Get current user from auth service
             this.currentUser = this.authService.getCurrentUserSync();
 
             if (!this.currentUser) {
@@ -93,24 +61,17 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
                 return;
             }
 
-            // Verify user is a driver
             if (this.currentUser.role !== 'Driver') {
                 this.errorMessage = 'Access denied. This page is for drivers only.';
                 return;
             }
 
-            // Initialize time and date
             this.updateTime();
             this.updateCurrentDate();
             this.selectedDateStr = this.dateToInputValue(this.selectedDate);
-
-            // Generate week days
             this.generateWeekDays();
 
-            // Load real data from API
             await this.loadAllData();
-
-            // Start time updates
             this.startTimeUpdates();
 
         } catch (error) {
@@ -125,14 +86,12 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
         if (!this.currentUser) return;
 
         try {
-            // Load data concurrently for better performance
             await Promise.all([
                 this.loadTodayAttendance(),
                 this.loadWeeklyAttendance(),
                 this.loadRecentAttendance(),
                 this.loadSelectedDateAttendance()
             ]);
-
         } catch (error) {
             console.error('Error loading attendance data:', error);
             this.errorMessage = 'Failed to load some attendance data. Please try refreshing.';
@@ -149,15 +108,13 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
                 .subscribe({
                     next: (response) => {
                         this.todayAttendance = response?.data || null;
+                        console.log('✅ Today attendance loaded:', this.todayAttendance);
                         this.isLoadingToday = false;
                     },
                     error: (error) => {
                         console.error('Error loading today attendance:', error);
                         this.todayAttendance = null;
                         this.isLoadingToday = false;
-                        if (error.message && !error.message.includes('404')) {
-                            this.showError('Failed to load today\'s attendance');
-                        }
                     }
                 });
         } catch (error) {
@@ -178,13 +135,13 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
                 .subscribe({
                     next: (weeklyData) => {
                         this.weeklyAttendance = weeklyData;
+                        console.log('✅ Weekly attendance loaded:', weeklyData);
                         this.isLoadingWeekly = false;
                     },
                     error: (error) => {
                         console.error('Error loading weekly attendance:', error);
                         this.weeklyAttendance = null;
                         this.isLoadingWeekly = false;
-                        this.showError('Failed to load weekly attendance');
                     }
                 });
         } catch (error) {
@@ -205,7 +162,8 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
                 .pipe(takeUntil(this.destroy$))
                 .subscribe({
                     next: (records) => {
-                        this.recentAttendance = records.slice(0, 10); // Limit to 10 most recent
+                        this.recentAttendance = records.slice(0, 10);
+                        console.log('✅ Recent attendance loaded:', this.recentAttendance);
                     },
                     error: (error) => {
                         console.error('Error loading recent attendance:', error);
@@ -242,7 +200,6 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
     }
 
     private startTimeUpdates(): void {
-        // Update time every second
         interval(1000)
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => {
@@ -253,7 +210,7 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
 
     private updateTime(): void {
         const now = new Date();
-        this.currentTime = now.toLocaleTimeString([], {
+        this.currentTime = now.toLocaleTimeString('en-PH', {
             hour: '2-digit',
             minute: '2-digit',
             hour12: true
@@ -262,7 +219,7 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
 
     private updateCurrentDate(): void {
         const now = new Date();
-        this.currentDate = now.toLocaleDateString([], {
+        this.currentDate = now.toLocaleDateString('en-US', {
             weekday: 'long',
             month: 'long',
             day: 'numeric'
@@ -275,7 +232,6 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
             return;
         }
 
-        // Check if user is authenticated
         if (!this.authService.isAuthenticated()) {
             this.showError('Session expired. Please log in again.');
             this.authService.logout();
@@ -292,7 +248,7 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
 
         try {
             const request = {
-                location: 'Main Depot', // Can be made dynamic based on user location
+                location: 'Main Depot',
                 notes: ''
             };
 
@@ -304,8 +260,8 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
                             if (response?.data) {
                                 this.todayAttendance = response.data;
                                 this.showSuccess('Successfully clocked in!');
+                                console.log('✅ Clocked in:', response.data);
                             }
-                            // Reload related data
                             this.loadWeeklyAttendance();
                             this.loadRecentAttendance();
                             this.isClockingIn = false;
@@ -324,8 +280,8 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
                             if (response?.data) {
                                 this.todayAttendance = response.data;
                                 this.showSuccess('Successfully clocked out!');
+                                console.log('✅ Clocked out:', response.data);
                             }
-                            // Reload related data
                             this.loadWeeklyAttendance();
                             this.loadRecentAttendance();
                             this.isClockingOut = false;
@@ -357,11 +313,10 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
         this.loadSelectedDateAttendance();
     }
 
-    // Helper methods
     generateWeekDays(): void {
         const today = new Date();
-        const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
-        const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Make Monday = 0
+        const dayOfWeek = today.getDay();
+        const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
         const monday = new Date(today);
         monday.setDate(today.getDate() - mondayOffset);
 
@@ -378,15 +333,59 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
 
     formatDate(dateStr: string): string {
         const date = new Date(dateStr);
-        return date.toLocaleDateString([], {
+        return date.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
             year: 'numeric'
         });
     }
 
+    // ✅ FIXED: Handle backend sending wrong timezone (UTC instead of Philippine time)
     formatTime(timeStr?: string): string {
-        return this.attendanceService.formatTimeForDisplay(timeStr);
+        if (!timeStr) return 'N/A';
+
+        try {
+            console.log('🕐 Formatting time:', timeStr);
+
+            // Remove fractional seconds
+            const cleanTime = timeStr.split('.')[0];
+
+            // Backend sends HH:MM format in UTC (needs +8 hours for Philippine time)
+            if (cleanTime.length <= 8 && !cleanTime.includes('T') && !cleanTime.includes('Z')) {
+                const parts = cleanTime.split(':');
+                if (parts.length >= 2) {
+                    let hours = parseInt(parts[0], 10);
+                    const minutes = parseInt(parts[1], 10);
+
+                    // ✅ Add 8 hours for Philippine timezone (UTC+8)
+                    hours = (hours + 8) % 24;
+
+                    // Convert to 12-hour format
+                    const period = hours >= 12 ? 'PM' : 'AM';
+                    const displayHours = hours % 12 || 12;
+                    const displayMinutes = minutes.toString().padStart(2, '0');
+
+                    const result = `${displayHours}:${displayMinutes} ${period}`;
+                    console.log(`✅ Converted ${timeStr} -> ${result}`);
+                    return result;
+                }
+            }
+
+            // If it's a full ISO datetime string
+            const date = new Date(timeStr);
+            if (!isNaN(date.getTime())) {
+                return date.toLocaleTimeString('en-PH', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            }
+
+            return 'Invalid time';
+        } catch (error) {
+            console.error('❌ Error formatting time:', timeStr, error);
+            return 'Invalid time';
+        }
     }
 
     getStatusClass(status?: string): string {
@@ -468,7 +467,7 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
     }
 
     getDayName(date: Date): string {
-        return date.toLocaleDateString([], { weekday: 'short' });
+        return date.toLocaleDateString('en-US', { weekday: 'short' });
     }
 
     getDayNumber(date: Date): number {
@@ -494,7 +493,6 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
         }
     }
 
-    // Message handling
     private showError(message: string): void {
         this.errorMessage = message;
         this.successMessage = '';
@@ -533,7 +531,6 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
         }
     }
 
-    // Utility methods
     get currentUserDisplayName(): string {
         return this.currentUser?.name || 'Driver';
     }

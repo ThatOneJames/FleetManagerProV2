@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+﻿import { Component, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Subject, forkJoin, of } from 'rxjs';
 import { takeUntil, catchError } from 'rxjs/operators';
@@ -63,7 +63,6 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
 
     isLoading = true;
     errorMessage = '';
-
     assignedVehicle: string = 'Not Assigned';
 
     constructor(
@@ -76,7 +75,6 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
 
     ngOnInit(): void {
         this.loadCurrentUser();
-        this.loadDashboardData();
     }
 
     ngOnDestroy(): void {
@@ -84,11 +82,36 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
         this.destroy$.complete();
     }
 
+    // ✅ FIXED: Load fresh user data from API
     private loadCurrentUser(): void {
-        const user = this.authService.getCurrentUser();
-        if (user) {
-            this.currentUser = user;
+        const token = this.authService.getToken();
+        if (!token) {
+            this.errorMessage = 'Not authenticated';
+            this.isLoading = false;
+            return;
         }
+
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`
+        });
+
+        console.log('📡 Loading current user from API...');
+
+        this.http.get<any>(`${environment.apiUrl}/users/current`, { headers })
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+                next: (user) => {
+                    console.log('✅ Current user loaded:', user);
+                    this.currentUser = user;
+                    // Load dashboard data after user is loaded
+                    this.loadDashboardData();
+                },
+                error: (err) => {
+                    console.error('❌ Error loading current user:', err);
+                    this.errorMessage = 'Failed to load user data';
+                    this.isLoading = false;
+                }
+            });
     }
 
     private getHttpOptions() {
@@ -102,7 +125,13 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     }
 
     private loadDashboardData(): void {
-        this.isLoading = true;
+        if (!this.currentUser || !this.currentUser.id) {
+            console.error('❌ No current user, cannot load dashboard data');
+            this.isLoading = false;
+            return;
+        }
+
+        console.log('📊 Loading dashboard data for user:', this.currentUser.id);
 
         forkJoin({
             routes: this.routeService.getAllRoutes().pipe(
@@ -117,7 +146,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
                     return of(null);
                 })
             ),
-            leaveRequests: this.http.get<any[]>(`${environment.apiUrl}/leaverequests/driver/${this.currentUser?.id}/active`, this.getHttpOptions()).pipe(
+            leaveRequests: this.http.get<any[]>(`${environment.apiUrl}/leaverequests/driver/${this.currentUser.id}/active`, this.getHttpOptions()).pipe(
                 catchError(err => {
                     console.error('Error loading leave requests:', err);
                     return of([]);
@@ -127,6 +156,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
             takeUntil(this.destroy$)
         ).subscribe({
             next: (data) => {
+                console.log('✅ Dashboard data loaded:', data);
                 this.processRoutes(data.routes);
                 this.processAttendance(data.attendance);
                 this.processLeaveRequests(data.leaveRequests);
@@ -143,10 +173,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     }
 
     private processRoutes(routes: any[]): void {
-        // Find driver's routes (assigned to current user)
         const myRoutes = routes.filter(r => r.driverId === this.currentUser?.id);
-
-        // Find current in-progress route
         const activeRoute = myRoutes.find(r => r.status === 'in_progress');
 
         if (activeRoute) {
@@ -160,42 +187,32 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
             this.assignedVehicle = activeRoute.vehiclePlate || 'Unknown';
         }
 
-        // Calculate stats
         const completedRoutes = myRoutes.filter(r => r.status === 'completed');
         this.driverStats.tripsCompleted = completedRoutes.length;
         this.driverStats.onTimeDeliveries = completedRoutes.filter(r => this.isOnTime(r)).length;
 
-        // Calculate miles (simplified - based on route count)
         this.driverStats.milesThisWeek = completedRoutes.reduce((sum, r) => {
-            return sum + (r.stops?.length * 5 || 10); // 5 miles per stop estimate
+            return sum + (r.stops?.length * 5 || 10);
         }, 0);
 
-        // Mock fuel efficiency
         this.driverStats.fuelEfficiency = 8.4;
     }
 
     private processAttendance(attendance: any): void {
-        // The attendance structure is: response?.data
-        // Where data contains: { clockIn, clockOut, date, status, totalHours, ... }
-
         if (!attendance || !attendance.clockIn) {
             this.driverStats.hoursWorked = 0;
             return;
         }
 
         const now = new Date();
-        const today = now.toISOString().split('T')[0]; // Get YYYY-MM-DD
+        const today = now.toISOString().split('T')[0];
 
-        // Parse clock-in time: attendance.clockIn is like "08:30:00" or "08:30:00.0000000"
         try {
-            const clockInStr = attendance.clockIn.split('.')[0]; // Remove fractional seconds if present
+            const clockInStr = attendance.clockIn.split('.')[0];
             const clockInDateTime = new Date(`${today}T${clockInStr}`);
-
-            // Calculate difference in milliseconds
             const diffMs = now.getTime() - clockInDateTime.getTime();
 
-            // Convert to hours (only if positive and reasonable)
-            if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) { // Less than 24 hours
+            if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) {
                 this.driverStats.hoursWorked = Math.floor(diffMs / (1000 * 60 * 60));
             } else {
                 this.driverStats.hoursWorked = 0;
@@ -206,7 +223,6 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
         }
     }
 
-
     private processLeaveRequests(leaveRequests: any[]): void {
         // Leave requests will be shown in notifications
     }
@@ -216,14 +232,12 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
         const now = new Date();
         const currentHour = now.getHours();
 
-        // Morning inspection
         schedule.push({
             time: '8:00 AM',
             task: 'Vehicle Inspection',
             status: currentHour > 8 ? 'completed' : currentHour === 8 ? 'in-progress' : 'pending'
         });
 
-        // Add routes to schedule
         data.routes?.forEach((route: any, index: number) => {
             if (route.driverId === this.currentUser?.id && route.status !== 'cancelled') {
                 const startTime = route.startTime ? new Date(route.startTime) : null;
@@ -237,14 +251,12 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
             }
         });
 
-        // Lunch break
         schedule.push({
             time: '12:00 PM',
             task: 'Lunch Break',
             status: currentHour > 12 ? 'completed' : currentHour === 12 ? 'in-progress' : 'pending'
         });
 
-        // End of shift
         schedule.push({
             time: '5:00 PM',
             task: 'End of Shift',
@@ -262,7 +274,6 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
         const notifications: Notification[] = [];
         let idCounter = 1;
 
-        // Upcoming routes
         const upcomingRoutes = data.routes?.filter((r: any) =>
             r.driverId === this.currentUser?.id && r.status === 'planned'
         ) || [];
@@ -276,7 +287,6 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
             });
         }
 
-        // Leave requests
         data.leaveRequests?.forEach((lr: any) => {
             if (lr.status === 'Approved') {
                 notifications.push({
@@ -295,7 +305,6 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
             }
         });
 
-        // Default notification if none
         if (notifications.length === 0) {
             notifications.push({
                 id: 1,
@@ -317,20 +326,18 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     }
 
     private calculateETA(route: any): string {
-        // Simple ETA calculation
         const now = new Date();
-        now.setHours(now.getHours() + 2); // Add 2 hours
+        now.setHours(now.getHours() + 2);
         return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     }
 
     private calculateDistance(route: any): string {
         const stops = route.stops?.length || 0;
-        return `${(stops * 3.5).toFixed(1)} km`; // 3.5 km per stop estimate
+        return `${(stops * 3.5).toFixed(1)} km`;
     }
 
     private isOnTime(route: any): boolean {
-        // Mock on-time check
-        return Math.random() > 0.2; // 80% on-time rate
+        return Math.random() > 0.2;
     }
 
     private convertTo24Hour(time: string): number {
