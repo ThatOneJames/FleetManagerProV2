@@ -48,7 +48,8 @@ export class AppComponent implements OnInit {
             items: [
                 { title: 'Routes & Trips', icon: 'route', route: '/driver/routes' },
                 { title: 'Attendance', icon: 'schedule', route: '/driver/attendance' },
-                { title: 'Leave Requests', icon: 'description', route: '/driver/leave' }
+                { title: 'Leave Requests', icon: 'description', route: '/driver/leave' },
+                { title: 'Pre-Trip Inspection', icon: 'checklist', route: '/driver/pre-trip-inspection' }
             ]
         },
         {

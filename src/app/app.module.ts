@@ -1,4 +1,4 @@
-import { NgModule } from '@angular/core';
+﻿import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
@@ -52,6 +52,8 @@ import { AuthService } from './services/auth.service';
 import { DriverService } from './services/driver.service';
 import { VehicleService } from './services/vehicle.service';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { PreTripInspectionComponent } from './components/driver/pre-trip-inspection/pre-trip-inspection.component';
+import { MaintenanceRequestComponent } from './components/driver/maintenance-request/maintenance-request.component';
 
 @NgModule({
     declarations: [
@@ -68,7 +70,10 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
         LeaveRequestsComponent,
         UserComponent,
         LeaveManagementComponent,
-        DriverProfileComponent
+        DriverProfileComponent,
+        PreTripInspectionComponent,
+        MaintenanceRequestComponent,
+
     ],
     imports: [
         BrowserModule,

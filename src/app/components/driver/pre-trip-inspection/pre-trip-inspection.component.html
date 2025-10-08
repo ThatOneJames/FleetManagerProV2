@@ -1,0 +1,140 @@
+﻿<div class="page-container">
+    <div class="page-header">
+        <h1>Pre-Trip Vehicle Inspection</h1>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loadingRoutes" class="loading-container">
+        <div class="spinner"></div>
+        <p>Loading your routes...</p>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage && !loadingRoutes" class="error-banner">
+        <mat-icon>error</mat-icon>
+        <span>{{ errorMessage }}</span>
+    </div>
+
+    <!-- Success Message -->
+    <div *ngIf="successMessage" class="success-banner">
+        <mat-icon>check_circle</mat-icon>
+        <span>{{ successMessage }}</span>
+    </div>
+
+    <!-- ROUTE SELECTION (Step 1) -->
+    <div *ngIf="!showInspectionForm && !loadingRoutes" class="route-selection">
+        <div class="info-card">
+            <mat-icon>info</mat-icon>
+            <p>Select a route to perform pre-trip inspection before starting your trip.</p>
+        </div>
+
+        <div *ngIf="availableRoutes.length === 0" class="no-routes">
+            <mat-icon>route</mat-icon>
+            <h3>No Routes Available</h3>
+            <p>You don't have any planned or in-progress routes assigned.</p>
+            <button mat-raised-button color="primary" routerLink="/driver/routes">
+                Go to Routes
+            </button>
+        </div>
+
+        <div *ngIf="availableRoutes.length > 0" class="routes-grid">
+            <div *ngFor="let route of availableRoutes" class="route-card" (click)="selectRoute(route)">
+                <div class="route-card-header">
+                    <h3>{{ route.name }}</h3>
+                    <span class="status-badge" [ngClass]="getStatusClass(route.status || '')">
+                        {{ route.status }}
+                    </span>
+                </div>
+                <div class="route-card-body">
+                    <div class="route-info-row">
+                        <mat-icon>local_shipping</mat-icon>
+                        <span>{{ route.vehiclePlate }}</span>
+                    </div>
+                    <div class="route-info-row">
+                        <mat-icon>place</mat-icon>
+                        <span>{{ route.stops?.length || 0 }} stops</span>
+                    </div>
+                    <div class="route-info-row" *ngIf="route.totalDistance">
+                        <mat-icon>straighten</mat-icon>
+                        <span>{{ route.totalDistance }} km</span>
+                    </div>
+                </div>
+                <div class="route-card-footer">
+                    <button mat-button color="primary">
+                        Start Inspection
+                        <mat-icon>arrow_forward</mat-icon>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INSPECTION FORM (Step 2) -->
+    <div *ngIf="showInspectionForm && selectedRoute" class="inspection-container">
+        <div class="inspection-header">
+            <button mat-icon-button (click)="backToRoutes()">
+                <mat-icon>arrow_back</mat-icon>
+            </button>
+            <div class="route-summary">
+                <h2>{{ selectedRoute.name }}</h2>
+                <p><strong>Vehicle:</strong> {{ selectedRoute.vehiclePlate }}</p>
+                <p><strong>Stops:</strong> {{ selectedRoute.stops?.length || 0 }}</p>
+            </div>
+        </div>
+
+        <div class="inspection-notice">
+            <mat-icon>warning</mat-icon>
+            <p>Complete this inspection before starting your route. Mark each item as <strong>✅ Pass</strong> if it meets requirements.</p>
+        </div>
+
+        <!-- Error Message in Form -->
+        <div *ngIf="errorMessage" class="error-message">
+            <mat-icon>error</mat-icon>
+            {{ errorMessage }}
+        </div>
+
+        <!-- Inspection Form -->
+        <form [formGroup]="inspectionForm" (ngSubmit)="submitInspection()" *ngIf="!showMaintenanceForm">
+            <div *ngFor="let category of getCategories()" class="inspection-category">
+                <h3>{{ category }}</h3>
+
+                <div class="checklist-items">
+                    <div *ngFor="let item of getItemsByCategory(category)" class="checklist-item">
+                        <label [class.critical]="item.critical">
+                            <input type="checkbox"
+                                   [formControlName]="item.key" />
+                            <span class="item-label">
+                                {{ item.label }}
+                                <span *ngIf="item.critical" class="critical-badge">Critical</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group">
+                <label>Additional Notes (Optional)</label>
+                <textarea formControlName="notes"
+                          rows="3"
+                          placeholder="Any additional observations or concerns..."></textarea>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-actions">
+                <button mat-button type="button" (click)="backToRoutes()">Cancel</button>
+                <button mat-raised-button color="primary" type="submit" [disabled]="isSubmitting">
+                    {{ isSubmitting ? 'Submitting...' : 'Submit Inspection' }}
+                </button>
+            </div>
+        </form>
+
+        <!-- Maintenance Request Form (shown if inspection failed) -->
+        <app-maintenance-request *ngIf="showMaintenanceForm && selectedRoute"
+                                 [route]="selectedRoute"
+                                 [failedItems]="failedItems"
+                                 [inspectionNotes]="inspectionForm.get('notes')?.value"
+                                 (requestSubmitted)="onMaintenanceRequestSubmitted($event)"
+                                 (cancel)="backToRoutes()"></app-maintenance-request>
+    </div>
+</div>

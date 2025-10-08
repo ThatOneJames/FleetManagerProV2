@@ -23,6 +23,9 @@ namespace FleetManagerPro.API.Data
         public DbSet<MaintenanceTask> MaintenanceTasks { get; set; } = null!;
         public DbSet<MaintenanceCategory> MaintenanceCategories { get; set; } = null!;
         public DbSet<MaintenanceReminder> MaintenanceReminders { get; set; } = null!;
+        public DbSet<PreTripInspection> PreTripInspections { get; set; } = null!;
+        public DbSet<MaintenanceRequest> MaintenanceRequests { get; set; } = null!;
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

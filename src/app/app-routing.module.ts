@@ -18,6 +18,7 @@ import { DriverAttendanceComponent } from './components/driver/attendance/attend
 import { LeaveRequestsComponent } from './components/driver/leave-requests/leave-requests.component';
 import { NotificationsComponent } from './components/driver/notifications/notifications.component';
 import { DriverProfileComponent } from './components/driver/profile/profile.component';
+import { PreTripInspectionComponent } from './components/driver/pre-trip-inspection/pre-trip-inspection.component';
 
 
 // Auth Guard (to be implemented)
@@ -56,6 +57,7 @@ const routes: Routes = [
        { path: 'leave', component: LeaveRequestsComponent },
        { path: 'notifications', component: NotificationsComponent },
        { path: 'profile', component: DriverProfileComponent },
+       { path: 'pre-trip-inspection', component: PreTripInspectionComponent },
        { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
         ]
     }

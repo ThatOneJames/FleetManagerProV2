@@ -1,5 +1,6 @@
 ﻿import { Component, OnInit } from '@angular/core';
 import { MaintenanceService } from '../../../services/maintenance.service';
+import { MaintenanceRequestService, MaintenanceRequest } from '../../../services/maintenancerequest.service';
 import { VehicleService } from '../../../services/vehicle.service';
 import {
     MaintenanceTask,
@@ -15,20 +16,38 @@ import { Vehicle } from '../../../models/vehicle.model';
     styleUrls: ['./maintenance.component.css']
 })
 export class MaintenanceComponent implements OnInit {
+    // Existing maintenance tasks
     tasks: MaintenanceTask[] = [];
     filteredTasks: MaintenanceTask[] = [];
+
+    // ✅ NEW: Pre-trip inspection maintenance requests
+    maintenanceRequests: MaintenanceRequest[] = [];
+    filteredRequests: MaintenanceRequest[] = [];
+
     vehicles: Vehicle[] = [];
     categories: MaintenanceCategory[] = [];
     statistics: MaintenanceStatistics | null = null;
 
-    // Filters
+    // Tab management
+    activeTab: 'tasks' | 'requests' = 'tasks';
+
+    // Filters for tasks
     filterStatus: string = '';
     filterPriority: string = '';
     filterVehicle: string = '';
 
+    // ✅ NEW: Filters for requests
+    filterRequestStatus: string = '';
+    filterRequestSeverity: string = '';
+    filterRequestVehicle: string = '';
+
     // Form state
     showAddForm: boolean = false;
     editingTask: MaintenanceTask | null = null;
+
+    // ✅ NEW: Request details modal
+    showRequestDetails: boolean = false;
+    selectedRequest: MaintenanceRequest | null = null;
 
     newTask: CreateMaintenanceTaskDto = {
         vehicleId: '',
@@ -47,11 +66,16 @@ export class MaintenanceComponent implements OnInit {
     statusOptions = ['Scheduled', 'InProgress', 'Completed', 'Cancelled', 'Overdue'];
     priorityOptions = ['High', 'Medium', 'Low'];
 
+    // ✅ NEW: Request status options
+    requestStatusOptions = ['Pending', 'InProgress', 'Completed', 'Cancelled'];
+    severityOptions = ['Critical', 'High', 'Medium', 'Low'];
+
     loading: boolean = false;
     error: string = '';
 
     constructor(
         private maintenanceService: MaintenanceService,
+        private maintenanceRequestService: MaintenanceRequestService,
         private vehicleService: VehicleService
     ) { }
 
@@ -63,7 +87,7 @@ export class MaintenanceComponent implements OnInit {
         this.loading = true;
         this.error = '';
 
-        // Load tasks
+        // Load existing maintenance tasks
         this.maintenanceService.getAllTasks().subscribe({
             next: (data) => {
                 this.tasks = data;
@@ -74,6 +98,17 @@ export class MaintenanceComponent implements OnInit {
                 this.error = 'Failed to load maintenance tasks';
                 console.error(err);
                 this.loading = false;
+            }
+        });
+
+        // ✅ NEW: Load pre-trip inspection requests
+        this.maintenanceRequestService.getAllRequests().subscribe({
+            next: (data) => {
+                this.maintenanceRequests = data;
+                this.applyRequestFilters();
+            },
+            error: (err) => {
+                console.error('Failed to load maintenance requests:', err);
             }
         });
 
@@ -96,6 +131,11 @@ export class MaintenanceComponent implements OnInit {
         });
     }
 
+    // ✅ NEW: Switch between tabs
+    switchTab(tab: 'tasks' | 'requests'): void {
+        this.activeTab = tab;
+    }
+
     applyFilters(): void {
         this.filteredTasks = this.tasks.filter(task => {
             const statusMatch = !this.filterStatus || task.status === this.filterStatus;
@@ -105,15 +145,37 @@ export class MaintenanceComponent implements OnInit {
         });
     }
 
+    // ✅ NEW: Apply filters for maintenance requests
+    applyRequestFilters(): void {
+        this.filteredRequests = this.maintenanceRequests.filter(request => {
+            const statusMatch = !this.filterRequestStatus || request.status === this.filterRequestStatus;
+            const severityMatch = !this.filterRequestSeverity || request.issueSeverity === this.filterRequestSeverity;
+            const vehicleMatch = !this.filterRequestVehicle || request.vehicleId === this.filterRequestVehicle;
+            return statusMatch && severityMatch && vehicleMatch;
+        });
+    }
+
     onFilterChange(): void {
         this.applyFilters();
     }
 
+    // ✅ NEW: Filter change for requests
+    onRequestFilterChange(): void {
+        this.applyRequestFilters();
+    }
+
     clearFilters(): void {
-        this.filterStatus = '';
-        this.filterPriority = '';
-        this.filterVehicle = '';
-        this.applyFilters();
+        if (this.activeTab === 'tasks') {
+            this.filterStatus = '';
+            this.filterPriority = '';
+            this.filterVehicle = '';
+            this.applyFilters();
+        } else {
+            this.filterRequestStatus = '';
+            this.filterRequestSeverity = '';
+            this.filterRequestVehicle = '';
+            this.applyRequestFilters();
+        }
     }
 
     toggleAddForm(): void {
@@ -151,7 +213,7 @@ export class MaintenanceComponent implements OnInit {
                 this.applyFilters();
                 this.resetForm();
                 this.showAddForm = false;
-                this.loadData(); // Reload to get updated statistics
+                this.loadData();
                 this.loading = false;
             },
             error: (err) => {
@@ -212,7 +274,7 @@ export class MaintenanceComponent implements OnInit {
             next: () => {
                 this.tasks = this.tasks.filter(t => t.id !== id);
                 this.applyFilters();
-                this.loadData(); // Reload statistics
+                this.loadData();
                 this.loading = false;
             },
             error: (err) => {
@@ -241,6 +303,31 @@ export class MaintenanceComponent implements OnInit {
         });
     }
 
+    // ✅ NEW: View maintenance request details
+    viewRequestDetails(request: MaintenanceRequest): void {
+        this.selectedRequest = request;
+        this.showRequestDetails = true;
+    }
+
+    closeRequestDetails(): void {
+        this.showRequestDetails = false;
+        this.selectedRequest = null;
+    }
+
+    // ✅ NEW: Update maintenance request status
+    updateRequestStatus(id: string, status: string, mechanic?: string, notes?: string): void {
+        this.maintenanceRequestService.updateRequestStatus(id, status, mechanic, notes).subscribe({
+            next: () => {
+                this.loadData();
+                this.closeRequestDetails();
+            },
+            error: (err) => {
+                this.error = 'Failed to update request status';
+                console.error(err);
+            }
+        });
+    }
+
     validateForm(): boolean {
         if (!this.newTask.vehicleId || !this.newTask.categoryId ||
             !this.newTask.taskType || !this.newTask.description ||
@@ -259,6 +346,14 @@ export class MaintenanceComponent implements OnInit {
         return 'Unknown Vehicle';
     }
 
+    // ✅ NEW: Get vehicle display for requests
+    getRequestVehicleDisplay(request: MaintenanceRequest): string {
+        if (request.vehicle) {
+            return `${request.vehicle.make} ${request.vehicle.model} (${request.vehicle.licensePlate})`;
+        }
+        return 'Unknown Vehicle';
+    }
+
     getCategoryName(categoryId: number): string {
         const category = this.categories.find(c => c.id === categoryId);
         return category ? category.name : 'Unknown';
@@ -270,7 +365,8 @@ export class MaintenanceComponent implements OnInit {
             'InProgress': 'status-in-progress',
             'Completed': 'status-completed',
             'Cancelled': 'status-cancelled',
-            'Overdue': 'status-overdue'
+            'Overdue': 'status-overdue',
+            'Pending': 'status-pending'
         };
         return statusClasses[status] || '';
     }
@@ -282,6 +378,17 @@ export class MaintenanceComponent implements OnInit {
             'Low': 'priority-low'
         };
         return priorityClasses[priority] || '';
+    }
+
+    // ✅ NEW: Get severity class
+    getSeverityClass(severity: string): string {
+        const severityClasses: { [key: string]: string } = {
+            'Critical': 'severity-critical',
+            'High': 'severity-high',
+            'Medium': 'severity-medium',
+            'Low': 'severity-low'
+        };
+        return severityClasses[severity] || '';
     }
 
     formatDate(date: Date | string | undefined): string {
@@ -298,20 +405,18 @@ export class MaintenanceComponent implements OnInit {
     }
 
     downloadCSV(): void {
-        // Prepare CSV data
+        if (this.activeTab === 'tasks') {
+            this.downloadTasksCSV();
+        } else {
+            this.downloadRequestsCSV();
+        }
+    }
+
+    private downloadTasksCSV(): void {
         const headers = [
-            'Task Type',
-            'Vehicle',
-            'Category',
-            'Priority',
-            'Status',
-            'Scheduled Date',
-            'Completed Date',
-            'Estimated Cost',
-            'Actual Cost',
-            'Assigned To',
-            'Service Provider',
-            'Description'
+            'Task Type', 'Vehicle', 'Category', 'Priority', 'Status',
+            'Scheduled Date', 'Completed Date', 'Estimated Cost', 'Actual Cost',
+            'Assigned To', 'Service Provider', 'Description'
         ];
 
         const rows = this.filteredTasks.map(task => [
@@ -326,22 +431,55 @@ export class MaintenanceComponent implements OnInit {
             task.actualCost?.toString() || '0',
             task.assignedTo || '',
             task.serviceProvider || '',
-            task.description.replace(/,/g, ';') // Replace commas to avoid CSV issues
+            task.description.replace(/,/g, ';')
         ]);
 
-        // Combine headers and rows
         const csvContent = [
             headers.join(','),
             ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
         ].join('\n');
 
-        // Create blob and download
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        this.downloadFile(csvContent, `maintenance_tasks_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    // ✅ NEW: Download requests CSV
+    private downloadRequestsCSV(): void {
+        const headers = [
+            'Request ID', 'Vehicle', 'Driver', 'Issue Type', 'Severity',
+            'Status', 'Priority', 'Reported Date', 'Description',
+            'Assigned Mechanic', 'Estimated Cost', 'Actual Cost'
+        ];
+
+        const rows = this.filteredRequests.map(request => [
+            request.id || '',
+            this.getRequestVehicleDisplay(request),
+            request.driver?.name || request.reportedBy || 'N/A',
+            request.issueType,
+            request.issueSeverity,
+            request.status || 'Pending',
+            request.priority,
+            this.formatDate(request.reportedDate),
+            request.description.replace(/,/g, ';'),
+            request.assignedMechanic || 'N/A',
+            request.estimatedCost?.toString() || '0',
+            request.actualCost?.toString() || '0'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        this.downloadFile(csvContent, `maintenance_requests_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    private downloadFile(content: string, filename: string): void {
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
 
         link.setAttribute('href', url);
-        link.setAttribute('download', `maintenance_tasks_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', filename);
         link.style.visibility = 'hidden';
 
         document.body.appendChild(link);

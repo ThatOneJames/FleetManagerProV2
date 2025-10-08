@@ -1,0 +1,90 @@
+﻿<div class="maintenance-request-container">
+    <h3 class="section-title">🔧 Maintenance Request Required</h3>
+
+    <div *ngIf="isCheckingAssignment" class="loading-message">
+        <div class="spinner"></div>
+        <p>Verifying vehicle assignment...</p>
+    </div>
+
+    <div *ngIf="!isCheckingAssignment && !hasVehicleAssignment" class="error-message">
+        <p>{{ errorMessage }}</p>
+        <button class="btn-secondary" (click)="onCancel()">Close</button>
+    </div>
+
+    <div *ngIf="!isCheckingAssignment && hasVehicleAssignment">
+        <div class="alert-warning">
+            <p><strong>⚠️ Vehicle Issues Detected</strong></p>
+            <p>The following items failed inspection and require attention:</p>
+            <ul>
+                <li *ngFor="let item of failedItems">{{ item }}</li>
+            </ul>
+        </div>
+
+        <div *ngIf="errorMessage" class="error-message">
+            {{ errorMessage }}
+        </div>
+
+        <form [formGroup]="requestForm" (ngSubmit)="submitRequest()">
+            <div class="form-group">
+                <label>Issue Type *</label>
+                <select formControlName="issueType" class="form-control">
+                    <option value="">Select Issue Type</option>
+                    <option *ngFor="let type of issueTypes" [value]="type">{{ type }}</option>
+                </select>
+                <div *ngIf="requestForm.get('issueType')?.invalid && requestForm.get('issueType')?.touched" class="error-text">
+                    Issue type is required
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Severity *</label>
+                    <select formControlName="issueSeverity" class="form-control">
+                        <option *ngFor="let severity of severityLevels" [value]="severity.value">
+                            {{ severity.label }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Priority *</label>
+                    <select formControlName="priority" class="form-control">
+                        <option *ngFor="let priority of priorityLevels" [value]="priority.value">
+                            {{ priority.label }}
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Detailed Description *</label>
+                <textarea formControlName="description"
+                          rows="8"
+                          class="form-control"
+                          placeholder="Describe the issues in detail..."></textarea>
+                <div *ngIf="requestForm.get('description')?.invalid && requestForm.get('description')?.touched" class="error-text">
+                    Description is required (minimum 10 characters)
+                </div>
+            </div>
+
+            <div class="info-box">
+                <p><strong>ℹ️ What Happens Next:</strong></p>
+                <ol>
+                    <li>Your maintenance request will be sent to the admin/maintenance team</li>
+                    <li>The vehicle will be marked as "Under Maintenance"</li>
+                    <li>This route will be put on hold until repairs are completed</li>
+                    <li>You'll be notified when the vehicle is ready</li>
+                </ol>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" (click)="onCancel()" [disabled]="isSubmitting">
+                    Cancel
+                </button>
+                <button type="submit" class="btn-danger" [disabled]="requestForm.invalid || isSubmitting">
+                    {{ isSubmitting ? 'Submitting...' : 'Submit Maintenance Request' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
