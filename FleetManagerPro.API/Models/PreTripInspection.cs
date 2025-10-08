@@ -44,6 +44,10 @@ namespace FleetManagerPro.API.Models
         public bool DoorsAndLocksOk { get; set; }
 
         public bool AllItemsPassed { get; set; }
+
+        [Column(TypeName = "varchar(20)")]
+        public string? Result { get; set; }
+
         public string? Notes { get; set; }
         public string? IssuesFound { get; set; }
         public string? MaintenanceRequestId { get; set; }
