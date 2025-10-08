@@ -142,7 +142,6 @@ export class PreTripInspectionComponent implements OnInit {
         }
     }
 
-
     submitInspection(): void {
         if (!this.selectedRoute) {
             this.errorMessage = 'No route selected';
@@ -168,11 +167,11 @@ export class PreTripInspectionComponent implements OnInit {
                     this.showMaintenanceForm = true;
                     this.isSubmitting = false;
                 } else {
-                    this.successMessage = 'Pre-trip inspection passed! Route can start.';
+                    this.successMessage = 'Pre-trip inspection passed! Redirecting to routes...';
                     this.isSubmitting = false;
                     setTimeout(() => {
                         this.router.navigate(['/driver/routes']);
-                    }, 2000);
+                    }, 1500);
                 }
             },
             error: (error: any) => {

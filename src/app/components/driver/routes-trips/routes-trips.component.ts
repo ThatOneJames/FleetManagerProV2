@@ -20,9 +20,8 @@ export class RoutesTripsComponent implements OnInit {
     selectedRoute: Route | null = null;
     showRouteDetails: boolean = false;
     currentUserId: string = '';
-    routeInspections: Map<string, any> = new Map(); // Store inspection details
+    routeInspections: Map<string, any> = new Map();
 
-    // ✅ NEW: Modal properties
     showInspectionModal = false;
     inspectionModalTitle = '';
     inspectionModalMessage = '';
@@ -44,6 +43,8 @@ export class RoutesTripsComponent implements OnInit {
 
     loadAssignedRoutes(): void {
         this.loading = true;
+        this.routeInspections.clear();
+
         this.routeService.getRoutesByDriver(this.currentUserId).subscribe({
             next: (routes) => {
                 this.assignedRoutes = routes;
@@ -58,7 +59,6 @@ export class RoutesTripsComponent implements OnInit {
         });
     }
 
-    // ✅ UPDATED: Check inspection details for routes
     private checkInspectionsForRoutes(routes: Route[]): void {
         const token = this.authService.getToken();
         const headers = new HttpHeaders({
@@ -85,13 +85,11 @@ export class RoutesTripsComponent implements OnInit {
         });
     }
 
-    // ✅ UPDATED: Check if route has PASSED inspection
     hasPassedInspection(routeId: string): boolean {
         const inspectionData = this.routeInspections.get(routeId);
         return inspectionData?.hasInspection === true && inspectionData?.inspection?.result === 'Pass';
     }
 
-    // ✅ NEW: Get inspection status for display
     getInspectionStatus(routeId: string): string {
         const inspectionData = this.routeInspections.get(routeId);
 
@@ -110,12 +108,10 @@ export class RoutesTripsComponent implements OnInit {
         return 'Inspection Pending';
     }
 
-    // ✅ UPDATED: Start Trip with proper inspection check and modal
     startTrip(route: Route): void {
         this.pendingRouteId = route.id!;
         const inspectionData = this.routeInspections.get(route.id!);
 
-        // No inspection done
         if (!inspectionData || !inspectionData.hasInspection) {
             this.inspectionModalTitle = '⚠️ Pre-Trip Inspection Required';
             this.inspectionModalMessage = 'You must complete a pre-trip inspection before starting this trip. This is a safety requirement.';
@@ -124,7 +120,6 @@ export class RoutesTripsComponent implements OnInit {
             return;
         }
 
-        // Inspection failed
         if (inspectionData.inspection?.result === 'Fail') {
             this.inspectionModalTitle = '🚫 Vehicle Not Ready';
             this.inspectionModalMessage = 'Your pre-trip inspection failed. The vehicle has maintenance issues that must be resolved before starting the trip. Please contact your supervisor.';
@@ -133,13 +128,11 @@ export class RoutesTripsComponent implements OnInit {
             return;
         }
 
-        // Inspection passed - proceed with trip
         if (inspectionData.inspection?.result === 'Pass') {
             this.proceedStartTrip(route.id!);
         }
     }
 
-    // ✅ Proceed to start trip after inspection passes
     private proceedStartTrip(routeId: string): void {
         const route = this.assignedRoutes.find(r => r.id === routeId);
         if (!route) return;
@@ -201,13 +194,11 @@ export class RoutesTripsComponent implements OnInit {
         }
     }
 
-    // ✅ NEW: Close inspection modal
     closeInspectionModal(): void {
         this.showInspectionModal = false;
         this.pendingRouteId = null;
     }
 
-    // ✅ NEW: Navigate to inspection page
     goToInspection(): void {
         const route = this.assignedRoutes.find(r => r.id === this.pendingRouteId);
         if (route) {

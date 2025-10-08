@@ -20,7 +20,6 @@ namespace FleetManagerPro.API.Controllers
             _context = context;
         }
 
-        // POST: api/pretripinspection
         [HttpPost]
         public async Task<ActionResult<PreTripInspection>> CreateInspection([FromBody] CreatePreTripInspectionDto dto)
         {
@@ -30,21 +29,18 @@ namespace FleetManagerPro.API.Controllers
                 return Unauthorized("Driver not authenticated");
             }
 
-            // Validate route exists
             var route = await _context.Routes.FindAsync(dto.RouteId);
             if (route == null)
             {
                 return NotFound("Route not found");
             }
 
-            // Validate vehicle exists
             var vehicle = await _context.Vehicles.FindAsync(dto.VehicleId);
             if (vehicle == null)
             {
                 return NotFound("Vehicle not found");
             }
 
-            // ✅ FIXED: Check if inspection already exists for this route (string comparison)
             var existingInspection = await _context.PreTripInspections
                 .FirstOrDefaultAsync(i => i.RouteId == dto.RouteId && i.DriverId == driverId);
 
@@ -53,13 +49,12 @@ namespace FleetManagerPro.API.Controllers
                 return BadRequest("Pre-trip inspection already completed for this route");
             }
 
-            // Create inspection
             var inspection = new PreTripInspection
             {
                 Id = Guid.NewGuid().ToString(),
                 RouteId = dto.RouteId,
                 VehicleId = dto.VehicleId,
-                DriverId = driverId, // ✅ FIXED: Direct assignment (no Guid.Parse)
+                DriverId = driverId,
                 InspectionDate = DateTime.UtcNow,
                 EngineOilOk = dto.EngineOilOk,
                 CoolantOk = dto.CoolantOk,
@@ -86,22 +81,30 @@ namespace FleetManagerPro.API.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
-            // Check if all items passed
             inspection.AllItemsPassed = CheckAllItemsPassed(inspection);
 
-            // If any items failed, collect them
             if (!inspection.AllItemsPassed)
             {
                 inspection.IssuesFound = GetFailedItems(inspection);
+                inspection.Result = "Fail";
+            }
+            else
+            {
+                inspection.Result = "Pass";
             }
 
             _context.PreTripInspections.Add(inspection);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetInspectionById), new { id = inspection.Id }, inspection);
+            return Ok(new
+            {
+                id = inspection.Id,
+                allItemsPassed = inspection.AllItemsPassed,
+                result = inspection.Result,
+                issuesFound = inspection.IssuesFound
+            });
         }
 
-        // GET: api/pretripinspection/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<PreTripInspection>> GetInspectionById(string id)
         {
@@ -120,7 +123,6 @@ namespace FleetManagerPro.API.Controllers
             return Ok(inspection);
         }
 
-        // GET: api/pretripinspection/route/{routeId}
         [HttpGet("route/{routeId}")]
         public async Task<ActionResult<PreTripInspection>> GetInspectionByRoute(string routeId)
         {
@@ -138,7 +140,57 @@ namespace FleetManagerPro.API.Controllers
             return Ok(inspection);
         }
 
-        // GET: api/pretripinspection/my-inspections
+        [HttpGet("check-today/{vehicleId}")]
+        public async Task<ActionResult<object>> CheckTodayInspection(string vehicleId)
+        {
+            try
+            {
+                var today = DateTime.UtcNow.Date;
+                var tomorrow = today.AddDays(1);
+
+                var inspection = await _context.PreTripInspections
+                    .Include(i => i.Vehicle)
+                    .Include(i => i.Driver)
+                    .Include(i => i.Route)
+                    .Where(i => i.VehicleId == vehicleId &&
+                               i.InspectionDate >= today &&
+                               i.InspectionDate < tomorrow)
+                    .OrderByDescending(i => i.InspectionDate)
+                    .FirstOrDefaultAsync();
+
+                if (inspection == null)
+                {
+                    return Ok(new
+                    {
+                        hasInspection = false,
+                        vehicleId = vehicleId,
+                        message = "No inspection found for today"
+                    });
+                }
+
+                return Ok(new
+                {
+                    hasInspection = true,
+                    inspection = new
+                    {
+                        id = inspection.Id,
+                        vehicleId = inspection.VehicleId,
+                        routeId = inspection.RouteId,
+                        result = inspection.Result,
+                        allItemsPassed = inspection.AllItemsPassed,
+                        inspectionDate = inspection.InspectionDate,
+                        notes = inspection.Notes,
+                        createdAt = inspection.CreatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] CheckTodayInspection: {ex.Message}");
+                return StatusCode(500, new { message = "Error checking inspection", error = ex.Message });
+            }
+        }
+
         [HttpGet("my-inspections")]
         public async Task<ActionResult<IEnumerable<PreTripInspection>>> GetMyInspections()
         {
@@ -148,7 +200,6 @@ namespace FleetManagerPro.API.Controllers
                 return Unauthorized();
             }
 
-            // ✅ FIXED: String comparison (no Guid.Parse)
             var inspections = await _context.PreTripInspections
                 .Include(i => i.Vehicle)
                 .Include(i => i.Route)
@@ -161,7 +212,6 @@ namespace FleetManagerPro.API.Controllers
             return Ok(inspections);
         }
 
-        // Helper method to check if all items passed
         private bool CheckAllItemsPassed(PreTripInspection inspection)
         {
             return inspection.EngineOilOk &&
@@ -187,7 +237,6 @@ namespace FleetManagerPro.API.Controllers
                    inspection.DoorsAndLocksOk;
         }
 
-        // Helper method to get failed items as JSON
         private string GetFailedItems(PreTripInspection inspection)
         {
             var failedItems = new List<string>();

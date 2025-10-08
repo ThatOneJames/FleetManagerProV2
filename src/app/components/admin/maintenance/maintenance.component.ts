@@ -58,7 +58,6 @@ export class MaintenanceComponent implements OnInit {
     statusOptions = ['Scheduled', 'InProgress', 'Completed', 'Cancelled', 'Overdue'];
     priorityOptions = ['High', 'Medium', 'Low'];
 
-    // ✅ FIXED: Use 'InProgress' without space
     requestStatusOptions = ['Pending', 'InProgress', 'Completed', 'Cancelled'];
     severityOptions = ['Critical', 'High', 'Medium', 'Low'];
 
@@ -83,6 +82,7 @@ export class MaintenanceComponent implements OnInit {
             next: (data) => {
                 this.tasks = data;
                 this.applyFilters();
+                this.calculateStatistics();
                 this.loading = false;
             },
             error: (err) => {
@@ -96,6 +96,7 @@ export class MaintenanceComponent implements OnInit {
             next: (data) => {
                 this.maintenanceRequests = data;
                 this.applyRequestFilters();
+                this.calculateStatistics();
             },
             error: (err) => {
                 console.error('Failed to load maintenance requests:', err);
@@ -111,11 +112,44 @@ export class MaintenanceComponent implements OnInit {
             next: (data) => this.categories = data,
             error: (err) => console.error('Failed to load categories', err)
         });
+    }
 
-        this.maintenanceService.getStatistics().subscribe({
-            next: (data) => this.statistics = data,
-            error: (err) => console.error('Failed to load statistics', err)
-        });
+    calculateStatistics(): void {
+        const now = new Date();
+
+        const scheduledFromTasks = this.tasks.filter(t => t.status === 'Scheduled').length;
+        const inProgressFromTasks = this.tasks.filter(t => t.status === 'InProgress').length;
+        const completedFromTasks = this.tasks.filter(t => t.status === 'Completed').length;
+        const overdueFromTasks = this.tasks.filter(t => {
+            if (t.status === 'Completed' || t.status === 'Cancelled') return false;
+            return new Date(t.scheduledDate) < now;
+        }).length;
+        const costFromTasks = this.tasks.reduce((sum, t) => sum + (t.actualCost || t.estimatedCost || 0), 0);
+
+        const scheduledFromRequests = this.maintenanceRequests.filter(r => r.status === 'Pending').length;
+        const inProgressFromRequests = this.maintenanceRequests.filter(r => r.status === 'InProgress').length;
+        const completedFromRequests = this.maintenanceRequests.filter(r => r.status === 'Completed').length;
+        const overdueFromRequests = this.maintenanceRequests.filter(r => {
+            if (r.status === 'Completed' || r.status === 'Cancelled') return false;
+            if (!r.reportedDate) return false;
+            const reportedDate = new Date(r.reportedDate);
+            const hoursSinceReport = (now.getTime() - reportedDate.getTime()) / (1000 * 60 * 60);
+            return hoursSinceReport > 24;
+        }).length;
+        const costFromRequests = this.maintenanceRequests.reduce((sum, r) => sum + (r.actualCost || r.estimatedCost || 0), 0);
+
+        const totalTasks = this.tasks.length + this.maintenanceRequests.length;
+
+        this.statistics = {
+            totalTasks: totalTasks,
+            scheduledTasks: scheduledFromTasks + scheduledFromRequests,
+            inProgressTasks: inProgressFromTasks + inProgressFromRequests,
+            completedTasks: completedFromTasks + completedFromRequests,
+            overdueTasks: overdueFromTasks + overdueFromRequests,
+            totalCost: costFromTasks + costFromRequests
+        };
+
+        console.log('Statistics updated:', this.statistics);
     }
 
     switchTab(tab: 'tasks' | 'requests'): void {
@@ -131,7 +165,6 @@ export class MaintenanceComponent implements OnInit {
         });
     }
 
-    // ✅ FIXED: Case-insensitive filtering for 'InProgress'
     applyRequestFilters(): void {
         this.filteredRequests = this.maintenanceRequests.filter(request => {
             const statusMatch = !this.filterRequestStatus ||
@@ -306,7 +339,14 @@ export class MaintenanceComponent implements OnInit {
 
     updateRequestStatus(id: string, status: string, mechanic?: string, notes?: string): void {
         this.maintenanceRequestService.updateRequestStatus(id, status, mechanic, notes).subscribe({
-            next: () => {
+            next: (response: any) => {
+                console.log('Status updated:', response);
+
+                const message = response.vehicleStatus
+                    ? `Status updated to ${status}. Vehicle status: ${response.vehicleStatus}`
+                    : `Status updated to ${status}`;
+                alert(message);
+
                 this.loadData();
                 this.closeRequestDetails();
             },
