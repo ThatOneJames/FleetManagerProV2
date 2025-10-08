@@ -45,46 +45,73 @@
             </div>
 
             <div class="route-actions">
-                <!-- Inspection Status -->
+                <!-- ✅ UPDATED: Inspection Status Display -->
                 <div *ngIf="route.status === 'planned'" class="inspection-status">
-                    <div *ngIf="!hasInspection(route.id!)" class="inspection-warning">
-                        <i class="icon-warning"></i> Inspection Required
+                    <div *ngIf="!hasPassedInspection(route.id!)" class="inspection-warning">
+                        <i class="icon-warning">⚠️</i> {{ getInspectionStatus(route.id!) }}
                     </div>
-                    <div *ngIf="hasInspection(route.id!)" class="inspection-complete">
-                        <i class="icon-check-circle"></i> Inspection Complete
+                    <div *ngIf="hasPassedInspection(route.id!)" class="inspection-complete">
+                        <i class="icon-check-circle">✓</i> {{ getInspectionStatus(route.id!) }}
                     </div>
                 </div>
 
-                <!-- Trip Control Buttons -->
+                <!-- ✅ UPDATED: Start Trip Button -->
                 <button class="btn-start"
                         (click)="startTrip(route)"
-                        *ngIf="route.status === 'planned'"
-                        [disabled]="!hasInspection(route.id!)">
-                    <i class="icon-play"></i> Start Trip
+                        *ngIf="route.status === 'planned'">
+                    <i class="icon-play">▶️</i> Start Trip
                 </button>
 
+                <!-- Complete Trip Button -->
                 <button class="btn-complete"
                         (click)="completeTrip(route)"
                         *ngIf="route.status === 'in_progress'">
-                    <i class="icon-check"></i> Complete Trip
+                    <i class="icon-check">✓</i> Complete Trip
                 </button>
 
                 <!-- Navigation Buttons -->
                 <button class="btn-maps" (click)="openGoogleMaps(route)">
-                    <i class="icon-map"></i> Open in Maps
+                    <i class="icon-map">🗺️</i> Open in Maps
                 </button>
 
                 <button class="btn-details" (click)="viewRouteDetails(route)">
-                    <i class="icon-list"></i> View Details
+                    <i class="icon-list">📋</i> View Details
                 </button>
             </div>
-
         </div>
 
         <div *ngIf="assignedRoutes.length === 0" class="no-routes">
             <div class="no-routes-icon">🚗</div>
             <h3>No Routes Assigned</h3>
             <p>You don't have any routes assigned yet. Check back later or contact your supervisor.</p>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: Inspection Required Modal -->
+    <div class="inspection-modal-overlay" *ngIf="showInspectionModal">
+        <div class="inspection-modal" [ngClass]="'modal-' + inspectionModalType">
+            <div class="modal-header">
+                <h3>{{ inspectionModalTitle }}</h3>
+                <button class="modal-close-btn" (click)="closeInspectionModal()">×</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="modal-icon" *ngIf="inspectionModalType === 'warning'">⚠️</div>
+                <div class="modal-icon" *ngIf="inspectionModalType === 'error'">🚫</div>
+                <p class="modal-message">{{ inspectionModalMessage }}</p>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-modal-secondary" (click)="closeInspectionModal()">
+                    Cancel
+                </button>
+                <button class="btn-modal-primary" (click)="goToInspection()" *ngIf="inspectionModalType === 'warning'">
+                    Go to Pre-Trip Inspection
+                </button>
+                <button class="btn-modal-danger" (click)="closeInspectionModal()" *ngIf="inspectionModalType === 'error'">
+                    Understood
+                </button>
+            </div>
         </div>
     </div>
 
@@ -130,18 +157,18 @@
                 <button class="btn-start-large"
                         (click)="startTrip(selectedRoute)"
                         *ngIf="canStartTrip(selectedRoute)">
-                    <i class="icon-play"></i> Start Trip
+                    <i class="icon-play">▶️</i> Start Trip
                 </button>
 
                 <button class="btn-complete-large"
                         (click)="completeTrip(selectedRoute)"
                         *ngIf="canCompleteTrip(selectedRoute)">
-                    <i class="icon-check"></i> Complete Trip
+                    <i class="icon-check">✓</i> Complete Trip
                 </button>
 
                 <!-- Navigation Button -->
                 <button class="btn-maps-large" (click)="openGoogleMaps(selectedRoute)">
-                    <i class="icon-map"></i> Navigate with Google Maps
+                    <i class="icon-map">🗺️</i> Navigate with Google Maps
                 </button>
             </div>
 
@@ -162,16 +189,16 @@
                         </div>
 
                         <div class="stop-address">
-                            <i class="icon-location"></i>
+                            <i class="icon-location">📍</i>
                             {{ stop.address }}
                         </div>
 
                         <div class="stop-contact" *ngIf="stop.contactName || stop.contactPhone">
                             <div *ngIf="stop.contactName">
-                                <i class="icon-person"></i> {{ stop.contactName }}
+                                <i class="icon-person">👤</i> {{ stop.contactName }}
                             </div>
                             <div *ngIf="stop.contactPhone">
-                                <i class="icon-phone"></i> {{ stop.contactPhone }}
+                                <i class="icon-phone">📞</i> {{ stop.contactPhone }}
                             </div>
                         </div>
 

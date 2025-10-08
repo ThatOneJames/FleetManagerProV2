@@ -20,7 +20,14 @@ export class RoutesTripsComponent implements OnInit {
     selectedRoute: Route | null = null;
     showRouteDetails: boolean = false;
     currentUserId: string = '';
-    routeInspections: Map<string, boolean> = new Map(); // Track which routes have inspections
+    routeInspections: Map<string, any> = new Map(); // Store inspection details
+
+    // ✅ NEW: Modal properties
+    showInspectionModal = false;
+    inspectionModalTitle = '';
+    inspectionModalMessage = '';
+    inspectionModalType: 'warning' | 'error' = 'warning';
+    pendingRouteId: string | null = null;
 
     constructor(
         private routeService: RouteService,
@@ -51,40 +58,95 @@ export class RoutesTripsComponent implements OnInit {
         });
     }
 
-    // ✅ NEW: Check if routes have inspections
+    // ✅ UPDATED: Check inspection details for routes
     private checkInspectionsForRoutes(routes: Route[]): void {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
         routes.forEach(route => {
-            if (route.id && route.status === 'planned') {
-                this.inspectionService.getInspectionByRoute(route.id).subscribe({
-                    next: (inspection) => {
-                        this.routeInspections.set(route.id!, true);
+            if (route.id && route.vehicleId && route.status === 'planned') {
+                this.http.get<any>(
+                    `https://fleetmanagerprov2-production.up.railway.app/api/pretripinspection/check-today/${route.vehicleId}`,
+                    { headers }
+                ).subscribe({
+                    next: (response) => {
+                        this.routeInspections.set(route.id!, response);
+                        console.log(`Inspection for route ${route.id}:`, response);
                     },
-                    error: () => {
-                        this.routeInspections.set(route.id!, false);
+                    error: (err) => {
+                        console.error(`Error checking inspection for route ${route.id}:`, err);
+                        this.routeInspections.set(route.id!, { hasInspection: false });
                     }
                 });
             }
         });
     }
 
-    // ✅ NEW: Check if route has inspection
-    hasInspection(routeId: string): boolean {
-        return this.routeInspections.get(routeId) === true;
+    // ✅ UPDATED: Check if route has PASSED inspection
+    hasPassedInspection(routeId: string): boolean {
+        const inspectionData = this.routeInspections.get(routeId);
+        return inspectionData?.hasInspection === true && inspectionData?.inspection?.result === 'Pass';
     }
 
-    // ✅ UPDATED: Start Trip with inspection check
+    // ✅ NEW: Get inspection status for display
+    getInspectionStatus(routeId: string): string {
+        const inspectionData = this.routeInspections.get(routeId);
+
+        if (!inspectionData || !inspectionData.hasInspection) {
+            return 'Inspection Required';
+        }
+
+        if (inspectionData.inspection?.result === 'Pass') {
+            return 'Inspection Complete ✓';
+        }
+
+        if (inspectionData.inspection?.result === 'Fail') {
+            return 'Inspection Failed';
+        }
+
+        return 'Inspection Pending';
+    }
+
+    // ✅ UPDATED: Start Trip with proper inspection check and modal
     startTrip(route: Route): void {
-        // Check if inspection is completed
-        if (!this.hasInspection(route.id!)) {
-            if (confirm('Pre-trip inspection is required before starting this trip. Would you like to complete it now?')) {
-                this.router.navigate(['/driver/pre-trip-inspection']);
-            }
+        this.pendingRouteId = route.id!;
+        const inspectionData = this.routeInspections.get(route.id!);
+
+        // No inspection done
+        if (!inspectionData || !inspectionData.hasInspection) {
+            this.inspectionModalTitle = '⚠️ Pre-Trip Inspection Required';
+            this.inspectionModalMessage = 'You must complete a pre-trip inspection before starting this trip. This is a safety requirement.';
+            this.inspectionModalType = 'warning';
+            this.showInspectionModal = true;
             return;
         }
 
+        // Inspection failed
+        if (inspectionData.inspection?.result === 'Fail') {
+            this.inspectionModalTitle = '🚫 Vehicle Not Ready';
+            this.inspectionModalMessage = 'Your pre-trip inspection failed. The vehicle has maintenance issues that must be resolved before starting the trip. Please contact your supervisor.';
+            this.inspectionModalType = 'error';
+            this.showInspectionModal = true;
+            return;
+        }
+
+        // Inspection passed - proceed with trip
+        if (inspectionData.inspection?.result === 'Pass') {
+            this.proceedStartTrip(route.id!);
+        }
+    }
+
+    // ✅ Proceed to start trip after inspection passes
+    private proceedStartTrip(routeId: string): void {
+        const route = this.assignedRoutes.find(r => r.id === routeId);
+        if (!route) return;
+
         if (confirm(`Are you sure you want to start the trip "${route.name}"?`)) {
             this.loading = true;
-            this.routeService.updateRoute(route.id!, {
+            this.routeService.updateRoute(routeId, {
                 status: 'in_progress',
                 startTime: new Date()
             }).subscribe({
@@ -99,7 +161,7 @@ export class RoutesTripsComponent implements OnInit {
                     }
 
                     this.loading = false;
-                    this.showSuccessMessage(`Trip "${route.name}" started successfully!`);
+                    alert(`Trip "${route.name}" started successfully!`);
                 },
                 error: (error) => {
                     console.error('Error starting trip:', error);
@@ -128,7 +190,7 @@ export class RoutesTripsComponent implements OnInit {
                     }
 
                     this.loading = false;
-                    this.showSuccessMessage(`Trip "${route.name}" completed successfully!`);
+                    alert(`Trip "${route.name}" completed successfully!`);
                 },
                 error: (error) => {
                     console.error('Error completing trip:', error);
@@ -139,8 +201,20 @@ export class RoutesTripsComponent implements OnInit {
         }
     }
 
-    private showSuccessMessage(message: string): void {
-        alert(message);
+    // ✅ NEW: Close inspection modal
+    closeInspectionModal(): void {
+        this.showInspectionModal = false;
+        this.pendingRouteId = null;
+    }
+
+    // ✅ NEW: Navigate to inspection page
+    goToInspection(): void {
+        const route = this.assignedRoutes.find(r => r.id === this.pendingRouteId);
+        if (route) {
+            this.router.navigate(['/driver/pre-trip-inspection'], {
+                queryParams: { vehicleId: route.vehicleId, routeId: route.id }
+            });
+        }
     }
 
     openGoogleMaps(route: Route): void {
@@ -221,18 +295,10 @@ export class RoutesTripsComponent implements OnInit {
     }
 
     canStartTrip(route: Route): boolean {
-        return route.status === 'planned' && this.hasInspection(route.id!);
+        return route.status === 'planned' && this.hasPassedInspection(route.id!);
     }
 
     canCompleteTrip(route: Route): boolean {
         return route.status === 'in_progress';
-    }
-
-    // ✅ NEW: Get inspection status message
-    getInspectionStatusMessage(route: Route): string {
-        if (route.status !== 'planned') {
-            return '';
-        }
-        return this.hasInspection(route.id!) ? 'Inspection Complete' : 'Inspection Required';
     }
 }
