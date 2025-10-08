@@ -126,12 +126,43 @@ namespace FleetManagerPro.API.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var route = await _routeService.UpdateRouteAsync(id, updateDto);
-                return Ok(route);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
+                var route = await _context.Routes
+                    .Include(r => r.Vehicle)
+                    .Include(r => r.Driver)
+                    .FirstOrDefaultAsync(r => r.Id == id);
+
+                if (route == null)
+                    return NotFound($"Route with ID {id} not found");
+
+                if (updateDto.Status != null) route.Status = updateDto.Status;
+                if (updateDto.StartTime != null) route.StartTime = updateDto.StartTime;
+                if (updateDto.EndTime != null) route.EndTime = updateDto.EndTime;
+
+                if (updateDto.Status == "in_progress" && route.VehicleId != null)
+                {
+                    var vehicle = await _context.Vehicles.FindAsync(route.VehicleId);
+                    if (vehicle != null)
+                    {
+                        vehicle.Status = "InRoute";
+                        _context.Vehicles.Update(vehicle);
+                    }
+                }
+
+                if (updateDto.Status == "completed" && route.VehicleId != null)
+                {
+                    var vehicle = await _context.Vehicles.FindAsync(route.VehicleId);
+                    if (vehicle != null)
+                    {
+                        vehicle.Status = "Ready";
+                        _context.Vehicles.Update(vehicle);
+                    }
+                }
+
+                route.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                var routeDto = MapRouteToDto(route);
+                return Ok(routeDto);
             }
             catch (Exception ex)
             {
@@ -139,6 +170,7 @@ namespace FleetManagerPro.API.Controllers
                 return StatusCode(500, "An error occurred while updating the route");
             }
         }
+
 
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteRoute(string id)

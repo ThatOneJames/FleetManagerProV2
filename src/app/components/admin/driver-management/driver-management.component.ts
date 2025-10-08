@@ -17,9 +17,9 @@ export class DriverManagementComponent implements OnInit {
     filterStatus: string = 'All';
 
     driversAttendance: Map<string, { clockedIn: boolean; clockedOut: boolean }> = new Map();
-    // ✅ NEW: Store full attendance data with times
     driversAttendanceData: Map<string, any> = new Map();
     driversOnLeave: Map<string, any> = new Map();
+    driversInRoute: Map<string, boolean> = new Map();
     isLoadingAttendance: boolean = false;
 
     showAddDriverForm: boolean = false;
@@ -213,7 +213,6 @@ export class DriverManagementComponent implements OnInit {
                         clockedOut: hasClockedOut
                     });
 
-                    // ✅ Store full attendance data including times
                     this.driversAttendanceData.set(driver.id!, attendanceData);
                 });
 
@@ -246,6 +245,8 @@ export class DriverManagementComponent implements OnInit {
                     this.driversOnLeave.set(driver.id!, activeLeave);
                 });
 
+                this.loadDriversInRouteStatus();
+
                 this.isLoadingAttendance = false;
             },
             error: (error) => {
@@ -260,7 +261,34 @@ export class DriverManagementComponent implements OnInit {
         });
     }
 
-    // ✅ NEW: Format time for CSV (convert UTC to Philippine time)
+    private loadDriversInRouteStatus(): void {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        this.http.get<any[]>(`${this.apiUrl}/routes`, { headers }).subscribe({
+            next: (routes) => {
+                this.driversInRoute.clear();
+                routes.forEach(route => {
+                    if (route.status === 'in_progress' && route.driverId) {
+                        this.driversInRoute.set(route.driverId, true);
+                    }
+                });
+            },
+            error: (err) => {
+                console.error('Error loading routes:', err);
+            }
+        });
+    }
+
+    isDriverInRoute(driverId: string): boolean {
+        return this.driversInRoute.get(driverId) === true;
+    }
+
     private formatTimeForCSV(timeStr?: string): string {
         if (!timeStr) return 'N/A';
 
@@ -273,7 +301,6 @@ export class DriverManagementComponent implements OnInit {
                     let hours = parseInt(parts[0], 10);
                     const minutes = parseInt(parts[1], 10);
 
-                    // Add 8 hours for Philippine timezone (UTC+8)
                     hours = (hours + 8) % 24;
 
                     const period = hours >= 12 ? 'PM' : 'AM';
@@ -334,6 +361,10 @@ export class DriverManagementComponent implements OnInit {
             return 'On Leave';
         }
 
+        if (this.isDriverInRoute(driverId)) {
+            return 'In Route';
+        }
+
         const attendance = this.driversAttendance.get(driverId);
 
         if (attendance?.clockedOut) {
@@ -353,6 +384,10 @@ export class DriverManagementComponent implements OnInit {
             return leaveType ? `${leaveType} Leave` : 'On Leave';
         }
 
+        if (this.isDriverInRoute(driverId)) {
+            return 'On Active Route';
+        }
+
         const attendance = this.driversAttendance.get(driverId);
 
         if (attendance?.clockedOut) {
@@ -369,6 +404,10 @@ export class DriverManagementComponent implements OnInit {
     getAvailabilityClass(driverId: string): string {
         if (this.isDriverOnLeave(driverId)) {
             return 'on-leave';
+        }
+
+        if (this.isDriverInRoute(driverId)) {
+            return 'in-route';
         }
 
         const attendance = this.driversAttendance.get(driverId);
@@ -668,7 +707,6 @@ export class DriverManagementComponent implements OnInit {
         return csvContent;
     }
 
-    // ✅ FIXED: Include clock-in and clock-out times
     private convertAttendanceToCSV(data: User[]): string {
         const today = new Date().toISOString().split('T')[0];
 
@@ -738,11 +776,9 @@ export class DriverManagementComponent implements OnInit {
     }
 
     selectAll(): void {
-        // Implementation for selecting all drivers
     }
 
     bulkStatusUpdate(newStatus: string): void {
-        // Implementation for bulk status updates
     }
 
     resetFilters(): void {

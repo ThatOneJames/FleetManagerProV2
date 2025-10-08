@@ -112,7 +112,7 @@ namespace FleetManagerPro.API.Models
         Active,
         Maintenance,
         Inactive,
-        OnRoute,
+        InRoute,
         Retired,
         NotAvailable,
         InUse,
