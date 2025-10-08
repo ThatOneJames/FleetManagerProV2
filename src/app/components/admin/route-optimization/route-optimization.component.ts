@@ -84,12 +84,18 @@ export class RouteOptimizationComponent implements OnInit {
         });
     }
 
+    // ✅ UPDATED: Filter out vehicles in maintenance, out of service, or retired
     loadVehicles(): void {
         this.vehicleService.getAllVehicles().subscribe({
             next: (data) => {
                 console.log('All vehicles loaded:', data);
-                this.vehicles = data;
-                console.log('Vehicles for dropdown:', this.vehicles);
+                // ✅ Filter out vehicles that are not available
+                this.vehicles = data.filter(v =>
+                    v.status !== 'Maintenance' &&
+                    v.status !== 'OutOfService' &&
+                    v.status !== 'Retired'
+                );
+                console.log('Available vehicles (not in maintenance):', this.vehicles);
             },
             error: (error) => {
                 console.error('Error loading vehicles:', error);
@@ -363,7 +369,7 @@ export class RouteOptimizationComponent implements OnInit {
         });
     }
 
-    // ✅ NEW: Set route to pending
+    // ✅ Set route to pending
     setPendingRoute(routeId: string): void {
         if (confirm('Are you sure you want to set this route back to pending?')) {
             this.routeService.updateRoute(routeId, { status: 'planned' }).subscribe({
@@ -378,7 +384,7 @@ export class RouteOptimizationComponent implements OnInit {
         }
     }
 
-    // ✅ NEW: Cancel route
+    // ✅ Cancel route
     cancelRoute(routeId: string): void {
         if (confirm('Are you sure you want to cancel this route?')) {
             this.routeService.updateRoute(routeId, { status: 'cancelled' }).subscribe({

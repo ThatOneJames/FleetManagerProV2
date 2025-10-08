@@ -16,11 +16,9 @@ import { Vehicle } from '../../../models/vehicle.model';
     styleUrls: ['./maintenance.component.css']
 })
 export class MaintenanceComponent implements OnInit {
-    // Existing maintenance tasks
     tasks: MaintenanceTask[] = [];
     filteredTasks: MaintenanceTask[] = [];
 
-    // ✅ NEW: Pre-trip inspection maintenance requests
     maintenanceRequests: MaintenanceRequest[] = [];
     filteredRequests: MaintenanceRequest[] = [];
 
@@ -28,24 +26,19 @@ export class MaintenanceComponent implements OnInit {
     categories: MaintenanceCategory[] = [];
     statistics: MaintenanceStatistics | null = null;
 
-    // Tab management
     activeTab: 'tasks' | 'requests' = 'tasks';
 
-    // Filters for tasks
     filterStatus: string = '';
     filterPriority: string = '';
     filterVehicle: string = '';
 
-    // ✅ NEW: Filters for requests
     filterRequestStatus: string = '';
     filterRequestSeverity: string = '';
     filterRequestVehicle: string = '';
 
-    // Form state
     showAddForm: boolean = false;
     editingTask: MaintenanceTask | null = null;
 
-    // ✅ NEW: Request details modal
     showRequestDetails: boolean = false;
     selectedRequest: MaintenanceRequest | null = null;
 
@@ -62,11 +55,10 @@ export class MaintenanceComponent implements OnInit {
         serviceProvider: ''
     };
 
-    // Status and priority options
     statusOptions = ['Scheduled', 'InProgress', 'Completed', 'Cancelled', 'Overdue'];
     priorityOptions = ['High', 'Medium', 'Low'];
 
-    // ✅ NEW: Request status options
+    // ✅ FIXED: Use 'InProgress' without space
     requestStatusOptions = ['Pending', 'InProgress', 'Completed', 'Cancelled'];
     severityOptions = ['Critical', 'High', 'Medium', 'Low'];
 
@@ -87,7 +79,6 @@ export class MaintenanceComponent implements OnInit {
         this.loading = true;
         this.error = '';
 
-        // Load existing maintenance tasks
         this.maintenanceService.getAllTasks().subscribe({
             next: (data) => {
                 this.tasks = data;
@@ -101,7 +92,6 @@ export class MaintenanceComponent implements OnInit {
             }
         });
 
-        // ✅ NEW: Load pre-trip inspection requests
         this.maintenanceRequestService.getAllRequests().subscribe({
             next: (data) => {
                 this.maintenanceRequests = data;
@@ -112,26 +102,22 @@ export class MaintenanceComponent implements OnInit {
             }
         });
 
-        // Load vehicles
         this.vehicleService.getAllVehicles().subscribe({
             next: (data) => this.vehicles = data,
             error: (err) => console.error('Failed to load vehicles', err)
         });
 
-        // Load categories
         this.maintenanceService.getAllCategories().subscribe({
             next: (data) => this.categories = data,
             error: (err) => console.error('Failed to load categories', err)
         });
 
-        // Load statistics
         this.maintenanceService.getStatistics().subscribe({
             next: (data) => this.statistics = data,
             error: (err) => console.error('Failed to load statistics', err)
         });
     }
 
-    // ✅ NEW: Switch between tabs
     switchTab(tab: 'tasks' | 'requests'): void {
         this.activeTab = tab;
     }
@@ -145,12 +131,18 @@ export class MaintenanceComponent implements OnInit {
         });
     }
 
-    // ✅ NEW: Apply filters for maintenance requests
+    // ✅ FIXED: Case-insensitive filtering for 'InProgress'
     applyRequestFilters(): void {
         this.filteredRequests = this.maintenanceRequests.filter(request => {
-            const statusMatch = !this.filterRequestStatus || request.status === this.filterRequestStatus;
-            const severityMatch = !this.filterRequestSeverity || request.issueSeverity === this.filterRequestSeverity;
-            const vehicleMatch = !this.filterRequestVehicle || request.vehicleId === this.filterRequestVehicle;
+            const statusMatch = !this.filterRequestStatus ||
+                request.status?.replace(/\s+/g, '') === this.filterRequestStatus.replace(/\s+/g, '');
+
+            const severityMatch = !this.filterRequestSeverity ||
+                request.issueSeverity === this.filterRequestSeverity;
+
+            const vehicleMatch = !this.filterRequestVehicle ||
+                request.vehicleId === this.filterRequestVehicle;
+
             return statusMatch && severityMatch && vehicleMatch;
         });
     }
@@ -159,7 +151,6 @@ export class MaintenanceComponent implements OnInit {
         this.applyFilters();
     }
 
-    // ✅ NEW: Filter change for requests
     onRequestFilterChange(): void {
         this.applyRequestFilters();
     }
@@ -303,7 +294,6 @@ export class MaintenanceComponent implements OnInit {
         });
     }
 
-    // ✅ NEW: View maintenance request details
     viewRequestDetails(request: MaintenanceRequest): void {
         this.selectedRequest = request;
         this.showRequestDetails = true;
@@ -314,7 +304,6 @@ export class MaintenanceComponent implements OnInit {
         this.selectedRequest = null;
     }
 
-    // ✅ NEW: Update maintenance request status
     updateRequestStatus(id: string, status: string, mechanic?: string, notes?: string): void {
         this.maintenanceRequestService.updateRequestStatus(id, status, mechanic, notes).subscribe({
             next: () => {
@@ -346,7 +335,6 @@ export class MaintenanceComponent implements OnInit {
         return 'Unknown Vehicle';
     }
 
-    // ✅ NEW: Get vehicle display for requests
     getRequestVehicleDisplay(request: MaintenanceRequest): string {
         if (request.vehicle) {
             return `${request.vehicle.make} ${request.vehicle.model} (${request.vehicle.licensePlate})`;
@@ -380,7 +368,6 @@ export class MaintenanceComponent implements OnInit {
         return priorityClasses[priority] || '';
     }
 
-    // ✅ NEW: Get severity class
     getSeverityClass(severity: string): string {
         const severityClasses: { [key: string]: string } = {
             'Critical': 'severity-critical',
@@ -442,7 +429,6 @@ export class MaintenanceComponent implements OnInit {
         this.downloadFile(csvContent, `maintenance_tasks_${new Date().toISOString().split('T')[0]}.csv`);
     }
 
-    // ✅ NEW: Download requests CSV
     private downloadRequestsCSV(): void {
         const headers = [
             'Request ID', 'Vehicle', 'Driver', 'Issue Type', 'Severity',

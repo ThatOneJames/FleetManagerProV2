@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { VehicleService } from '../../../services/vehicle.service';
 import { DriverService } from '../../../services/driver.service';
@@ -11,7 +11,6 @@ import { User } from '../../../models/user.model';
     styleUrls: ['./fleet-management.component.css']
 })
 export class FleetManagementComponent implements OnInit {
-    // Core data
     vehicles: Vehicle[] = [];
     filteredVehicles: Vehicle[] = [];
     availableDrivers: User[] = [];
@@ -22,27 +21,22 @@ export class FleetManagementComponent implements OnInit {
         { id: '4', name: 'Bus', description: 'Passenger buses', createdAt: new Date() }
     ];
 
-    // Form instances - these match your existing forms
     vehicleForm!: FormGroup;
     editForm!: FormGroup;
 
-    // UI state - these match what your template expects
     isLoading = false;
     showAddForm = false;
     showEditForm = false;
     editingVehicleId: string | null = null;
 
-    // Search and filter - these match your template
     searchText = '';
     statusFilter = '';
     categoryFilter = '';
     fuelTypeFilter = '';
 
-    // Messages
     successMessage = '';
     errorMessage = '';
 
-    // Options - these match your template
     statusOptions = ['Ready', 'Active', 'Maintenance', 'Inactive', 'OnRoute', 'Retired', 'NotAvailable', 'InUse', 'OutOfService'];
     fuelTypeOptions = ['Gasoline', 'Diesel', 'Electric', 'Hybrid'];
 
@@ -59,7 +53,6 @@ export class FleetManagementComponent implements OnInit {
     }
 
     initializeForms(): void {
-        // Keep your existing form setup
         this.vehicleForm = this.formBuilder.group({
             categoryId: ['1', [Validators.required]],
             make: ['', [Validators.required, Validators.minLength(2)]],
@@ -116,6 +109,15 @@ export class FleetManagementComponent implements OnInit {
         });
     }
 
+    // ✅ NEW: Get only available vehicles (not in maintenance, out of service, or retired)
+    get availableVehicles(): Vehicle[] {
+        return this.vehicles.filter(v =>
+            v.status !== 'Maintenance' &&
+            v.status !== 'OutOfService' &&
+            v.status !== 'Retired'
+        );
+    }
+
     loadDrivers(): void {
         this.driverService.getAllDrivers().subscribe({
             next: (drivers) => {
@@ -142,7 +144,6 @@ export class FleetManagementComponent implements OnInit {
         });
     }
 
-    // Search and filter methods that your template expects
     onSearchChange(): void {
         this.applyFilters();
     }
@@ -167,7 +168,6 @@ export class FleetManagementComponent implements OnInit {
         this.applyFilters();
     }
 
-    // Form methods that your template expects
     showAddVehicleForm(): void {
         this.showAddForm = true;
         this.vehicleForm.reset();
@@ -270,7 +270,6 @@ export class FleetManagementComponent implements OnInit {
         this.isLoading = true;
         const formData = this.editForm.value;
 
-        // Use your existing update method
         const updatedVehicle: Vehicle = {
             id: this.editingVehicleId,
             categoryId: formData.categoryId,
@@ -290,7 +289,7 @@ export class FleetManagementComponent implements OnInit {
             purchaseDate: formData.purchaseDate ? new Date(formData.purchaseDate) : undefined,
             purchasePrice: formData.purchasePrice,
             currentDriverId: formData.currentDriverId,
-            vin: '', // Add required properties
+            vin: '',
             createdAt: new Date(),
             updatedAt: new Date()
         };
@@ -336,7 +335,6 @@ export class FleetManagementComponent implements OnInit {
         }
     }
 
-    // Helper methods that your template expects
     getCategoryName(categoryId: string): string {
         const category = this.categories.find(c => c.id === categoryId);
         return category ? category.name : 'Unknown';
@@ -352,7 +350,6 @@ export class FleetManagementComponent implements OnInit {
         return driver ? driver.name : 'Unknown Driver';
     }
 
-    // Add this method to get current driver name for a vehicle
     getCurrentDriverName(vehicle: Vehicle): string {
         return this.getDriverName(vehicle.currentDriverId);
     }
@@ -405,7 +402,6 @@ export class FleetManagementComponent implements OnInit {
         window.URL.revokeObjectURL(url);
     }
 
-    // Form validation helpers that your template expects
     getFieldError(form: FormGroup, fieldName: string): string {
         const field = form.get(fieldName);
         if (field && field.invalid && field.touched) {

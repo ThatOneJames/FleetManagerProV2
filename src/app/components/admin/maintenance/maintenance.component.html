@@ -1,4 +1,5 @@
 ﻿<div class="maintenance-container">
+
     <div class="page-header">
         <h2>Vehicle Maintenance Management</h2>
         <div class="header-actions">
@@ -60,7 +61,7 @@
         </div>
     </div>
 
-    <!-- ✅ NEW: Tab Navigation -->
+    <!-- Tab Navigation -->
     <div class="tabs-container">
         <button class="tab-btn"
                 [class.active]="activeTab === 'tasks'"
@@ -298,7 +299,6 @@
             </div>
         </div>
     </div>
-
     <!-- ==================== INSPECTION REPORTS TAB ==================== -->
     <div *ngIf="activeTab === 'requests'">
         <!-- Filters for Requests -->
@@ -376,13 +376,17 @@
                                 <span class="label">Priority:</span>
                                 <span>{{ request.priority }}</span>
                             </div>
-                            <div class="detail-item" *ngIf="request.assignedMechanic">
-                                <span class="label">Assigned To:</span>
-                                <span>{{ request.assignedMechanic }}</span>
+                        </div>
+
+                        <!-- ✅ NEW: Assignment & Route Section -->
+                        <div class="request-assignment" *ngIf="request.assignedMechanic || request.route">
+                            <div class="assignment-row" *ngIf="request.assignedMechanic">
+                                <span class="assignment-label">Assigned To:</span>
+                                <span class="assignment-value">{{ request.assignedMechanic }}</span>
                             </div>
-                            <div class="detail-item" *ngIf="request.route">
-                                <span class="label">Route:</span>
-                                <span>{{ request.route.name }}</span>
+                            <div class="assignment-row" *ngIf="request.route">
+                                <span class="assignment-label">Route:</span>
+                                <span class="assignment-value">{{ request.route.name }}</span>
                             </div>
                         </div>
                     </div>
@@ -397,7 +401,7 @@
         </div>
     </div>
 
-    <!-- ✅ NEW: Request Details Modal -->
+    <!-- ✅ Request Details Modal -->
     <div class="modal-overlay" *ngIf="showRequestDetails && selectedRequest">
         <div class="modal-content">
             <div class="modal-header">
@@ -429,6 +433,17 @@
                             <span class="badge status" [ngClass]="getStatusClass(selectedRequest.status || 'Pending')">
                                 {{ selectedRequest.status || 'Pending' }}
                             </span>
+                        </p>
+                    </div>
+
+                    <!-- ✅ NEW: Assignment & Route Details in Modal -->
+                    <div class="detail-section" *ngIf="selectedRequest.assignedMechanic || selectedRequest.route">
+                        <h4>Assignment & Route Details</h4>
+                        <p *ngIf="selectedRequest.assignedMechanic">
+                            <strong>Assigned Mechanic:</strong> {{ selectedRequest.assignedMechanic }}
+                        </p>
+                        <p *ngIf="selectedRequest.route">
+                            <strong>Route:</strong> {{ selectedRequest.route.name }}
                         </p>
                     </div>
 
@@ -470,4 +485,5 @@
             </div>
         </div>
     </div>
+
 </div>

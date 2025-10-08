@@ -30,7 +30,6 @@ namespace FleetManagerPro.API.Controllers
                 return Unauthorized("Driver not authenticated");
             }
 
-            // ✅ FIXED: No Guid.Parse - driverId is already a string
             var assignedRoute = await _context.Routes
                 .FirstOrDefaultAsync(r => r.DriverId == driverId &&
                                          r.VehicleId == dto.VehicleId &&
@@ -48,7 +47,6 @@ namespace FleetManagerPro.API.Controllers
                 return NotFound("Vehicle not found");
             }
 
-            // ✅ FIXED: No Guid.Parse - use driverId directly
             var driver = await _context.Users.FindAsync(driverId);
             if (driver == null)
             {
@@ -60,7 +58,7 @@ namespace FleetManagerPro.API.Controllers
             {
                 Id = Guid.NewGuid().ToString(),
                 VehicleId = dto.VehicleId,
-                DriverId = driverId, // ✅ FIXED: Direct assignment
+                DriverId = driverId,
                 RouteId = dto.RouteId,
                 InspectionId = dto.InspectionId,
                 IssueType = dto.IssueType,
@@ -120,7 +118,6 @@ namespace FleetManagerPro.API.Controllers
                 return Unauthorized();
             }
 
-            // ✅ FIXED: No Guid.Parse - compare strings directly
             var requests = await _context.MaintenanceRequests
                 .Include(m => m.Vehicle)
                 .Include(m => m.Route)
@@ -151,30 +148,67 @@ namespace FleetManagerPro.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateRequestStatus(string id, [FromBody] UpdateMaintenanceStatusDto dto)
         {
-            var request = await _context.MaintenanceRequests.FindAsync(id);
-            if (request == null)
+            try
             {
-                return NotFound();
+                var request = await _context.MaintenanceRequests
+                    .Include(m => m.Vehicle)
+                    .FirstOrDefaultAsync(m => m.Id == id);
+
+                if (request == null)
+                {
+                    return NotFound(new { message = "Maintenance request not found" });
+                }
+
+                // Update request status
+                request.Status = dto.Status;
+                request.AssignedMechanic = dto.AssignedMechanic;
+                request.RepairNotes = dto.RepairNotes;
+                request.UpdatedAt = DateTime.UtcNow;
+
+                // ✅ NEW: Auto-update vehicle status based on maintenance request status
+                if (request.Vehicle != null)
+                {
+                    switch (dto.Status)
+                    {
+                        case "InProgress":
+                            request.Vehicle.Status = "Maintenance";
+                            Console.WriteLine($"[INFO] Vehicle {request.VehicleId} marked as Maintenance");
+                            break;
+
+                        case "Completed":
+                            request.Vehicle.Status = "Ready";
+                            request.CompletedDate = DateTime.UtcNow;
+                            Console.WriteLine($"[INFO] Vehicle {request.VehicleId} marked as Ready");
+                            break;
+
+                        case "Cancelled":
+                            request.Vehicle.Status = "Ready";
+                            Console.WriteLine($"[INFO] Vehicle {request.VehicleId} marked as Ready (request cancelled)");
+                            break;
+                    }
+
+                    request.Vehicle.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Maintenance request status updated successfully",
+                    requestStatus = request.Status,
+                    vehicleStatus = request.Vehicle?.Status
+                });
             }
-
-            request.Status = dto.Status;
-            request.AssignedMechanic = dto.AssignedMechanic;
-            request.RepairNotes = dto.RepairNotes;
-            request.UpdatedAt = DateTime.UtcNow;
-
-            if (dto.Status == "Completed")
+            catch (Exception ex)
             {
-                request.CompletedDate = DateTime.UtcNow;
+                Console.WriteLine($"[ERROR] UpdateRequestStatus: {ex.Message}");
+                return StatusCode(500, new { message = "Error updating maintenance request status", error = ex.Message });
             }
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
         }
 
         // GET: api/maintenancerequest/check-vehicle/{vehicleId}
         [HttpGet("check-vehicle/{vehicleId}")]
-        public async Task<ActionResult<object>> CheckVehicleAssignment(string vehicleId) // ✅ FIXED: Changed to string
+        public async Task<ActionResult<object>> CheckVehicleAssignment(string vehicleId)
         {
             var driverId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(driverId))
@@ -182,7 +216,6 @@ namespace FleetManagerPro.API.Controllers
                 return Unauthorized();
             }
 
-            // ✅ FIXED: All string comparisons - no Guid.Parse
             var hasAssignment = await _context.Routes
                 .AnyAsync(r => r.DriverId == driverId &&
                               r.VehicleId == vehicleId &&
