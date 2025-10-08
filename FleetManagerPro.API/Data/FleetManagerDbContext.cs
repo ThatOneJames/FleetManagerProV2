@@ -153,7 +153,6 @@ namespace FleetManagerPro.API.Data
                         j.HasKey("route_id", "user_id");
                     });
 
-            // Other entities (MaintenanceRecord, etc.) - keeping your existing configurations
             modelBuilder.Entity<MaintenanceRecord>(entity =>
             {
                 entity.ToTable("maintenance_records");
@@ -335,6 +334,84 @@ namespace FleetManagerPro.API.Data
                 entity.HasIndex(lr => lr.DriverId);
                 entity.HasIndex(lr => lr.Status);
                 entity.HasIndex(lr => lr.StartDate);
+            });
+
+            modelBuilder.Entity<PreTripInspection>(entity =>
+            {
+                entity.ToTable("PreTripInspections");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasMaxLength(128);
+                entity.Property(e => e.RouteId).HasMaxLength(128).IsRequired();
+                entity.Property(e => e.VehicleId).HasMaxLength(128).IsRequired();
+                entity.Property(e => e.DriverId).HasMaxLength(128).IsRequired();
+                entity.Property(e => e.MaintenanceRequestId).HasMaxLength(128);
+
+                entity.HasOne(p => p.Route)
+                      .WithMany()
+                      .HasForeignKey(p => p.RouteId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(p => p.Vehicle)
+                      .WithMany()
+                      .HasForeignKey(p => p.VehicleId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(p => p.Driver)
+                      .WithMany()
+                      .HasForeignKey(p => p.DriverId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(p => p.RouteId);
+                entity.HasIndex(p => p.VehicleId);
+                entity.HasIndex(p => p.DriverId);
+            });
+
+            // MaintenanceRequest entity
+            modelBuilder.Entity<MaintenanceRequest>(entity =>
+            {
+                entity.ToTable("MaintenanceRequests");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasMaxLength(128);
+                entity.Property(e => e.VehicleId).HasMaxLength(128).IsRequired();
+                entity.Property(e => e.DriverId).HasMaxLength(128).IsRequired();
+                entity.Property(e => e.RouteId).HasMaxLength(128);
+                entity.Property(e => e.InspectionId).HasMaxLength(128);
+                entity.Property(e => e.IssueType).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.IssueSeverity).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Status).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Priority).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.ReportedBy).HasMaxLength(200);
+                entity.Property(e => e.AssignedMechanic).HasMaxLength(200);
+                entity.Property(e => e.EstimatedCost).HasPrecision(18, 2);
+                entity.Property(e => e.ActualCost).HasPrecision(18, 2);
+
+                entity.HasOne(m => m.Vehicle)
+                      .WithMany()
+                      .HasForeignKey(m => m.VehicleId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(m => m.Driver)
+                      .WithMany()
+                      .HasForeignKey(m => m.DriverId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(m => m.Route)
+                      .WithMany()
+                      .HasForeignKey(m => m.RouteId)
+                      .OnDelete(DeleteBehavior.SetNull)
+                      .IsRequired(false);
+
+                entity.HasOne(m => m.Inspection)
+                      .WithOne(i => i.MaintenanceRequest)
+                      .HasForeignKey<MaintenanceRequest>(m => m.InspectionId)
+                      .OnDelete(DeleteBehavior.SetNull)
+                      .IsRequired(false);
+
+                entity.HasIndex(m => m.VehicleId);
+                entity.HasIndex(m => m.DriverId);
+                entity.HasIndex(m => m.Status);
             });
         }
     }

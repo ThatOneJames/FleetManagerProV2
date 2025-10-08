@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { RouteService, Route, RouteStop } from '../../../services/route.service';
 import { AuthService } from '../../../services/auth.service';
+import { PreTripInspectionService } from '../../../services/pretripinspection.service';
 
 @Component({
     selector: 'app-routes-trips',
@@ -18,11 +20,14 @@ export class RoutesTripsComponent implements OnInit {
     selectedRoute: Route | null = null;
     showRouteDetails: boolean = false;
     currentUserId: string = '';
+    routeInspections: Map<string, boolean> = new Map(); // Track which routes have inspections
 
     constructor(
         private routeService: RouteService,
         private authService: AuthService,
-        private http: HttpClient
+        private http: HttpClient,
+        private router: Router,
+        private inspectionService: PreTripInspectionService
     ) { }
 
     ngOnInit(): void {
@@ -35,6 +40,7 @@ export class RoutesTripsComponent implements OnInit {
         this.routeService.getRoutesByDriver(this.currentUserId).subscribe({
             next: (routes) => {
                 this.assignedRoutes = routes;
+                this.checkInspectionsForRoutes(routes);
                 this.loading = false;
             },
             error: (error) => {
@@ -45,11 +51,102 @@ export class RoutesTripsComponent implements OnInit {
         });
     }
 
+    // ✅ NEW: Check if routes have inspections
+    private checkInspectionsForRoutes(routes: Route[]): void {
+        routes.forEach(route => {
+            if (route.id && route.status === 'planned') {
+                this.inspectionService.getInspectionByRoute(route.id).subscribe({
+                    next: (inspection) => {
+                        this.routeInspections.set(route.id!, true);
+                    },
+                    error: () => {
+                        this.routeInspections.set(route.id!, false);
+                    }
+                });
+            }
+        });
+    }
+
+    // ✅ NEW: Check if route has inspection
+    hasInspection(routeId: string): boolean {
+        return this.routeInspections.get(routeId) === true;
+    }
+
+    // ✅ UPDATED: Start Trip with inspection check
+    startTrip(route: Route): void {
+        // Check if inspection is completed
+        if (!this.hasInspection(route.id!)) {
+            if (confirm('Pre-trip inspection is required before starting this trip. Would you like to complete it now?')) {
+                this.router.navigate(['/driver/pre-trip-inspection']);
+            }
+            return;
+        }
+
+        if (confirm(`Are you sure you want to start the trip "${route.name}"?`)) {
+            this.loading = true;
+            this.routeService.updateRoute(route.id!, {
+                status: 'in_progress',
+                startTime: new Date()
+            }).subscribe({
+                next: (updatedRoute) => {
+                    const index = this.assignedRoutes.findIndex(r => r.id === updatedRoute.id);
+                    if (index !== -1) {
+                        this.assignedRoutes[index] = updatedRoute;
+                    }
+
+                    if (this.selectedRoute && this.selectedRoute.id === updatedRoute.id) {
+                        this.selectedRoute = updatedRoute;
+                    }
+
+                    this.loading = false;
+                    this.showSuccessMessage(`Trip "${route.name}" started successfully!`);
+                },
+                error: (error) => {
+                    console.error('Error starting trip:', error);
+                    this.errorMessage = 'Failed to start trip';
+                    this.loading = false;
+                }
+            });
+        }
+    }
+
+    completeTrip(route: Route): void {
+        if (confirm(`Are you sure you want to complete the trip "${route.name}"?`)) {
+            this.loading = true;
+            this.routeService.updateRoute(route.id!, {
+                status: 'completed',
+                endTime: new Date()
+            }).subscribe({
+                next: (updatedRoute) => {
+                    const index = this.assignedRoutes.findIndex(r => r.id === updatedRoute.id);
+                    if (index !== -1) {
+                        this.assignedRoutes[index] = updatedRoute;
+                    }
+
+                    if (this.selectedRoute && this.selectedRoute.id === updatedRoute.id) {
+                        this.selectedRoute = updatedRoute;
+                    }
+
+                    this.loading = false;
+                    this.showSuccessMessage(`Trip "${route.name}" completed successfully!`);
+                },
+                error: (error) => {
+                    console.error('Error completing trip:', error);
+                    this.errorMessage = 'Failed to complete trip';
+                    this.loading = false;
+                }
+            });
+        }
+    }
+
+    private showSuccessMessage(message: string): void {
+        alert(message);
+    }
+
     openGoogleMaps(route: Route): void {
         if (route.googleMapsUrl) {
             window.open(route.googleMapsUrl, '_blank');
         } else {
-            // Fallback: Generate URL on frontend
             const url = this.generateGoogleMapsUrl(route);
             if (url) {
                 window.open(url, '_blank');
@@ -69,79 +166,6 @@ export class RoutesTripsComponent implements OnInit {
             .join('/');
 
         return baseUrl + waypoints;
-    }
-
-    // NEW: Start Trip functionality
-    startTrip(route: Route): void {
-        if (confirm(`Are you sure you want to start the trip "${route.name}"?`)) {
-            this.loading = true;
-            this.routeService.updateRoute(route.id!, {
-                status: 'in_progress',
-                startTime: new Date()
-            }).subscribe({
-                next: (updatedRoute) => {
-                    // Update the route in the list
-                    const index = this.assignedRoutes.findIndex(r => r.id === updatedRoute.id);
-                    if (index !== -1) {
-                        this.assignedRoutes[index] = updatedRoute;
-                    }
-
-                    // Update selected route if it's the same one
-                    if (this.selectedRoute && this.selectedRoute.id === updatedRoute.id) {
-                        this.selectedRoute = updatedRoute;
-                    }
-
-                    this.loading = false;
-                    this.showSuccessMessage(`Trip "${route.name}" started successfully!`);
-                },
-                error: (error) => {
-                    console.error('Error starting trip:', error);
-                    this.errorMessage = 'Failed to start trip';
-                    this.loading = false;
-                }
-            });
-        }
-    }
-
-    // NEW: Complete Trip functionality
-    completeTrip(route: Route): void {
-        if (confirm(`Are you sure you want to complete the trip "${route.name}"?`)) {
-            this.loading = true;
-            this.routeService.updateRoute(route.id!, {
-                status: 'completed',
-                endTime: new Date()
-            }).subscribe({
-                next: (updatedRoute) => {
-                    // Update the route in the list
-                    const index = this.assignedRoutes.findIndex(r => r.id === updatedRoute.id);
-                    if (index !== -1) {
-                        this.assignedRoutes[index] = updatedRoute;
-                    }
-
-                    // Update selected route if it's the same one
-                    if (this.selectedRoute && this.selectedRoute.id === updatedRoute.id) {
-                        this.selectedRoute = updatedRoute;
-                    }
-
-                    this.loading = false;
-                    this.showSuccessMessage(`Trip "${route.name}" completed successfully!`);
-                },
-                error: (error) => {
-                    console.error('Error completing trip:', error);
-                    this.errorMessage = 'Failed to complete trip';
-                    this.loading = false;
-                }
-            });
-        }
-    }
-
-    // NEW: Success message helper
-    private showSuccessMessage(message: string): void {
-        // You can implement a toast notification or simple alert
-        alert(message);
-        // Alternative: Set a success message variable and show it in template
-        // this.successMessage = message;
-        // setTimeout(() => this.successMessage = '', 3000);
     }
 
     viewRouteDetails(route: Route): void {
@@ -196,13 +220,19 @@ export class RoutesTripsComponent implements OnInit {
         }
     }
 
-    // NEW: Helper method to check if route can be started
     canStartTrip(route: Route): boolean {
-        return route.status === 'planned';
+        return route.status === 'planned' && this.hasInspection(route.id!);
     }
 
-    // NEW: Helper method to check if route can be completed
     canCompleteTrip(route: Route): boolean {
         return route.status === 'in_progress';
+    }
+
+    // ✅ NEW: Get inspection status message
+    getInspectionStatusMessage(route: Route): string {
+        if (route.status !== 'planned') {
+            return '';
+        }
+        return this.hasInspection(route.id!) ? 'Inspection Complete' : 'Inspection Required';
     }
 }

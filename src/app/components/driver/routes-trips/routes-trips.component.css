@@ -637,3 +637,126 @@
     align-items: flex-start;
     gap: 6px;
 }
+
+.inspection-status {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.inspection-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: #fff3e0;
+    color: #f57c00;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.inspection-complete {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.btn-start:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+    .btn-start:disabled:hover {
+        background-color: #ccc;
+    }
+.btn-start {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
+    .btn-start:hover:not(:disabled) {
+        background-color: #218838;
+    }
+
+.btn-complete {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
+    .btn-complete:hover {
+        background-color: #0056b3;
+    }
+
+.btn-start-large {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 15px 25px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+    .btn-start-large:hover:not(:disabled) {
+        background-color: #218838;
+    }
+
+    .btn-start-large:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+    }
+
+.btn-complete-large {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 15px 25px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+    .btn-complete-large:hover {
+        background-color: #0056b3;
+    }

@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface MaintenanceRequest {
     id?: string;
@@ -39,7 +40,8 @@ export interface MaintenanceRequest {
     providedIn: 'root'
 })
 export class MaintenanceRequestService {
-    private readonly apiUrl = 'https://fleetmanagerprov2-production.up.railway.app/api/maintenancerequest';
+    // ✅ CHANGED: Capital M, Capital R to match controller
+    private readonly apiUrl = `${environment.apiUrl}/MaintenanceRequest`;
 
     constructor(
         private http: HttpClient,

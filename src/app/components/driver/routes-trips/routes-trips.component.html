@@ -45,16 +45,27 @@
             </div>
 
             <div class="route-actions">
+                <!-- Inspection Status -->
+                <div *ngIf="route.status === 'planned'" class="inspection-status">
+                    <div *ngIf="!hasInspection(route.id!)" class="inspection-warning">
+                        <i class="icon-warning"></i> Inspection Required
+                    </div>
+                    <div *ngIf="hasInspection(route.id!)" class="inspection-complete">
+                        <i class="icon-check-circle"></i> Inspection Complete
+                    </div>
+                </div>
+
                 <!-- Trip Control Buttons -->
                 <button class="btn-start"
                         (click)="startTrip(route)"
-                        *ngIf="canStartTrip(route)">
+                        *ngIf="route.status === 'planned'"
+                        [disabled]="!hasInspection(route.id!)">
                     <i class="icon-play"></i> Start Trip
                 </button>
 
                 <button class="btn-complete"
                         (click)="completeTrip(route)"
-                        *ngIf="canCompleteTrip(route)">
+                        *ngIf="route.status === 'in_progress'">
                     <i class="icon-check"></i> Complete Trip
                 </button>
 
@@ -67,6 +78,7 @@
                     <i class="icon-list"></i> View Details
                 </button>
             </div>
+
         </div>
 
         <div *ngIf="assignedRoutes.length === 0" class="no-routes">
