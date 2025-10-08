@@ -1,4 +1,4 @@
-using FleetManagerPro.API.Data.Repository;
+﻿using FleetManagerPro.API.Data.Repository;
 using FleetManagerPro.API.DTOs;
 using FleetManagerPro.API.Models;
 using FleetManagerPro.API.Data;
@@ -135,6 +135,25 @@ namespace FleetManagerPro.API.Services
                 if (route.StartTime.HasValue)
                 {
                     route.ActualDuration = (int)(route.EndTime.Value - route.StartTime.Value).TotalMinutes;
+                }
+            }
+
+            // ✅ UPDATE VEHICLE STATUS WHEN ROUTE STARTS
+            if (route.VehicleId != null)
+            {
+                var vehicle = await _context.Vehicles.FindAsync(route.VehicleId);
+                if (vehicle != null)
+                {
+                    if (route.Status == "in_progress")
+                    {
+                        vehicle.Status = "InRoute";
+                    }
+                    else if (route.Status == "completed" || route.Status == "cancelled")
+                    {
+                        vehicle.Status = "Ready";
+                    }
+
+                    _context.Vehicles.Update(vehicle);
                 }
             }
 
