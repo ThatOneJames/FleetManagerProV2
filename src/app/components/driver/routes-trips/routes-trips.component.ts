@@ -108,8 +108,23 @@ export class RoutesTripsComponent implements OnInit {
         return 'Inspection Pending';
     }
 
+    // ✅ NEW: Check if driver has an active trip
+    hasActiveTripInProgress(): boolean {
+        return this.assignedRoutes.some(route => route.status === 'in_progress');
+    }
+
     startTrip(route: Route): void {
         this.pendingRouteId = route.id!;
+
+        // ✅ Check if driver already has an active trip
+        if (this.hasActiveTripInProgress()) {
+            this.inspectionModalTitle = '🚫 Active Trip In Progress';
+            this.inspectionModalMessage = 'You already have a trip in progress. Please complete your current trip before starting a new one.';
+            this.inspectionModalType = 'error';
+            this.showInspectionModal = true;
+            return;
+        }
+
         const inspectionData = this.routeInspections.get(route.id!);
 
         if (!inspectionData || !inspectionData.hasInspection) {
@@ -285,8 +300,11 @@ export class RoutesTripsComponent implements OnInit {
         }
     }
 
+    // ✅ UPDATED: Can only start if no active trip
     canStartTrip(route: Route): boolean {
-        return route.status === 'planned' && this.hasPassedInspection(route.id!);
+        return route.status === 'planned' &&
+            this.hasPassedInspection(route.id!) &&
+            !this.hasActiveTripInProgress();
     }
 
     canCompleteTrip(route: Route): boolean {

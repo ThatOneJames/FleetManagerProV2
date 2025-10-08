@@ -84,18 +84,19 @@ export class RouteOptimizationComponent implements OnInit {
         });
     }
 
-    // ✅ UPDATED: Filter out vehicles in maintenance, out of service, or retired
+    // ✅ UPDATED: Filter out vehicles in maintenance, out of service, retired, OR InRoute
     loadVehicles(): void {
         this.vehicleService.getAllVehicles().subscribe({
             next: (data) => {
                 console.log('All vehicles loaded:', data);
-                // ✅ Filter out vehicles that are not available
+                // ✅ Filter out vehicles that are not available INCLUDING InRoute
                 this.vehicles = data.filter(v =>
                     v.status !== 'Maintenance' &&
                     v.status !== 'OutOfService' &&
-                    v.status !== 'Retired'
+                    v.status !== 'Retired' &&
+                    v.status !== 'InRoute'
                 );
-                console.log('Available vehicles (not in maintenance):', this.vehicles);
+                console.log('Available vehicles (filtered):', this.vehicles);
             },
             error: (error) => {
                 console.error('Error loading vehicles:', error);
@@ -103,6 +104,7 @@ export class RouteOptimizationComponent implements OnInit {
         });
     }
 
+    // ✅ UPDATED: Filter out drivers on active routes
     loadDrivers(): void {
         const token = this.authService.getToken();
         const headers = new HttpHeaders({
@@ -110,52 +112,74 @@ export class RouteOptimizationComponent implements OnInit {
             'Content-Type': 'application/json'
         });
 
-        this.http.get<any>(`${this.apiUrl}/users/drivers`, { headers })
-            .subscribe({
-                next: (allDrivers: any) => {
-                    console.log('📋 All drivers loaded:', allDrivers);
+        // ✅ Load all routes to check which drivers are currently on active routes
+        this.http.get<any[]>(`${this.apiUrl}/routes`, { headers }).subscribe({
+            next: (allRoutes) => {
+                const driversOnRoute = new Set(
+                    allRoutes
+                        .filter(r => r.status === 'in_progress')
+                        .map(r => r.driverId)
+                );
 
-                    const attendanceRequests = allDrivers.map((driver: any) =>
-                        this.http.get<any>(`${this.apiUrl}/attendance/driver/${driver.id}/today`, { headers })
-                            .toPromise()
-                            .catch(() => null)
-                    );
+                console.log('🚗 Drivers currently on route:', Array.from(driversOnRoute));
 
-                    Promise.all(attendanceRequests).then(attendanceResponses => {
-                        this.drivers = allDrivers.filter((driver: any, index: number) => {
-                            const attendance = attendanceResponses[index];
+                this.http.get<any>(`${this.apiUrl}/users/drivers`, { headers })
+                    .subscribe({
+                        next: (allDrivers: any) => {
+                            console.log('📋 All drivers loaded:', allDrivers);
 
-                            if (!attendance) {
-                                console.log(`❌ ${driver.name}: No attendance record`);
-                                return false;
-                            }
+                            const attendanceRequests = allDrivers.map((driver: any) =>
+                                this.http.get<any>(`${this.apiUrl}/attendance/driver/${driver.id}/today`, { headers })
+                                    .toPromise()
+                                    .catch(() => null)
+                            );
 
-                            const clockedIn = attendance?.data?.clockIn || attendance?.clockIn;
-                            const clockedOut = attendance?.data?.clockOut || attendance?.clockOut;
+                            Promise.all(attendanceRequests).then(attendanceResponses => {
+                                this.drivers = allDrivers.filter((driver: any, index: number) => {
+                                    const attendance = attendanceResponses[index];
 
-                            const isAvailable = clockedIn && !clockedOut;
+                                    // ✅ Filter out drivers currently on route
+                                    if (driversOnRoute.has(driver.id)) {
+                                        console.log(`🚗 ${driver.name}: Currently on active route`);
+                                        return false;
+                                    }
 
-                            console.log(`${isAvailable ? '✅' : '❌'} ${driver.name}: Clocked In: ${!!clockedIn}, Clocked Out: ${!!clockedOut}`);
+                                    if (!attendance) {
+                                        console.log(`❌ ${driver.name}: No attendance record`);
+                                        return false;
+                                    }
 
-                            return isAvailable;
-                        }).map((d: any) => ({
-                            id: d.id,
-                            name: d.name,
-                            email: d.email,
-                            phone: d.phone,
-                            licenseNumber: d.licenseNumber,
-                            role: 'Driver'
-                        }));
+                                    const clockedIn = attendance?.data?.clockIn || attendance?.clockIn;
+                                    const clockedOut = attendance?.data?.clockOut || attendance?.clockOut;
 
-                        console.log('✅ Available drivers (clocked in, not clocked out):', this.drivers);
+                                    const isAvailable = clockedIn && !clockedOut;
+
+                                    console.log(`${isAvailable ? '✅' : '❌'} ${driver.name}: Clocked In: ${!!clockedIn}, Clocked Out: ${!!clockedOut}`);
+
+                                    return isAvailable;
+                                }).map((d: any) => ({
+                                    id: d.id,
+                                    name: d.name,
+                                    email: d.email,
+                                    phone: d.phone,
+                                    licenseNumber: d.licenseNumber,
+                                    role: 'Driver'
+                                }));
+
+                                console.log('✅ Available drivers (clocked in, not on route):', this.drivers);
+                            });
+                        },
+                        error: (error: any) => {
+                            console.error('Error loading drivers:', error);
+                            this.errorMessage = 'Failed to load available drivers. Please try again.';
+                            this.drivers = [];
+                        }
                     });
-                },
-                error: (error: any) => {
-                    console.error('Error loading drivers:', error);
-                    this.errorMessage = 'Failed to load available drivers. Please try again.';
-                    this.drivers = [];
-                }
-            });
+            },
+            error: (error) => {
+                console.error('Error loading routes for driver check:', error);
+            }
+        });
     }
 
     get filteredRoutes(): Route[] {
@@ -180,6 +204,7 @@ export class RouteOptimizationComponent implements OnInit {
             stops: []
         };
         this.loadDrivers();
+        this.loadVehicles();
     }
 
     closeCreateModal(): void {
@@ -349,6 +374,8 @@ export class RouteOptimizationComponent implements OnInit {
         this.routeService.updateRoute(routeId, { status: 'in_progress', startTime: new Date() }).subscribe({
             next: () => {
                 this.loadRoutes();
+                this.loadVehicles(); // ✅ Refresh vehicles list
+                this.loadDrivers();  // ✅ Refresh drivers list
             },
             error: (error) => {
                 console.error('Error starting route:', error);
@@ -361,6 +388,8 @@ export class RouteOptimizationComponent implements OnInit {
         this.routeService.updateRoute(routeId, { status: 'completed', endTime: new Date() }).subscribe({
             next: () => {
                 this.loadRoutes();
+                this.loadVehicles(); // ✅ Refresh vehicles list
+                this.loadDrivers();  // ✅ Refresh drivers list
             },
             error: (error) => {
                 console.error('Error completing route:', error);
@@ -375,6 +404,8 @@ export class RouteOptimizationComponent implements OnInit {
             this.routeService.updateRoute(routeId, { status: 'planned' }).subscribe({
                 next: () => {
                     this.loadRoutes();
+                    this.loadVehicles(); // ✅ Refresh vehicles list
+                    this.loadDrivers();  // ✅ Refresh drivers list
                 },
                 error: (error) => {
                     console.error('Error setting route to pending:', error);
@@ -390,6 +421,8 @@ export class RouteOptimizationComponent implements OnInit {
             this.routeService.updateRoute(routeId, { status: 'cancelled' }).subscribe({
                 next: () => {
                     this.loadRoutes();
+                    this.loadVehicles(); // ✅ Refresh vehicles list
+                    this.loadDrivers();  // ✅ Refresh drivers list
                 },
                 error: (error) => {
                     console.error('Error cancelling route:', error);
