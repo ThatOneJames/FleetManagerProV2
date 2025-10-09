@@ -43,20 +43,15 @@ namespace FleetManagerPro.API.Controllers
                 return NotFound("Vehicle not found");
             }
 
-            var today = DateTime.UtcNow.Date;
-            var tomorrow = today.AddDays(1);
-
             var existingInspection = await _context.PreTripInspections
                 .Include(i => i.MaintenanceRequest)
-                .FirstOrDefaultAsync(i => i.RouteId == dto.RouteId
-                    && i.InspectionDate >= today
-                    && i.InspectionDate < tomorrow);
+                .FirstOrDefaultAsync(i => i.RouteId == dto.RouteId);
 
             if (existingInspection != null)
             {
                 if (existingInspection.AllItemsPassed)
                 {
-                    return BadRequest("Pre-trip inspection already completed for this route today");
+                    return BadRequest("Pre-trip inspection already completed for this route");
                 }
 
                 if (existingInspection.MaintenanceRequest != null &&
@@ -183,78 +178,41 @@ namespace FleetManagerPro.API.Controllers
         }
 
         [HttpGet("route/{routeId}")]
-        public async Task<ActionResult<PreTripInspection>> GetInspectionByRoute(string routeId)
+        public async Task<ActionResult<object>> GetInspectionByRoute(string routeId)
         {
-            var today = DateTime.UtcNow.Date;
-            var tomorrow = today.AddDays(1);
-
             var inspection = await _context.PreTripInspections
                 .Include(i => i.Vehicle)
                 .Include(i => i.Driver)
                 .Include(i => i.MaintenanceRequest)
-                .Where(i => i.RouteId == routeId
-                    && i.InspectionDate >= today
-                    && i.InspectionDate < tomorrow)
+                .Where(i => i.RouteId == routeId)
                 .OrderByDescending(i => i.InspectionDate)
                 .FirstOrDefaultAsync();
 
             if (inspection == null)
             {
-                return NotFound("No inspection found for this route today");
-            }
-
-            return Ok(inspection);
-        }
-
-        [HttpGet("check-today/{vehicleId}")]
-        public async Task<ActionResult<object>> CheckTodayInspection(string vehicleId)
-        {
-            try
-            {
-                var today = DateTime.UtcNow.Date;
-                var tomorrow = today.AddDays(1);
-
-                var inspection = await _context.PreTripInspections
-                    .Include(i => i.Vehicle)
-                    .Include(i => i.Driver)
-                    .Include(i => i.Route)
-                    .Where(i => i.VehicleId == vehicleId &&
-                               i.InspectionDate >= today &&
-                               i.InspectionDate < tomorrow)
-                    .OrderByDescending(i => i.InspectionDate)
-                    .FirstOrDefaultAsync();
-
-                if (inspection == null)
-                {
-                    return Ok(new
-                    {
-                        hasInspection = false,
-                        vehicleId = vehicleId,
-                        message = "No inspection found for today"
-                    });
-                }
-
                 return Ok(new
                 {
-                    hasInspection = true,
-                    inspection = new
-                    {
-                        id = inspection.Id,
-                        vehicleId = inspection.VehicleId,
-                        routeId = inspection.RouteId,
-                        result = inspection.Result,
-                        allItemsPassed = inspection.AllItemsPassed,
-                        inspectionDate = inspection.InspectionDate,
-                        notes = inspection.Notes,
-                        createdAt = inspection.CreatedAt
-                    }
+                    hasInspection = false,
+                    routeId = routeId,
+                    message = "No inspection found for this route"
                 });
             }
-            catch (Exception ex)
+
+            return Ok(new
             {
-                Console.WriteLine($"[ERROR] CheckTodayInspection: {ex.Message}");
-                return StatusCode(500, new { message = "Error checking inspection", error = ex.Message });
-            }
+                hasInspection = true,
+                inspection = new
+                {
+                    id = inspection.Id,
+                    vehicleId = inspection.VehicleId,
+                    routeId = inspection.RouteId,
+                    result = inspection.Result,
+                    allItemsPassed = inspection.AllItemsPassed,
+                    inspectionDate = inspection.InspectionDate,
+                    notes = inspection.Notes,
+                    createdAt = inspection.CreatedAt
+                }
+            });
         }
 
         [HttpGet("my-inspections")]
