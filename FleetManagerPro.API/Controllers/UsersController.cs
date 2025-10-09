@@ -411,6 +411,69 @@ namespace FleetManagerPro.API.Controllers
             }
         }
 
+        [HttpPut("profile")]
+        [Authorize]
+        public async Task<IActionResult> UpdateOwnProfile([FromBody] UpdateUserDto dto)
+        {
+            try
+            {
+                var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new { message = "User not authenticated" });
+                }
+
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
+
+                if (!string.IsNullOrEmpty(dto.Name))
+                    user.Name = dto.Name;
+
+                if (!string.IsNullOrEmpty(dto.Email))
+                {
+                    if (await _context.Users.AnyAsync(u => u.Email == dto.Email && u.Id != userId))
+                    {
+                        return BadRequest(new { message = "Email already in use" });
+                    }
+                    user.Email = dto.Email;
+                }
+
+                if (!string.IsNullOrEmpty(dto.Phone))
+                    user.Phone = dto.Phone;
+
+                if (!string.IsNullOrEmpty(dto.Address))
+                    user.Address = dto.Address;
+
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Profile updated successfully",
+                    user = new
+                    {
+                        user.Id,
+                        user.Name,
+                        user.Email,
+                        user.Phone,
+                        user.Address,
+                        user.Role,
+                        user.Status,
+                        user.UpdatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error updating profile", error = ex.Message });
+            }
+        }
+
         private string HashPassword(string password)
         {
             using (var sha256 = SHA256.Create())
