@@ -35,7 +35,6 @@ else
 builder.Services.AddDbContext<FleetManagerDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
-// Configure Email Settings - read from environment variables for production
 var emailSmtpServer = Environment.GetEnvironmentVariable("EMAIL_SMTP_SERVER") ?? builder.Configuration["EmailSettings:SmtpServer"];
 var emailSmtpPort = Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT") ?? builder.Configuration["EmailSettings:SmtpPort"];
 var emailSenderEmail = Environment.GetEnvironmentVariable("EMAIL_SENDER_EMAIL") ?? builder.Configuration["EmailSettings:SenderEmail"];
@@ -50,9 +49,10 @@ builder.Configuration["EmailSettings:SenderName"] = emailSenderName;
 builder.Configuration["EmailSettings:Username"] = emailUsername;
 builder.Configuration["EmailSettings:Password"] = emailPassword;
 
-Console.WriteLine($"[EMAIL] SMTP Server: {emailSmtpServer}");
+Console.WriteLine($"[EMAIL] Using Resend API");
 Console.WriteLine($"[EMAIL] Sender: {emailSenderEmail}");
 
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<VehicleService>();
 builder.Services.AddScoped<IAuthService, AuthService>();

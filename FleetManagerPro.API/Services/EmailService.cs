@@ -1,6 +1,6 @@
-using MailKit.Net.Smtp;
-using MailKit.Security;
-using MimeKit;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
 namespace FleetManagerPro.API.Services
 {
@@ -13,46 +13,47 @@ namespace FleetManagerPro.API.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
+        private readonly HttpClient _httpClient;
 
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger, IHttpClientFactory httpClientFactory)
         {
             _configuration = configuration;
             _logger = logger;
+            _httpClient = httpClientFactory.CreateClient();
         }
 
         public async Task SendEmailAsync(string toEmail, string subject, string body)
         {
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(
-                _configuration["EmailSettings:SenderName"],
-                _configuration["EmailSettings:SenderEmail"]
-            ));
-            message.To.Add(MailboxAddress.Parse(toEmail));
-            message.Subject = subject;
-
-            var builder = new BodyBuilder { HtmlBody = body };
-            message.Body = builder.ToMessageBody();
-
-            using var client = new SmtpClient();
-            client.Timeout = 15000;
+            var apiKey = Environment.GetEnvironmentVariable("RESEND_API_KEY")
+                         ?? _configuration["EmailSettings:ResendApiKey"];
 
             try
             {
-                await client.ConnectAsync(
-                    _configuration["EmailSettings:SmtpServer"],
-                    int.Parse(_configuration["EmailSettings:SmtpPort"]),
-                    SecureSocketOptions.SslOnConnect
-                );
+                var payload = new
+                {
+                    from = _configuration["EmailSettings:SenderEmail"],
+                    to = new[] { toEmail },
+                    subject = subject,
+                    html = body
+                };
 
-                await client.AuthenticateAsync(
-                    _configuration["EmailSettings:Username"],
-                    _configuration["EmailSettings:Password"]
-                );
+                var jsonContent = JsonSerializer.Serialize(payload);
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                await client.SendAsync(message);
-                await client.DisconnectAsync(true);
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
-                _logger.LogInformation("Email sent successfully to {Email}", toEmail);
+                var response = await _httpClient.PostAsync("https://api.resend.com/emails", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("Email sent successfully to {Email}", toEmail);
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Resend API failed: {Status} - {Error}", response.StatusCode, error);
+                    throw new Exception($"Resend API failed: {response.StatusCode}");
+                }
             }
             catch (Exception ex)
             {

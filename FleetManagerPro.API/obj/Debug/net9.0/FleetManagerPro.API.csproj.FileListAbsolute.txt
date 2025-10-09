@@ -166,3 +166,4 @@ C:\Users\James\Documents\Visual Idea Projects\FleetManagerProV5\FleetManagerProV
 C:\Users\James\Documents\Visual Idea Projects\FleetManagerProV5\FleetManagerProV2\FleetManagerPro.API\bin\Debug\net9.0\BouncyCastle.Cryptography.dll
 C:\Users\James\Documents\Visual Idea Projects\FleetManagerProV5\FleetManagerProV2\FleetManagerPro.API\bin\Debug\net9.0\MailKit.dll
 C:\Users\James\Documents\Visual Idea Projects\FleetManagerProV5\FleetManagerProV2\FleetManagerPro.API\bin\Debug\net9.0\MimeKit.dll
+C:\Users\James\Documents\Visual Idea Projects\FleetManagerProV5\FleetManagerProV2\FleetManagerPro.API\bin\Debug\net9.0\Resend.dll
