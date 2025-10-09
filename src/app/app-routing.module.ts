@@ -19,6 +19,7 @@ import { LeaveRequestsComponent } from './components/driver/leave-requests/leave
 import { NotificationsComponent } from './components/driver/notifications/notifications.component';
 import { DriverProfileComponent } from './components/driver/profile/profile.component';
 import { PreTripInspectionComponent } from './components/driver/pre-trip-inspection/pre-trip-inspection.component';
+import { SystemManagementComponent } from './components/admin/system-management/system-management.component';
 
 
 // Auth Guard (to be implemented)
@@ -43,7 +44,8 @@ const routes: Routes = [
       { path: 'fleet', component: FleetManagementComponent },
       { path: 'routes', component: RouteOptimizationComponent },
       { path: 'maintenance', component: MaintenanceComponent },
-      { path: 'leave-management', component: LeaveManagementComponent },
+        { path: 'leave-management', component: LeaveManagementComponent },
+        { path: 'system-management', component: SystemManagementComponent }
     ]
   },
   

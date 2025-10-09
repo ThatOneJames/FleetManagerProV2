@@ -5,7 +5,6 @@ import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
 
-// Angular Material Modules
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,13 +25,17 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatBadgeModule } from '@angular/material/badge';
+import { MatChipsModule } from '@angular/material/chips';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
 
-// Components
 import { LoginComponent } from './components/auth/login/login.component';
 import { DriverDashboardComponent } from './components/driver/dashboard/dashboard.component';
 import { AdminDashboardComponent } from './components/admin/dashboard/dashboard.component';
@@ -46,14 +49,14 @@ import { UserComponent } from './components/user/user.component';
 import { DriverAttendanceComponent } from './components//driver/attendance/attendance.component';
 import { LeaveManagementComponent } from './components/admin/leave-management/leave-management.component';
 import { DriverProfileComponent } from './components/driver/profile/profile.component';
+import { PreTripInspectionComponent } from './components/driver/pre-trip-inspection/pre-trip-inspection.component';
+import { MaintenanceRequestComponent } from './components/driver/maintenance-request/maintenance-request.component';
+import { SystemManagementComponent } from './components/admin/system-management/system-management.component';
 
-// Services
 import { AuthService } from './services/auth.service';
 import { DriverService } from './services/driver.service';
 import { VehicleService } from './services/vehicle.service';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { PreTripInspectionComponent } from './components/driver/pre-trip-inspection/pre-trip-inspection.component';
-import { MaintenanceRequestComponent } from './components/driver/maintenance-request/maintenance-request.component';
 
 @NgModule({
     declarations: [
@@ -73,7 +76,7 @@ import { MaintenanceRequestComponent } from './components/driver/maintenance-req
         DriverProfileComponent,
         PreTripInspectionComponent,
         MaintenanceRequestComponent,
-
+        SystemManagementComponent
     ],
     imports: [
         BrowserModule,
@@ -83,8 +86,6 @@ import { MaintenanceRequestComponent } from './components/driver/maintenance-req
         FormsModule,
         HttpClientModule,
         RouterModule,
-
-        // Angular Material Modules
         MatSidenavModule,
         MatToolbarModule,
         MatButtonModule,
@@ -105,6 +106,11 @@ import { MaintenanceRequestComponent } from './components/driver/maintenance-req
         MatCheckboxModule,
         MatDatepickerModule,
         MatNativeDateModule,
+        MatTabsModule,
+        MatTooltipModule,
+        MatSlideToggleModule,
+        MatBadgeModule,
+        MatChipsModule
     ],
     providers: [
         AuthService,

@@ -25,6 +25,8 @@ namespace FleetManagerPro.API.Data
         public DbSet<MaintenanceReminder> MaintenanceReminders { get; set; } = null!;
         public DbSet<PreTripInspection> PreTripInspections { get; set; } = null!;
         public DbSet<MaintenanceRequest> MaintenanceRequests { get; set; } = null!;
+        public DbSet<Notification> Notifications { get; set; } = null!;
+        public DbSet<NotificationRule> NotificationRules { get; set; } = null!;
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -412,6 +414,26 @@ namespace FleetManagerPro.API.Data
                 entity.HasIndex(m => m.VehicleId);
                 entity.HasIndex(m => m.DriverId);
                 entity.HasIndex(m => m.Status);
+            });
+
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.ToTable("notifications");
+                entity.HasOne(n => n.User)
+                      .WithMany()
+                      .HasForeignKey(n => n.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(n => n.UserId);
+                entity.HasIndex(n => n.IsRead);
+                entity.HasIndex(n => n.CreatedAt);
+            });
+
+            modelBuilder.Entity<NotificationRule>(entity =>
+            {
+                entity.ToTable("notification_rules");
+                entity.HasIndex(r => r.TriggerType);
+                entity.HasIndex(r => r.IsActive);
             });
         }
     }

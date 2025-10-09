@@ -46,6 +46,7 @@ builder.Services.AddScoped<IMaintenanceCategoryRepository, MaintenanceCategoryRe
 builder.Services.AddScoped<IMaintenanceReminderRepository, MaintenanceReminderRepository>();
 builder.Services.AddScoped<IRouteRepository, RouteRepository>();
 builder.Services.AddScoped<IRouteService, RouteService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 builder.Services.AddCors(options =>
 {

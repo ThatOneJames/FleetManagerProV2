@@ -44,9 +44,9 @@ export class SidebarComponent implements OnChanges {
         {
             title: 'System',
             items: [
-                { title: 'Settings', icon: 'settings', route: '/admin/settings' }
+                { title: 'System Management', icon: 'gear', route: '/admin/system-management' },
             ]
-        }
+        },
     ];
 
     private driverNavigationItems: NavigationGroup[] = [

@@ -1,326 +1,402 @@
-﻿using FleetManagerPro.API.Data.Repository;
-using FleetManagerPro.API.Data;
+﻿using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using FleetManagerPro.API.DTOs;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace FleetManagerPro.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Authorize]
     [ApiController]
+    [Route("api/[controller]")]
     public class UsersController : ControllerBase
     {
-        private readonly IUserRepository _userRepository;
-        private readonly PasswordHasher<User> _passwordHasher;
-        private readonly IConfiguration _config;
         private readonly FleetManagerDbContext _context;
-        private readonly ILogger<UsersController> _logger;
+        private readonly IConfiguration _configuration;
 
-        public UsersController(
-            IUserRepository userRepository,
-            IConfiguration config,
-            FleetManagerDbContext context,
-            ILogger<UsersController> logger)
+        public UsersController(FleetManagerDbContext context, IConfiguration configuration)
         {
-            _userRepository = userRepository;
-            _passwordHasher = new PasswordHasher<User>();
-            _config = config;
             _context = context;
-            _logger = logger;
+            _configuration = configuration;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAllUsers()
-        {
-            var users = await _userRepository.GetAllAsync();
-            var userDtos = users.Select(u => MapToResponseDto(u));
-            return Ok(userDtos);
-        }
-
-        [HttpGet("drivers")]
-        public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAllDrivers()
-        {
-            var users = await _userRepository.GetAllAsync();
-            var drivers = users.Where(u => u.Role == "Driver")
-                              .Select(u => MapToResponseDto(u));
-            return Ok(drivers);
-        }
-
-        [HttpGet("available")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAvailableDrivers()
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<ActionResult<IEnumerable<User>>> GetAllUsers()
         {
             try
             {
-                var today = DateTime.UtcNow.Date;
-
-                var allDrivers = await _context.Users
-                    .Where(u => u.Role == "Driver" && u.Status == "Active")
-                    .ToListAsync();
-
-                var driversOnLeave = await _context.LeaveRequests
-                    .Where(lr => lr.Status == "Approved"
-                              && lr.StartDate.Date <= today
-                              && lr.EndDate.Date >= today)
-                    .Select(lr => lr.DriverId)
-                    .Distinct()
-                    .ToListAsync();
-
-                var todayAttendance = await _context.DriverAttendances
-                    .Where(a => a.Date.Date == today && a.ClockIn != null)
-                    .Select(a => a.DriverId)
-                    .ToListAsync();
-
-                var availableDrivers = allDrivers
-                    .Where(d => !driversOnLeave.Contains(d.Id) && todayAttendance.Contains(d.Id))
-                    .Select(d => new
+                var users = await _context.Users
+                    .Select(u => new
                     {
-                        d.Id,
-                        d.Name,
-                        d.Email,
-                        d.Phone,
-                        d.LicenseNumber,
-                        d.LicenseClass,
-                        d.ExperienceYears,
-                        d.SafetyRating
+                        u.Id,
+                        u.Name,
+                        u.Email,
+                        u.Role,
+                        u.Phone,
+                        u.Address,
+                        u.Status,
+                        IsActive = u.Status == "Active",
+                        u.LastLocationUpdated,
+                        u.CreatedAt,
+                        u.UpdatedAt
                     })
-                    .ToList();
+                    .ToListAsync();
 
-                return Ok(availableDrivers);
+                return Ok(users);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving available drivers");
-                return StatusCode(500, new { message = "Error retrieving available drivers" });
+                return StatusCode(500, new { message = "Error retrieving users", error = ex.Message });
             }
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> Get(string id)
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<ActionResult<User>> GetUser(string id)
         {
-            var user = await _userRepository.GetByIdAsync(id);
-            if (user == null) return NotFound(new { message = "User not found" });
-
-            var userDto = MapToResponseDto(user);
-            return Ok(userDto);
-        }
-
-        [HttpGet("current")]
-        [Authorize]
-        public async Task<IActionResult> GetCurrentUser()
-        {
-            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-            if (userId == null) return Unauthorized();
-
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null) return NotFound("User not found");
-
-            var claims = new[]
+            try
             {
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Name, user.Name),
-        new Claim(ClaimTypes.Role, user.Role)
-    };
+                var user = await _context.Users
+                    .Where(u => u.Id == id)
+                    .Select(u => new
+                    {
+                        u.Id,
+                        u.Name,
+                        u.Email,
+                        u.Role,
+                        u.Phone,
+                        u.Address,
+                        u.DateOfBirth,
+                        u.Status,
+                        IsActive = u.Status == "Active",
+                        u.LastLocationUpdated,
+                        u.CreatedAt,
+                        u.UpdatedAt
+                    })
+                    .FirstOrDefaultAsync();
 
-            var jwtKey = _config["Jwt:Key"];
-            if (string.IsNullOrEmpty(jwtKey))
-            {
-                return StatusCode(500, "JWT configuration is missing");
-            }
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.Now.AddDays(1),
-                SigningCredentials = creds,
-                Issuer = _config["Jwt:Issuer"],
-                Audience = _config["Jwt:Audience"]
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-
-            return Ok(new
-            {
-                token = tokenHandler.WriteToken(token),
-                id = user.Id,
-                name = user.Name,
-                email = user.Email,
-                role = user.Role,
-                phone = user.Phone,
-                address = user.Address,
-                dateOfBirth = user.DateOfBirth?.ToString("yyyy-MM-dd"),
-                hireDate = user.HireDate?.ToString("yyyy-MM-dd"),
-                emergencyContact = user.EmergencyContact,
-                profileImageUrl = user.ProfileImageUrl,
-                status = user.Status,
-
-                // ✅ ADD THESE LICENSE FIELDS AT ROOT LEVEL
-                licenseNumber = user.LicenseNumber,
-                licenseClass = user.LicenseClass,
-                licenseExpiry = user.LicenseExpiry?.ToString("yyyy-MM-dd"),
-                experienceYears = user.ExperienceYears,
-                safetyRating = user.SafetyRating,
-                totalMilesDriven = user.TotalMilesDriven,
-                isAvailable = user.IsAvailable,
-                hasHelper = user.HasHelper,
-
-                // Keep the nested driver object for backward compatibility
-                driver = user.Role == "Driver" ? new
+                if (user == null)
                 {
-                    fullName = user.Name,
-                    licenseNumber = user.LicenseNumber,
-                    licenseClass = user.LicenseClass,
-                    licenseExpiry = user.LicenseExpiry?.ToString("yyyy-MM-dd"),
-                    contactNumber = user.Phone,
-                    experienceYears = user.ExperienceYears,
-                    safetyRating = user.SafetyRating,
-                    totalMilesDriven = user.TotalMilesDriven,
-                    currentVehicleId = user.CurrentVehicleId,
-                    isAvailable = user.IsAvailable,
-                    hasHelper = user.HasHelper
-                } : null
-            });
-        }
+                    return NotFound(new { message = "User not found" });
+                }
 
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var user = await _userRepository.GetByIdAsync(id);
-            if (user == null)
-                return NotFound(new { message = "User not found" });
-
-            if (!string.IsNullOrWhiteSpace(dto.Name)) user.Name = dto.Name;
-            if (!string.IsNullOrWhiteSpace(dto.Email)) user.Email = dto.Email;
-            if (!string.IsNullOrWhiteSpace(dto.Phone)) user.Phone = dto.Phone;
-            if (!string.IsNullOrWhiteSpace(dto.Address)) user.Address = dto.Address;
-            if (!string.IsNullOrWhiteSpace(dto.EmergencyContact)) user.EmergencyContact = dto.EmergencyContact;
-            if (!string.IsNullOrWhiteSpace(dto.ProfileImageUrl)) user.ProfileImageUrl = dto.ProfileImageUrl;
-
-            if (dto.DateOfBirth.HasValue) user.DateOfBirth = dto.DateOfBirth.Value;
-            if (dto.HireDate.HasValue) user.HireDate = dto.HireDate.Value;
-
-            if (!string.IsNullOrWhiteSpace(dto.Status))
-            {
-                user.Status = dto.Status;
+                return Ok(user);
             }
-
-            if (!string.IsNullOrWhiteSpace(dto.LicenseNumber)) user.LicenseNumber = dto.LicenseNumber;
-            if (!string.IsNullOrWhiteSpace(dto.LicenseClass)) user.LicenseClass = dto.LicenseClass;
-            if (dto.LicenseExpiry.HasValue) user.LicenseExpiry = dto.LicenseExpiry.Value;
-            if (dto.ExperienceYears.HasValue) user.ExperienceYears = dto.ExperienceYears.Value;
-            if (dto.SafetyRating.HasValue) user.SafetyRating = dto.SafetyRating.Value;
-            if (dto.TotalMilesDriven.HasValue) user.TotalMilesDriven = dto.TotalMilesDriven.Value;
-            if (dto.IsAvailable.HasValue) user.IsAvailable = dto.IsAvailable.Value;
-            if (dto.HasHelper.HasValue) user.HasHelper = dto.HasHelper.Value;
-
-            if (!string.IsNullOrWhiteSpace(dto.Password))
-                user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
-
-            user.UpdatedAt = DateTime.UtcNow;
-
-            var success = await _userRepository.UpdateAsync(user);
-            if (!success)
-                return BadRequest(new { message = "Failed to update user" });
-
-            var responseDto = MapToResponseDto(user);
-            return Ok(responseDto);
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error retrieving user", error = ex.Message });
+            }
         }
 
-        [HttpPatch("{id}/status")]
-        public async Task<IActionResult> UpdateUserStatus(string id, [FromBody] UpdateStatusDto statusDto)
+        [HttpGet("drivers")]
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<ActionResult<IEnumerable<User>>> GetDrivers()
         {
-            var user = await _userRepository.GetByIdAsync(id);
-            if (user == null)
-                return NotFound(new { message = "User not found" });
+            try
+            {
+                var drivers = await _context.Users
+                    .Where(u => u.Role == "Driver")
+                    .Select(u => new
+                    {
+                        u.Id,
+                        u.Name,
+                        u.Email,
+                        u.Phone,
+                        u.Role,
+                        u.Status,
+                        IsActive = u.Status == "Active"
+                    })
+                    .ToListAsync();
 
-            user.Status = statusDto.Status;
-            user.UpdatedAt = DateTime.UtcNow;
-
-            var success = await _userRepository.UpdateAsync(user);
-            if (!success)
-                return BadRequest(new { message = "Failed to update user status" });
-
-            return Ok(new { message = "Status updated successfully", status = user.Status });
+                return Ok(drivers);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error retrieving drivers", error = ex.Message });
+            }
         }
 
-        [HttpPatch("{id}/availability")]
-        public async Task<IActionResult> UpdateDriverAvailability(string id, [FromBody] UpdateAvailabilityDto availabilityDto)
+        [AllowAnonymous]
+        [HttpPost("register")]
+        public async Task<ActionResult<User>> Register([FromBody] RegisterDto registerDto)
         {
-            var user = await _userRepository.GetByIdAsync(id);
-            if (user == null)
-                return NotFound(new { message = "User not found" });
+            try
+            {
+                if (await _context.Users.AnyAsync(u => u.Email == registerDto.Email))
+                {
+                    return BadRequest(new { message = "Email already registered" });
+                }
 
-            if (user.Role != "Driver")
-                return BadRequest(new { message = "User is not a driver" });
+                var userId = "USR-" + DateTime.UtcNow.Ticks.ToString().Substring(8);
+                var passwordHash = HashPassword(registerDto.Password);
 
-            user.IsAvailable = availabilityDto.IsAvailable;
-            user.UpdatedAt = DateTime.UtcNow;
+                var user = new User
+                {
+                    Id = userId,
+                    Name = registerDto.Name,
+                    Email = registerDto.Email,
+                    PasswordHash = passwordHash,
+                    Role = registerDto.Role ?? "Driver",
+                    Phone = registerDto.Phone,
+                    Address = registerDto.Address,
+                    DateOfBirth = registerDto.DateOfBirth,
+                    Status = "Active",
+                    CreatedAt = DateTime.UtcNow
+                };
 
-            var success = await _userRepository.UpdateAsync(user);
-            if (!success)
-                return BadRequest(new { message = "Failed to update driver availability" });
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Availability updated successfully", isAvailable = user.IsAvailable });
+                return CreatedAtAction(nameof(GetUser), new { id = user.Id }, new
+                {
+                    user.Id,
+                    user.Name,
+                    user.Email,
+                    user.Role,
+                    user.Phone,
+                    user.Status,
+                    user.CreatedAt
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error creating user", error = ex.Message });
+            }
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(string id)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteUser(string id)
         {
-            var user = await _userRepository.GetByIdAsync(id);
-            if (user == null)
-                return NotFound(new { message = "User not found" });
-
-            var success = await _userRepository.DeleteAsync(id);
-            if (!success)
-                return BadRequest(new { message = "Failed to delete user" });
-
-            return Ok(new { message = "User deleted successfully" });
-        }
-
-        private UserResponseDto MapToResponseDto(User user)
-        {
-            return new UserResponseDto
+            try
             {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Role = user.Role,
-                Phone = user.Phone ?? string.Empty,
-                Address = user.Address ?? string.Empty,
-                DateOfBirth = user.DateOfBirth,
-                HireDate = user.HireDate,
-                EmergencyContact = user.EmergencyContact ?? string.Empty,
-                ProfileImageUrl = user.ProfileImageUrl ?? string.Empty,
-                Status = user.Status,
-                LicenseNumber = user.LicenseNumber ?? string.Empty,
-                LicenseClass = user.LicenseClass ?? string.Empty,
-                LicenseExpiry = user.LicenseExpiry,
-                ExperienceYears = user.ExperienceYears ?? 0,
-                SafetyRating = user.SafetyRating ?? 0m,
-                TotalMilesDriven = user.TotalMilesDriven ?? 0m,
-                IsAvailable = user.IsAvailable,
-                HasHelper = user.HasHelper,
-                CreatedAt = user.CreatedAt,
-                UpdatedAt = user.UpdatedAt
-            };
+                var user = await _context.Users.FindAsync(id);
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
+
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "User deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error deleting user", error = ex.Message });
+            }
         }
+
+        [HttpGet("stats")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<object>> GetUserStats()
+        {
+            try
+            {
+                var totalUsers = await _context.Users.CountAsync();
+                var activeUsers = await _context.Users.Where(u => u.Status == "Active").CountAsync();
+                var inactiveUsers = await _context.Users.Where(u => u.Status == "Inactive").CountAsync();
+                var suspendedUsers = await _context.Users.Where(u => u.Status == "Suspended").CountAsync();
+
+                var usersByRole = await _context.Users
+                    .GroupBy(u => u.Role)
+                    .Select(g => new { Role = g.Key, Count = g.Count() })
+                    .ToListAsync();
+
+                var stats = new
+                {
+                    total = totalUsers,
+                    active = activeUsers,
+                    inactive = inactiveUsers,
+                    suspended = suspendedUsers,
+                    byRole = usersByRole.ToDictionary(x => x.Role, x => x.Count)
+                };
+
+                return Ok(stats);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error retrieving user statistics", error = ex.Message });
+            }
+        }
+
+        [HttpPatch("{id}/status")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateUserStatus(string id, [FromBody] UpdateStatusDto dto)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(id);
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
+
+                user.Status = dto.Status;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = $"User status updated to {dto.Status}",
+                    user = new
+                    {
+                        user.Id,
+                        user.Name,
+                        user.Email,
+                        user.Status,
+                        user.UpdatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error updating user status", error = ex.Message });
+            }
+        }
+
+        [HttpPatch("{id}/role")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateUserRole(string id, [FromBody] UpdateRoleDto dto)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(id);
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
+
+                var validRoles = new[] { "Admin", "Manager", "Driver" };
+                if (!validRoles.Contains(dto.Role))
+                {
+                    return BadRequest(new { message = "Invalid role. Must be Admin, Manager, or Driver" });
+                }
+
+                user.Role = dto.Role;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "User role updated successfully",
+                    user = new
+                    {
+                        user.Id,
+                        user.Name,
+                        user.Email,
+                        user.Role,
+                        user.UpdatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error updating user role", error = ex.Message });
+            }
+        }
+
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserDto dto)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(id);
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
+
+                if (!string.IsNullOrEmpty(dto.Name))
+                    user.Name = dto.Name;
+
+                if (!string.IsNullOrEmpty(dto.Email))
+                {
+                    if (await _context.Users.AnyAsync(u => u.Email == dto.Email && u.Id != id))
+                    {
+                        return BadRequest(new { message = "Email already in use" });
+                    }
+                    user.Email = dto.Email;
+                }
+
+                if (!string.IsNullOrEmpty(dto.Phone))
+                    user.Phone = dto.Phone;
+
+                if (!string.IsNullOrEmpty(dto.Address))
+                    user.Address = dto.Address;
+
+                if (!string.IsNullOrEmpty(dto.Status))
+                    user.Status = dto.Status;
+
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "User updated successfully",
+                    user = new
+                    {
+                        user.Id,
+                        user.Name,
+                        user.Email,
+                        user.Phone,
+                        user.Address,
+                        user.Role,
+                        user.Status,
+                        user.UpdatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error updating user", error = ex.Message });
+            }
+        }
+
+        private string HashPassword(string password)
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+                return Convert.ToBase64String(hashedBytes);
+            }
+        }
+    }
+
+    public class RegisterDto
+    {
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string? Role { get; set; }
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+        public DateTime? DateOfBirth { get; set; }
+    }
+
+    public class UpdateStatusDto
+    {
+        public string Status { get; set; } = "";
+    }
+
+    public class UpdateRoleDto
+    {
+        public string Role { get; set; } = "";
+    }
+
+    public class UpdateUserDto
+    {
+        public string? Name { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+        public string? Status { get; set; }
     }
 }

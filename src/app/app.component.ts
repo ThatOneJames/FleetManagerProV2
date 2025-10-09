@@ -35,6 +35,12 @@ export class AppComponent implements OnInit {
                 { title: 'Maintenance', icon: 'build', route: '/admin/maintenance' }
             ]
         },
+        {
+            title: 'System',
+            items: [
+                { title: 'System Management', icon: 'build', route: '/admin/system-management' },
+            ]
+        },
     ];
 
     // Driver navigation
