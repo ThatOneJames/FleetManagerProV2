@@ -1,6 +1,8 @@
+using FleetManagerPro.API.Models;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
+using Microsoft.Extensions.Configuration;
 
 namespace FleetManagerPro.API.Services
 {
@@ -22,37 +24,42 @@ namespace FleetManagerPro.API.Services
 
         public async Task SendEmailAsync(string toEmail, string subject, string body)
         {
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(
+                _configuration["EmailSettings:SenderName"],
+                _configuration["EmailSettings:SenderEmail"]
+            ));
+            message.To.Add(MailboxAddress.Parse(toEmail));
+            message.Subject = subject;
+
+            var builder = new BodyBuilder { HtmlBody = body };
+            message.Body = builder.ToMessageBody();
+
+            using var client = new SmtpClient();
+            client.Timeout = 10000; // 10 seconds timeout
+
             try
             {
-                var email = new MimeMessage();
-                email.From.Add(new MailboxAddress(
-                    _configuration["EmailSettings:SenderName"],
-                    _configuration["EmailSettings:SenderEmail"]
-                ));
-                email.To.Add(MailboxAddress.Parse(toEmail));
-                email.Subject = subject;
-
-                var builder = new BodyBuilder { HtmlBody = body };
-                email.Body = builder.ToMessageBody();
-
-                using var smtp = new SmtpClient();
-                await smtp.ConnectAsync(
+                await client.ConnectAsync(
                     _configuration["EmailSettings:SmtpServer"],
-                    int.Parse(_configuration["EmailSettings:SmtpPort"]!),
+                    int.Parse(_configuration["EmailSettings:SmtpPort"]),
                     SecureSocketOptions.StartTls
                 );
-                await smtp.AuthenticateAsync(
+
+                await client.AuthenticateAsync(
                     _configuration["EmailSettings:Username"],
                     _configuration["EmailSettings:Password"]
                 );
-                await smtp.SendAsync(email);
-                await smtp.DisconnectAsync(true);
 
-                _logger.LogInformation("Email sent to {Email}", toEmail);
+                await client.SendAsync(message);
+                await client.DisconnectAsync(true);
+
+                _logger.LogInformation("Email sent successfully to {Email}", toEmail);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send email to {Email}", toEmail);
+                throw;
             }
         }
     }
