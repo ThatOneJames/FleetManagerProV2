@@ -25,11 +25,13 @@ namespace FleetManagerPro.API.Services
     {
         private readonly IRouteRepository _routeRepository;
         private readonly FleetManagerDbContext _context;
+        private readonly ILogger<RouteService> _logger;
 
-        public RouteService(IRouteRepository routeRepository, FleetManagerDbContext context)
+        public RouteService(IRouteRepository routeRepository, FleetManagerDbContext context, ILogger<RouteService> logger)
         {
             _routeRepository = routeRepository;
             _context = context;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<RouteDto>> GetAllRoutesAsync()
@@ -101,6 +103,12 @@ namespace FleetManagerPro.API.Services
             await _routeRepository.AddAsync(route);
             await _context.SaveChangesAsync();
 
+            // Send notification to driver about new trip assignment
+            if (!string.IsNullOrEmpty(route.DriverId) && !string.IsNullOrEmpty(route.VehicleId))
+            {
+                await SendDriverNotificationAsync(route.Id, route.DriverId, route.VehicleId);
+            }
+
             var savedRoute = await _routeRepository.GetRouteWithStopsAsync(route.Id);
             return MapToDto(savedRoute!);
         }
@@ -110,6 +118,8 @@ namespace FleetManagerPro.API.Services
             var route = await _context.Routes.FirstOrDefaultAsync(r => r.Id == id);
             if (route == null)
                 throw new KeyNotFoundException($"Route with ID {id} not found");
+
+            var previousDriverId = route.DriverId;
 
             if (!string.IsNullOrEmpty(updateDto.Name))
                 route.Name = updateDto.Name;
@@ -161,6 +171,14 @@ namespace FleetManagerPro.API.Services
 
             _context.Routes.Update(route);
             await _context.SaveChangesAsync();
+
+            // Send notification if driver was changed or reassigned
+            if (!string.IsNullOrEmpty(route.DriverId) &&
+                !string.IsNullOrEmpty(route.VehicleId) &&
+                route.DriverId != previousDriverId)
+            {
+                await SendDriverNotificationAsync(route.Id, route.DriverId, route.VehicleId);
+            }
 
             var updatedRoute = await _routeRepository.GetRouteWithStopsAsync(id);
             return MapToDto(updatedRoute!);
@@ -219,6 +237,44 @@ namespace FleetManagerPro.API.Services
 
             var optimizedRoute = await _routeRepository.GetRouteWithStopsAsync(routeId);
             return MapToDto(optimizedRoute!);
+        }
+
+        private async Task SendDriverNotificationAsync(string routeId, string driverId, string vehicleId)
+        {
+            try
+            {
+                var driver = await _context.Users.FindAsync(driverId);
+                var vehicle = await _context.Vehicles.FindAsync(vehicleId);
+                var route = await _context.Routes.FindAsync(routeId);
+
+                if (driver != null && vehicle != null && route != null)
+                {
+                    var notification = new Notification
+                    {
+                        UserId = driver.Id,
+                        Title = "🚗 New Trip Assignment",
+                        Message = $"You have been assigned to trip '{route.Name}' scheduled for {route.StartTime?.ToString("MMM dd, yyyy hh:mm tt")}. Vehicle: {vehicle.LicensePlate} ({vehicle.Make} {vehicle.Model}). Please complete your pre-trip inspection before starting.",
+                        Type = "Info",
+                        Category = "Trip Assignment",
+                        RelatedEntityType = "Route",
+                        RelatedEntityId = route.Id,
+                        IsRead = false,
+                        IsSent = false,
+                        SendEmail = true,
+                        SendSms = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.Notifications.Add(notification);
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation("Trip notification sent to driver {DriverId}", driver.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending driver notification");
+            }
         }
 
         private RouteDto MapToDto(RouteModel route)
