@@ -4,7 +4,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { interval, Subscription } from 'rxjs';
 import { DriverService, CreateDriverDto, UpdateDriverDto } from '../../../services/driver.service';
-import { NotificationService, Notification, NotificationRule } from '../../../services/notification.service';
+import { NotificationService, Notification } from '../../../services/notification.service';
 import { AuthService } from '../../../services/auth.service';
 import { User } from '../../../models/user.model';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -24,18 +24,13 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     editingUser: User | null = null;
     showUserForm = false;
     notifications: Notification[] = [];
-    notificationRules: NotificationRule[] = [];
     sendNotificationForm!: FormGroup;
-    notificationRuleForm!: FormGroup;
-    editingRule: NotificationRule | null = null;
     notificationSubTab = 0;
-    rulesColumns: string[] = ['name', 'triggerType', 'recipients', 'channels', 'isActive', 'triggeredCount', 'lastTriggered', 'actions'];
     historyColumns: string[] = ['id', 'title', 'type', 'recipients', 'createdAt', 'status', 'actions'];
     reports: any[] = [];
     reportColumns: string[] = ['reportName', 'type', 'generatedDate', 'size', 'format', 'actions'];
     loading = false;
     savingUser = false;
-    savingRule = false;
     sendingNotification = false;
     roles = [
         { id: 'Admin', name: 'Admin' },
@@ -45,21 +40,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     statusOptions = ['Active', 'Inactive', 'Suspended'];
     notificationTypes = ['Info', 'Warning', 'Success', 'Error'];
     notificationCategories = ['System', 'Trip', 'Maintenance', 'Leave', 'Admin', 'Announcement'];
-    triggerTypes = [
-        'TripAssigned',
-        'TripCompleted',
-        'MaintenanceDue',
-        'MaintenanceOverdue',
-        'LeaveApproved',
-        'LeaveRejected',
-        'LeaveRequested',
-        'InspectionReportSubmitted',
-        'RouteCompleted',
-        'DriverStatusChange',
-        'VehicleStatusChange',
-        'SystemMaintenance',
-        'EmergencyAlert'
-    ];
     private refreshSubscription?: Subscription;
 
     constructor(
@@ -79,7 +59,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         this.refreshSubscription = interval(30000).subscribe(() => {
             this.refreshData();
         });
-        this.createDefaultNotificationRules();
     }
 
     ngOnDestroy(): void {
@@ -96,6 +75,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             status: ['Active', Validators.required],
             password: ['', [Validators.minLength(6)]]
         });
+
         this.sendNotificationForm = this.fb.group({
             recipientType: ['all', Validators.required],
             specificUsers: [[]],
@@ -109,23 +89,11 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             scheduleType: ['immediate'],
             scheduledTime: [null]
         });
-        this.notificationRuleForm = this.fb.group({
-            name: ['', [Validators.required, Validators.maxLength(100)]],
-            triggerType: ['', Validators.required],
-            conditionText: ['', Validators.maxLength(500)],
-            recipientType: ['all', Validators.required],
-            specificUsers: [[]],
-            specificRoles: [[]],
-            sendEmail: [false],
-            sendSms: [false],
-            isActive: [true]
-        });
+
         this.sendNotificationForm.get('recipientType')?.valueChanges.subscribe(value => {
             this.updateRecipientValidators(this.sendNotificationForm, value);
         });
-        this.notificationRuleForm.get('recipientType')?.valueChanges.subscribe(value => {
-            this.updateRecipientValidators(this.notificationRuleForm, value);
-        });
+
         this.sendNotificationForm.get('scheduleType')?.valueChanges.subscribe(value => {
             const scheduledTimeControl = this.sendNotificationForm.get('scheduledTime');
             if (value === 'scheduled') {
@@ -151,49 +119,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         rolesControl?.updateValueAndValidity();
     }
 
-    private async createDefaultNotificationRules(): Promise<void> {
-        const defaultRules = [
-            {
-                name: 'Leave Request Notification',
-                triggerType: 'LeaveRequested',
-                conditionText: 'Notify admin when a driver submits a leave request',
-                recipients: 'Admin',
-                sendEmail: true,
-                sendSms: false,
-                isActive: true
-            },
-            {
-                name: 'Inspection Report Notification',
-                triggerType: 'InspectionReportSubmitted',
-                conditionText: 'Notify admin when an inspection report is submitted',
-                recipients: 'Admin',
-                sendEmail: true,
-                sendSms: false,
-                isActive: true
-            },
-            {
-                name: 'Route Completion Notification',
-                triggerType: 'RouteCompleted',
-                conditionText: 'Notify admin when a driver completes a route',
-                recipients: 'Admin',
-                sendEmail: false,
-                sendSms: false,
-                isActive: true
-            }
-        ];
-
-        for (const rule of defaultRules) {
-            const exists = this.notificationRules.some(r => r.name === rule.name);
-            if (!exists) {
-                try {
-                    await this.notificationService.createRule(rule).toPromise();
-                } catch (error) {
-                    console.error(`Error creating rule ${rule.name}:`, error);
-                }
-            }
-        }
-    }
-
     private async loadAllData(): Promise<void> {
         this.loading = true;
         try {
@@ -201,7 +126,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
                 this.loadUsers(),
                 this.loadVehicles(),
                 this.loadNotifications(),
-                this.loadNotificationRules(),
                 this.loadReports()
             ]);
         } catch (error) {
@@ -215,8 +139,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     private async refreshData(): Promise<void> {
         await Promise.all([
             this.loadUsers(),
-            this.loadNotifications(),
-            this.loadNotificationRules()
+            this.loadNotifications()
         ]);
     }
 
@@ -390,21 +313,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         });
     }
 
-    private async loadNotificationRules(): Promise<void> {
-        return new Promise((resolve) => {
-            this.notificationService.getRules().subscribe({
-                next: (data) => {
-                    this.notificationRules = data;
-                    resolve();
-                },
-                error: (error) => {
-                    console.error('Error loading rules:', error);
-                    resolve();
-                }
-            });
-        });
-    }
-
     async markAsRead(notification: Notification): Promise<void> {
         try {
             const token = this.authService.getToken();
@@ -462,106 +370,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         }
     }
 
-    async saveNotificationRule(): Promise<void> {
-        if (this.notificationRuleForm.invalid) {
-            this.showSnackbar('Please fill all required fields', 'error');
-            return;
-        }
-        this.savingRule = true;
-        try {
-            const formValue = this.notificationRuleForm.value;
-            const recipients = this.getRecipientString(formValue.recipientType, formValue.specificUsers, formValue.specificRoles);
-            const rule: Partial<NotificationRule> = {
-                name: formValue.name,
-                triggerType: formValue.triggerType,
-                conditionText: formValue.conditionText,
-                recipients: recipients,
-                sendEmail: formValue.sendEmail,
-                sendSms: formValue.sendSms,
-                isActive: formValue.isActive
-            };
-            if (this.editingRule) {
-                await this.notificationService.updateRule(this.editingRule.id, rule).toPromise();
-                this.showSnackbar('Rule updated', 'success');
-            } else {
-                await this.notificationService.createRule(rule).toPromise();
-                this.showSnackbar('Rule created', 'success');
-            }
-            this.notificationRuleForm.reset({
-                recipientType: 'all',
-                sendEmail: false,
-                sendSms: false,
-                isActive: true
-            });
-            this.editingRule = null;
-            await this.loadNotificationRules();
-        } catch (error) {
-            console.error('Error saving rule:', error);
-            this.showSnackbar('Error saving rule', 'error');
-        } finally {
-            this.savingRule = false;
-        }
-    }
-
-    editRule(rule: NotificationRule): void {
-        this.editingRule = rule;
-        this.notificationSubTab = 0;
-        let recipientType = 'all';
-        let specificUsers: string[] = [];
-        let specificRoles: string[] = [];
-        if (rule.recipients === 'all') {
-            recipientType = 'all';
-        } else if (this.roles.some(r => rule.recipients?.includes(r.id))) {
-            recipientType = 'role';
-            specificRoles = rule.recipients?.split(',') || [];
-        } else {
-            recipientType = 'specific';
-            specificUsers = rule.recipients?.split(',') || [];
-        }
-        this.notificationRuleForm.patchValue({
-            name: rule.name,
-            triggerType: rule.triggerType,
-            conditionText: rule.conditionText,
-            recipientType: recipientType,
-            specificUsers: specificUsers,
-            specificRoles: specificRoles,
-            sendEmail: rule.sendEmail,
-            sendSms: rule.sendSms,
-            isActive: rule.isActive
-        });
-    }
-
-    async toggleRuleStatus(rule: NotificationRule): Promise<void> {
-        try {
-            await this.notificationService.updateRule(rule.id, { isActive: !rule.isActive }).toPromise();
-            rule.isActive = !rule.isActive;
-            this.showSnackbar(`Rule ${rule.isActive ? 'activated' : 'deactivated'}`, 'success');
-        } catch (error) {
-            this.showSnackbar('Error updating rule', 'error');
-        }
-    }
-
-    async deleteRule(rule: NotificationRule): Promise<void> {
-        if (!confirm(`Delete rule "${rule.name}"?`)) return;
-        try {
-            await this.notificationService.deleteRule(rule.id).toPromise();
-            this.showSnackbar('Rule deleted', 'success');
-            await this.loadNotificationRules();
-        } catch (error) {
-            this.showSnackbar('Error deleting rule', 'error');
-        }
-    }
-
-    cancelEditRule(): void {
-        this.editingRule = null;
-        this.notificationRuleForm.reset({
-            recipientType: 'all',
-            sendEmail: false,
-            sendSms: false,
-            isActive: true
-        });
-    }
-
     private getRecipients(type: string, users: string[], roles: string[]): string[] {
         if (type === 'all') {
             return this.users.map(u => u.id);
@@ -571,13 +379,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             return this.users.filter(u => u.role && roles.includes(u.role)).map(u => u.id);
         }
         return [];
-    }
-
-    private getRecipientString(type: string, users: string[], roles: string[]): string {
-        if (type === 'all') return 'all';
-        if (type === 'specific') return users.join(',');
-        if (type === 'role') return roles.join(',');
-        return '';
     }
 
     private async loadReports(): Promise<void> {

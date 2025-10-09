@@ -42,7 +42,6 @@ var emailSenderEmail = Environment.GetEnvironmentVariable("EMAIL_SENDER_EMAIL") 
 var emailSenderName = Environment.GetEnvironmentVariable("EMAIL_SENDER_NAME") ?? builder.Configuration["EmailSettings:SenderName"];
 var emailUsername = Environment.GetEnvironmentVariable("EMAIL_USERNAME") ?? builder.Configuration["EmailSettings:Username"];
 var emailPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD") ?? builder.Configuration["EmailSettings:Password"];
-var brevoApiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY") ?? builder.Configuration["EmailSettings:BrevoApiKey"];
 
 builder.Configuration["EmailSettings:SmtpServer"] = emailSmtpServer;
 builder.Configuration["EmailSettings:SmtpPort"] = emailSmtpPort;
@@ -50,11 +49,9 @@ builder.Configuration["EmailSettings:SenderEmail"] = emailSenderEmail;
 builder.Configuration["EmailSettings:SenderName"] = emailSenderName;
 builder.Configuration["EmailSettings:Username"] = emailUsername;
 builder.Configuration["EmailSettings:Password"] = emailPassword;
-builder.Configuration["EmailSettings:BrevoApiKey"] = brevoApiKey;
 
-Console.WriteLine($"[EMAIL] Using Brevo API");
+Console.WriteLine($"[EMAIL] Using Gmail SMTP");
 Console.WriteLine($"[EMAIL] Sender: {emailSenderEmail}");
-Console.WriteLine($"[EMAIL] Brevo API Key configured: {!string.IsNullOrEmpty(brevoApiKey)}");
 
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -70,7 +67,17 @@ builder.Services.AddScoped<IRouteRepository, RouteRepository>();
 builder.Services.AddScoped<IRouteService, RouteService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddHostedService<NotificationBackgroundService>();
+
+// Only enable email notifications in Development (localhost)
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddHostedService<NotificationBackgroundService>();
+    Console.WriteLine("[EMAIL] Background email service enabled (localhost only)");
+}
+else
+{
+    Console.WriteLine("[EMAIL] Background email service DISABLED (production)");
+}
 
 builder.Services.AddCors(options =>
 {
@@ -207,7 +214,7 @@ app.MapGet("/weatherforecast", () =>
 })
 .WithName("GetWeatherForecast");
 
-Console.WriteLine("[SERVER] Starting application with JWT authentication and email notifications...");
+Console.WriteLine("[SERVER] Starting application with JWT authentication...");
 
 app.Run();
 

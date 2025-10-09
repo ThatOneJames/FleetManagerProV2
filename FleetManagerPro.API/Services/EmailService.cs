@@ -1,6 +1,5 @@
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
+using System.Net;
+using System.Net.Mail;
 
 namespace FleetManagerPro.API.Services
 {
@@ -13,55 +12,42 @@ namespace FleetManagerPro.API.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
-        private readonly HttpClient _httpClient;
 
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger, IHttpClientFactory httpClientFactory)
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
         {
             _configuration = configuration;
             _logger = logger;
-            _httpClient = httpClientFactory.CreateClient();
         }
 
         public async Task SendEmailAsync(string toEmail, string subject, string body)
         {
-            var apiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY")
-                         ?? _configuration["EmailSettings:BrevoApiKey"];
+            var smtpServer = _configuration["EmailSettings:SmtpServer"];
+            var smtpPort = int.Parse(_configuration["EmailSettings:SmtpPort"] ?? "587");
+            var senderEmail = _configuration["EmailSettings:SenderEmail"];
+            var senderName = _configuration["EmailSettings:SenderName"];
+            var username = _configuration["EmailSettings:Username"];
+            var password = _configuration["EmailSettings:Password"];
 
             try
             {
-                var payload = new
+                using var client = new SmtpClient(smtpServer, smtpPort)
                 {
-                    sender = new
-                    {
-                        name = _configuration["EmailSettings:SenderName"] ?? "FleetManagerPro",
-                        email = "noreply@fleetmanagerpro.com" // Can be any email - Brevo doesn't require verification
-                    },
-                    to = new[]
-                    {
-                        new { email = toEmail }
-                    },
-                    subject = subject,
-                    htmlContent = body
+                    Credentials = new NetworkCredential(username, password),
+                    EnableSsl = true
                 };
 
-                var jsonContent = JsonSerializer.Serialize(payload);
-                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-                _httpClient.DefaultRequestHeaders.Clear();
-                _httpClient.DefaultRequestHeaders.Add("api-key", apiKey);
-
-                var response = await _httpClient.PostAsync("https://api.brevo.com/v3/smtp/email", content);
-
-                if (response.IsSuccessStatusCode)
+                var mailMessage = new MailMessage
                 {
-                    _logger.LogInformation("Email sent successfully to {Email}", toEmail);
-                }
-                else
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("Brevo API failed: {Status} - {Error}", response.StatusCode, error);
-                    throw new Exception($"Brevo API failed: {response.StatusCode}");
-                }
+                    From = new MailAddress(senderEmail, senderName),
+                    Subject = subject,
+                    Body = body,
+                    IsBodyHtml = true
+                };
+
+                mailMessage.To.Add(toEmail);
+
+                await client.SendMailAsync(mailMessage);
+                _logger.LogInformation("Email sent successfully to {Email}", toEmail);
             }
             catch (Exception ex)
             {
