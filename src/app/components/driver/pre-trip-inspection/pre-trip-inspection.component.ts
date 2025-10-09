@@ -169,8 +169,9 @@ export class PreTripInspectionComponent implements OnInit {
                 } else {
                     this.successMessage = 'Pre-trip inspection passed! Redirecting to routes...';
                     this.isSubmitting = false;
+
                     setTimeout(() => {
-                        this.router.navigate(['/driver/routes']);
+                        window.location.href = '/driver/routes';
                     }, 1500);
                 }
             },
