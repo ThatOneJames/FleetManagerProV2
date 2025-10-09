@@ -369,7 +369,6 @@ namespace FleetManagerPro.API.Data
                 entity.HasIndex(p => p.DriverId);
             });
 
-            // MaintenanceRequest entity
             modelBuilder.Entity<MaintenanceRequest>(entity =>
             {
                 entity.ToTable("MaintenanceRequests");

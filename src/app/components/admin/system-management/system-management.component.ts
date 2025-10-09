@@ -374,15 +374,23 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
 
     private async loadNotifications(): Promise<void> {
         return new Promise((resolve) => {
-            this.notificationService.getNotifications().subscribe({
+            console.log('🔄 Loading notifications...');
+            const token = this.authService.getToken();
+            const headers = new HttpHeaders({
+                'Authorization': `Bearer ${token}`
+            });
+
+            this.http.get<any[]>(`${environment.apiUrl}/notifications`, { headers }).subscribe({
                 next: (data) => {
+                    console.log('✅ Notifications loaded:', data);
                     this.notifications = data.sort((a, b) =>
                         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                     ).slice(0, 100);
+                    console.log('📊 Notifications array:', this.notifications);
                     resolve();
                 },
                 error: (error) => {
-                    console.error('Error loading notifications:', error);
+                    console.error('❌ Error loading notifications:', error);
                     resolve();
                 }
             });

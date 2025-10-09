@@ -127,36 +127,63 @@ namespace FleetManagerPro.API.Controllers
 
                 var leaveRequest = await _leaveRequestService.CreateLeaveRequestAsync(dto);
 
-                var driver = await _context.Users.FindAsync(dto.DriverId);
-
-                var leaveTypeName = await _context.Database
-                    .SqlQuery<string>($"SELECT name FROM leave_types WHERE id = {leaveRequest.LeaveTypeId}")
-                    .FirstOrDefaultAsync() ?? "leave";
-
-                var adminUsers = await _context.Users.Where(u => u.Role == "Admin").ToListAsync();
-
-                foreach (var admin in adminUsers)
+                try
                 {
-                    var notification = new Notification
+                    var driver = await _context.Users.FindAsync(dto.DriverId);
+
+                    var leaveTypeName = "leave";
+                    try
                     {
-                        UserId = admin.Id,
-                        Title = "New Leave Request",
-                        Message = $"{driver?.Name ?? "A driver"} has submitted a {leaveTypeName} request from {leaveRequest.StartDate:MMM dd} to {leaveRequest.EndDate:MMM dd}",
-                        Type = "Info",
-                        Category = "Leave",
-                        RelatedEntityType = "LeaveRequest",
-                        RelatedEntityId = leaveRequest.Id,
-                        IsRead = false,
-                        IsSent = false,
-                        SendEmail = true,
-                        SendSms = false,
-                        CreatedAt = DateTime.UtcNow
-                    };
+                        using var command = _context.Database.GetDbConnection().CreateCommand();
+                        command.CommandText = "SELECT name FROM leave_types WHERE id = @id LIMIT 1";
+                        var param = command.CreateParameter();
+                        param.ParameterName = "@id";
+                        param.Value = leaveRequest.LeaveTypeId;
+                        command.Parameters.Add(param);
 
-                    _context.Notifications.Add(notification);
+                        await _context.Database.OpenConnectionAsync();
+                        using var reader = await command.ExecuteReaderAsync();
+                        if (await reader.ReadAsync())
+                        {
+                            leaveTypeName = reader.GetString(0);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Could not fetch leave type name, using default");
+                        leaveTypeName = "leave";
+                    }
+
+                    var adminUsers = await _context.Users.Where(u => u.Role == "Admin").ToListAsync();
+
+                    foreach (var admin in adminUsers)
+                    {
+                        var notification = new Notification
+                        {
+                            UserId = admin.Id,
+                            Title = "New Leave Request",
+                            Message = $"{driver?.Name ?? "A driver"} has submitted a {leaveTypeName} request from {leaveRequest.StartDate:MMM dd} to {leaveRequest.EndDate:MMM dd}",
+                            Type = "Info",
+                            Category = "Leave",
+                            RelatedEntityType = "LeaveRequest",
+                            RelatedEntityId = leaveRequest.Id,
+                            IsRead = false,
+                            IsSent = false,
+                            SendEmail = true,
+                            SendSms = false,
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        _context.Notifications.Add(notification);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Notification created successfully for leave request {Id}", leaveRequest.Id);
                 }
-
-                await _context.SaveChangesAsync();
+                catch (Exception notifEx)
+                {
+                    _logger.LogError(notifEx, "Error creating notification for leave request {Id}, continuing anyway", leaveRequest.Id);
+                }
 
                 return CreatedAtAction(nameof(GetLeaveRequestById), new { id = leaveRequest.Id }, leaveRequest);
             }
