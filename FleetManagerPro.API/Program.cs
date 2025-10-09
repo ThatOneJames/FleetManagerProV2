@@ -35,12 +35,14 @@ else
 builder.Services.AddDbContext<FleetManagerDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
+// Configure Email Settings - read from environment variables for production
 var emailSmtpServer = Environment.GetEnvironmentVariable("EMAIL_SMTP_SERVER") ?? builder.Configuration["EmailSettings:SmtpServer"];
 var emailSmtpPort = Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT") ?? builder.Configuration["EmailSettings:SmtpPort"];
 var emailSenderEmail = Environment.GetEnvironmentVariable("EMAIL_SENDER_EMAIL") ?? builder.Configuration["EmailSettings:SenderEmail"];
 var emailSenderName = Environment.GetEnvironmentVariable("EMAIL_SENDER_NAME") ?? builder.Configuration["EmailSettings:SenderName"];
 var emailUsername = Environment.GetEnvironmentVariable("EMAIL_USERNAME") ?? builder.Configuration["EmailSettings:Username"];
 var emailPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD") ?? builder.Configuration["EmailSettings:Password"];
+var brevoApiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY") ?? builder.Configuration["EmailSettings:BrevoApiKey"];
 
 builder.Configuration["EmailSettings:SmtpServer"] = emailSmtpServer;
 builder.Configuration["EmailSettings:SmtpPort"] = emailSmtpPort;
@@ -48,9 +50,11 @@ builder.Configuration["EmailSettings:SenderEmail"] = emailSenderEmail;
 builder.Configuration["EmailSettings:SenderName"] = emailSenderName;
 builder.Configuration["EmailSettings:Username"] = emailUsername;
 builder.Configuration["EmailSettings:Password"] = emailPassword;
+builder.Configuration["EmailSettings:BrevoApiKey"] = brevoApiKey;
 
-Console.WriteLine($"[EMAIL] Using Resend API");
+Console.WriteLine($"[EMAIL] Using Brevo API");
 Console.WriteLine($"[EMAIL] Sender: {emailSenderEmail}");
+Console.WriteLine($"[EMAIL] Brevo API Key configured: {!string.IsNullOrEmpty(brevoApiKey)}");
 
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
