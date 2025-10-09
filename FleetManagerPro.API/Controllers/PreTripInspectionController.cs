@@ -207,7 +207,13 @@ namespace FleetManagerPro.API.Controllers
                     allItemsPassed = inspection.AllItemsPassed,
                     inspectionDate = inspection.InspectionDate,
                     notes = inspection.Notes,
-                    createdAt = inspection.CreatedAt
+                    createdAt = inspection.CreatedAt,
+                    maintenanceRequest = inspection.MaintenanceRequest != null ? new
+                    {
+                        id = inspection.MaintenanceRequest.Id,
+                        status = inspection.MaintenanceRequest.Status,
+                        completedAt = inspection.MaintenanceRequest.CompletedDate
+                    } : null
                 }
             });
         }

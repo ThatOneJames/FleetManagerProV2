@@ -69,7 +69,7 @@ export class RoutesTripsComponent implements OnInit {
         routes.forEach(route => {
             if (route.id && route.vehicleId && route.status === 'planned') {
                 this.http.get<any>(
-                    `https://fleetmanagerprov2-production.up.railway.app/api/pretripinspection/check-today/${route.vehicleId}`,
+                    `https://fleetmanagerprov2-production.up.railway.app/api/pretripinspection/route/${route.id}`,
                     { headers }
                 ).subscribe({
                     next: (response) => {
@@ -108,7 +108,6 @@ export class RoutesTripsComponent implements OnInit {
         return 'Inspection Pending';
     }
 
-    // ✅ NEW: Check if driver has an active trip
     hasActiveTripInProgress(): boolean {
         return this.assignedRoutes.some(route => route.status === 'in_progress');
     }
@@ -116,7 +115,6 @@ export class RoutesTripsComponent implements OnInit {
     startTrip(route: Route): void {
         this.pendingRouteId = route.id!;
 
-        // ✅ Check if driver already has an active trip
         if (this.hasActiveTripInProgress()) {
             this.inspectionModalTitle = '🚫 Active Trip In Progress';
             this.inspectionModalMessage = 'You already have a trip in progress. Please complete your current trip before starting a new one.';
@@ -136,9 +134,18 @@ export class RoutesTripsComponent implements OnInit {
         }
 
         if (inspectionData.inspection?.result === 'Fail') {
-            this.inspectionModalTitle = '🚫 Vehicle Not Ready';
-            this.inspectionModalMessage = 'Your pre-trip inspection failed. The vehicle has maintenance issues that must be resolved before starting the trip. Please contact your supervisor.';
-            this.inspectionModalType = 'error';
+            const maintenanceStatus = inspectionData.inspection?.maintenanceRequest?.status;
+
+            if (maintenanceStatus === 'Completed') {
+                this.inspectionModalTitle = '🔧 Maintenance Complete - Retry Inspection';
+                this.inspectionModalMessage = 'The vehicle maintenance has been completed. Please perform a new pre-trip inspection to verify the vehicle is ready.';
+                this.inspectionModalType = 'warning';
+            } else {
+                this.inspectionModalTitle = '🚫 Vehicle Not Ready';
+                this.inspectionModalMessage = 'Your pre-trip inspection failed. The vehicle has maintenance issues that must be resolved before starting the trip. Please contact your supervisor.';
+                this.inspectionModalType = 'error';
+            }
+
             this.showInspectionModal = true;
             return;
         }
@@ -300,7 +307,6 @@ export class RoutesTripsComponent implements OnInit {
         }
     }
 
-    // ✅ UPDATED: Can only start if no active trip
     canStartTrip(route: Route): boolean {
         return route.status === 'planned' &&
             this.hasPassedInspection(route.id!) &&
