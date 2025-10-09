@@ -43,15 +43,20 @@ namespace FleetManagerPro.API.Controllers
                 return NotFound("Vehicle not found");
             }
 
+            var today = DateTime.UtcNow.Date;
+            var tomorrow = today.AddDays(1);
+
             var existingInspection = await _context.PreTripInspections
                 .Include(i => i.MaintenanceRequest)
-                .FirstOrDefaultAsync(i => i.RouteId == dto.RouteId);
+                .FirstOrDefaultAsync(i => i.RouteId == dto.RouteId
+                    && i.InspectionDate >= today
+                    && i.InspectionDate < tomorrow);
 
             if (existingInspection != null)
             {
                 if (existingInspection.AllItemsPassed)
                 {
-                    return BadRequest("Pre-trip inspection already completed for this route");
+                    return BadRequest("Pre-trip inspection already completed for this route today");
                 }
 
                 if (existingInspection.MaintenanceRequest != null &&
@@ -180,15 +185,22 @@ namespace FleetManagerPro.API.Controllers
         [HttpGet("route/{routeId}")]
         public async Task<ActionResult<PreTripInspection>> GetInspectionByRoute(string routeId)
         {
+            var today = DateTime.UtcNow.Date;
+            var tomorrow = today.AddDays(1);
+
             var inspection = await _context.PreTripInspections
                 .Include(i => i.Vehicle)
                 .Include(i => i.Driver)
                 .Include(i => i.MaintenanceRequest)
-                .FirstOrDefaultAsync(i => i.RouteId == routeId);
+                .Where(i => i.RouteId == routeId
+                    && i.InspectionDate >= today
+                    && i.InspectionDate < tomorrow)
+                .OrderByDescending(i => i.InspectionDate)
+                .FirstOrDefaultAsync();
 
             if (inspection == null)
             {
-                return NotFound("No inspection found for this route");
+                return NotFound("No inspection found for this route today");
             }
 
             return Ok(inspection);
