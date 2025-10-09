@@ -1,5 +1,4 @@
 using FleetManagerPro.API.Data;
-using FleetManagerPro.API.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace FleetManagerPro.API.Services
@@ -19,6 +18,8 @@ namespace FleetManagerPro.API.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _logger.LogInformation("NotificationBackgroundService started - checking every 1 minute");
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -45,21 +46,37 @@ namespace FleetManagerPro.API.Services
                 .Where(n => !n.IsSent && n.SendEmail)
                 .ToListAsync();
 
+            if (pendingNotifications.Any())
+            {
+                _logger.LogInformation("Found {Count} pending notifications to send", pendingNotifications.Count);
+            }
+
             foreach (var notification in pendingNotifications)
             {
                 if (!string.IsNullOrEmpty(notification.User?.Email))
                 {
-                    await emailService.SendEmailAsync(
-                        notification.User.Email,
-                        notification.Title,
-                        $"<h2>{notification.Title}</h2><p>{notification.Message}</p>"
-                    );
+                    try
+                    {
+                        await emailService.SendEmailAsync(
+                            notification.User.Email,
+                            notification.Title,
+                            $"<h2>{notification.Title}</h2><p>{notification.Message}</p>"
+                        );
 
-                    notification.IsSent = true;
+                        notification.IsSent = true;
+                        _logger.LogInformation("Email sent to {Email} - {Title}", notification.User.Email, notification.Title);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send email to {Email}", notification.User?.Email);
+                    }
                 }
             }
 
-            await context.SaveChangesAsync();
+            if (pendingNotifications.Any())
+            {
+                await context.SaveChangesAsync();
+            }
         }
     }
 }

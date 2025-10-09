@@ -1,4 +1,4 @@
-using FleetManagerPro.API.Data;
+﻿using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Models;
 using FleetManagerPro.API.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -141,6 +141,43 @@ namespace FleetManagerPro.API.Controllers
             {
                 return StatusCode(500, new { message = "Error deleting notification", error = ex.Message });
             }
+        }
+        [HttpGet("send-pending")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SendPendingEmails([FromServices] IEmailService emailService)
+        {
+            var pendingNotifications = await _context.Notifications
+                .Include(n => n.User)
+                .Where(n => !n.IsSent && n.SendEmail)
+                .ToListAsync();
+
+            var sent = 0;
+            var errors = new List<string>();
+
+            foreach (var notification in pendingNotifications)
+            {
+                if (!string.IsNullOrEmpty(notification.User?.Email))
+                {
+                    try
+                    {
+                        await emailService.SendEmailAsync(
+                            notification.User.Email,
+                            notification.Title,
+                            $"<h2>{notification.Title}</h2><p>{notification.Message}</p>"
+                        );
+
+                        notification.IsSent = true;
+                        sent++;
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"Failed for {notification.User.Email}: {ex.Message}");
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { sent, pending = pendingNotifications.Count, errors });
         }
     }
 

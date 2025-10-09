@@ -35,6 +35,24 @@ else
 builder.Services.AddDbContext<FleetManagerDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
+// Configure Email Settings - read from environment variables for production
+var emailSmtpServer = Environment.GetEnvironmentVariable("EMAIL_SMTP_SERVER") ?? builder.Configuration["EmailSettings:SmtpServer"];
+var emailSmtpPort = Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT") ?? builder.Configuration["EmailSettings:SmtpPort"];
+var emailSenderEmail = Environment.GetEnvironmentVariable("EMAIL_SENDER_EMAIL") ?? builder.Configuration["EmailSettings:SenderEmail"];
+var emailSenderName = Environment.GetEnvironmentVariable("EMAIL_SENDER_NAME") ?? builder.Configuration["EmailSettings:SenderName"];
+var emailUsername = Environment.GetEnvironmentVariable("EMAIL_USERNAME") ?? builder.Configuration["EmailSettings:Username"];
+var emailPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD") ?? builder.Configuration["EmailSettings:Password"];
+
+builder.Configuration["EmailSettings:SmtpServer"] = emailSmtpServer;
+builder.Configuration["EmailSettings:SmtpPort"] = emailSmtpPort;
+builder.Configuration["EmailSettings:SenderEmail"] = emailSenderEmail;
+builder.Configuration["EmailSettings:SenderName"] = emailSenderName;
+builder.Configuration["EmailSettings:Username"] = emailUsername;
+builder.Configuration["EmailSettings:Password"] = emailPassword;
+
+Console.WriteLine($"[EMAIL] SMTP Server: {emailSmtpServer}");
+Console.WriteLine($"[EMAIL] Sender: {emailSenderEmail}");
+
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<VehicleService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -49,7 +67,6 @@ builder.Services.AddScoped<IRouteService, RouteService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHostedService<NotificationBackgroundService>();
-
 
 builder.Services.AddCors(options =>
 {
@@ -186,7 +203,7 @@ app.MapGet("/weatherforecast", () =>
 })
 .WithName("GetWeatherForecast");
 
-Console.WriteLine("[SERVER] Starting application with JWT authentication...");
+Console.WriteLine("[SERVER] Starting application with JWT authentication and email notifications...");
 
 app.Run();
 
