@@ -413,7 +413,7 @@ namespace FleetManagerPro.API.Controllers
 
         [HttpPut("profile")]
         [Authorize]
-        public async Task<IActionResult> UpdateOwnProfile([FromBody] UpdateUserDto dto)
+        public async Task<IActionResult> UpdateOwnProfile([FromBody] UpdateDriverProfileDto dto)
         {
             try
             {
@@ -448,6 +448,24 @@ namespace FleetManagerPro.API.Controllers
                 if (!string.IsNullOrEmpty(dto.Address))
                     user.Address = dto.Address;
 
+                if (!string.IsNullOrEmpty(dto.EmergencyContact))
+                    user.EmergencyContact = dto.EmergencyContact;
+
+                if (!string.IsNullOrEmpty(dto.LicenseNumber))
+                    user.LicenseNumber = dto.LicenseNumber;
+
+                if (!string.IsNullOrEmpty(dto.LicenseClass))
+                    user.LicenseClass = dto.LicenseClass;
+
+                if (dto.LicenseExpiry.HasValue)
+                    user.LicenseExpiry = dto.LicenseExpiry;
+
+                if (dto.DateOfBirth.HasValue)
+                    user.DateOfBirth = dto.DateOfBirth;
+
+                if (dto.ExperienceYears.HasValue)
+                    user.ExperienceYears = dto.ExperienceYears.Value;
+
                 user.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
@@ -462,6 +480,12 @@ namespace FleetManagerPro.API.Controllers
                         user.Email,
                         user.Phone,
                         user.Address,
+                        user.EmergencyContact,
+                        user.LicenseNumber,
+                        user.LicenseClass,
+                        user.LicenseExpiry,
+                        user.DateOfBirth,
+                        user.ExperienceYears,
                         user.Role,
                         user.Status,
                         user.UpdatedAt
@@ -512,5 +536,19 @@ namespace FleetManagerPro.API.Controllers
         public string? Phone { get; set; }
         public string? Address { get; set; }
         public string? Status { get; set; }
+    }
+
+    public class UpdateDriverProfileDto
+    {
+        public string? Name { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+        public string? EmergencyContact { get; set; }
+        public string? LicenseNumber { get; set; }
+        public string? LicenseClass { get; set; }
+        public DateTime? LicenseExpiry { get; set; }
+        public DateTime? DateOfBirth { get; set; }
+        public int? ExperienceYears { get; set; }
     }
 }
