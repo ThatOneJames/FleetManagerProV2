@@ -55,83 +55,53 @@ namespace FleetManagerPro.API.Controllers
 
         [HttpGet("current")]
         [Authorize]
-        public async Task<IActionResult> GetCurrentUser()
+        public async Task<ActionResult<User>> GetCurrentUser()
         {
-            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-            if (userId == null) return Unauthorized();
-
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null) return NotFound("User not found");
-
-            var claims = new[]
+            try
             {
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Name, user.Name),
-        new Claim(ClaimTypes.Role, user.Role)
-    };
+                var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            var jwtKey = _config["Jwt:Key"];
-            if (string.IsNullOrEmpty(jwtKey))
-            {
-                return StatusCode(500, "JWT configuration is missing");
-            }
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.Now.AddDays(1),
-                SigningCredentials = creds,
-                Issuer = _config["Jwt:Issuer"],
-                Audience = _config["Jwt:Audience"]
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-
-            return Ok(new
-            {
-                token = tokenHandler.WriteToken(token),
-                id = user.Id,
-                name = user.Name,
-                email = user.Email,
-                role = user.Role,
-                phone = user.Phone,
-                address = user.Address,
-                dateOfBirth = user.DateOfBirth?.ToString("yyyy-MM-dd"),
-                hireDate = user.HireDate?.ToString("yyyy-MM-dd"),
-                emergencyContact = user.EmergencyContact,
-                profileImageUrl = user.ProfileImageUrl,
-                status = user.Status,
-
-                // ✅ ADD THESE LICENSE FIELDS AT ROOT LEVEL
-                licenseNumber = user.LicenseNumber,
-                licenseClass = user.LicenseClass,
-                licenseExpiry = user.LicenseExpiry?.ToString("yyyy-MM-dd"),
-                experienceYears = user.ExperienceYears,
-                safetyRating = user.SafetyRating,
-                totalMilesDriven = user.TotalMilesDriven,
-                isAvailable = user.IsAvailable,
-                hasHelper = user.HasHelper,
-
-                // Keep the nested driver object for backward compatibility
-                driver = user.Role == "Driver" ? new
+                if (string.IsNullOrEmpty(userId))
                 {
-                    fullName = user.Name,
-                    licenseNumber = user.LicenseNumber,
-                    licenseClass = user.LicenseClass,
-                    licenseExpiry = user.LicenseExpiry?.ToString("yyyy-MM-dd"),
-                    contactNumber = user.Phone,
-                    experienceYears = user.ExperienceYears,
-                    safetyRating = user.SafetyRating,
-                    totalMilesDriven = user.TotalMilesDriven,
-                    currentVehicleId = user.CurrentVehicleId,
-                    isAvailable = user.IsAvailable,
-                    hasHelper = user.HasHelper
-                } : null
-            });
+                    return Unauthorized(new { message = "User not authenticated" });
+                }
+
+                var user = await _context.Users.FindAsync(userId);
+
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
+
+                return Ok(new
+                {
+                    user.Id,
+                    user.Name,
+                    user.Email,
+                    user.Role,
+                    user.Phone,
+                    user.Address,
+                    user.DateOfBirth,
+                    user.EmergencyContact,
+                    user.ProfileImageUrl,
+                    user.Status,
+                    user.LicenseNumber,
+                    user.LicenseClass,
+                    user.LicenseExpiry,
+                    user.ExperienceYears,
+                    user.SafetyRating,
+                    user.TotalMilesDriven,
+                    user.CurrentVehicleId,
+                    user.IsAvailable,
+                    user.HasHelper,
+                    user.CreatedAt,
+                    user.UpdatedAt
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error retrieving current user", error = ex.Message });
+            }
         }
 
         [HttpGet("{id}")]
