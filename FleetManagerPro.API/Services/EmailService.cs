@@ -1,8 +1,6 @@
-using FleetManagerPro.API.Models;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
-using Microsoft.Extensions.Configuration;
 
 namespace FleetManagerPro.API.Services
 {
@@ -36,14 +34,14 @@ namespace FleetManagerPro.API.Services
             message.Body = builder.ToMessageBody();
 
             using var client = new SmtpClient();
-            client.Timeout = 10000; // 10 seconds timeout
+            client.Timeout = 15000;
 
             try
             {
                 await client.ConnectAsync(
                     _configuration["EmailSettings:SmtpServer"],
                     int.Parse(_configuration["EmailSettings:SmtpPort"]),
-                    SecureSocketOptions.StartTls
+                    SecureSocketOptions.SslOnConnect
                 );
 
                 await client.AuthenticateAsync(
