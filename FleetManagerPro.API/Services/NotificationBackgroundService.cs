@@ -18,7 +18,7 @@ namespace FleetManagerPro.API.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("NotificationBackgroundService started - checking every 1 minute");
+            _logger.LogInformation("NotificationBackgroundService started - checking every 30 seconds");
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -31,7 +31,7 @@ namespace FleetManagerPro.API.Services
                     _logger.LogError(ex, "Error processing notifications");
                 }
 
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
             }
         }
 
@@ -73,7 +73,7 @@ namespace FleetManagerPro.API.Services
                 }
             }
 
-            if (pendingNotifications.Any())
+            if (pendingNotifications.Any(n => n.IsSent))
             {
                 await context.SaveChangesAsync();
             }
