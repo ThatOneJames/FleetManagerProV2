@@ -7,6 +7,7 @@
             </h1>
             <p class="subtitle">User management and system configuration</p>
         </div>
+    </div>
 
     <mat-card>
         <mat-card-header>
@@ -366,8 +367,10 @@
                                         <ng-container matColumnDef="actions">
                                             <th mat-header-cell *matHeaderCellDef>Actions</th>
                                             <td mat-cell *matCellDef="let notification">
-                                                <button mat-icon-button matTooltip="View">
-                                                    <mat-icon>visibility</mat-icon>
+                                                <button mat-icon-button (click)="markAsRead(notification)"
+                                                        matTooltip="Mark as Read"
+                                                        [disabled]="notification.isRead">
+                                                    <mat-icon>{{ notification.isRead ? 'check_circle' : 'check_circle_outline' }}</mat-icon>
                                                 </button>
                                             </td>
                                         </ng-container>
@@ -378,12 +381,6 @@
                                 </div>
                             </mat-tab>
 
-                            <mat-tab label="Message Templates">
-                                <div class="subtab-content">
-                                    <h3>Notification Templates</h3>
-                                    <p>Create reusable templates for common notifications (Coming Soon)</p>
-                                </div>
-                            </mat-tab>
                         </mat-tab-group>
                     </div>
                 </mat-tab>
@@ -444,52 +441,6 @@
                     </div>
                 </mat-tab>
 
-                <mat-tab label="Attendance Reports">
-                    <div class="tab-content">
-                        <div class="section-header">
-                            <h2>Attendance Reports</h2>
-                            <p>Comprehensive attendance tracking and analysis for Evo Cargo Express drivers</p>
-                        </div>
-
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <mat-icon>people</mat-icon>
-                                <div class="stat-info">
-                                    <span class="stat-value">{{ attendanceStats.totalDrivers }}</span>
-                                    <span class="stat-label">Total Drivers</span>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <mat-icon>show_chart</mat-icon>
-                                <div class="stat-info">
-                                    <span class="stat-value">{{ attendanceStats.avgAttendanceRate }}%</span>
-                                    <span class="stat-label">Avg Attendance Rate</span>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <mat-icon>access_time</mat-icon>
-                                <div class="stat-info">
-                                    <span class="stat-value">{{ attendanceStats.totalHours }}</span>
-                                    <span class="stat-label">Total Hours</span>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <mat-icon>timer</mat-icon>
-                                <div class="stat-info">
-                                    <span class="stat-value">{{ attendanceStats.overtimeHours }}</span>
-                                    <span class="stat-label">Overtime Hours</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </mat-tab>
-
-                <mat-tab label="System Settings">
-                    <div class="tab-content">
-                        <h2>System Settings</h2>
-                        <p>Configure system-wide settings and preferences (Coming Soon)</p>
-                    </div>
-                </mat-tab>
             </mat-tab-group>
         </mat-card-content>
     </mat-card>

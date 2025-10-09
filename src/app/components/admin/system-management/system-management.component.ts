@@ -33,12 +33,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     historyColumns: string[] = ['id', 'title', 'type', 'recipients', 'createdAt', 'status', 'actions'];
     reports: any[] = [];
     reportColumns: string[] = ['reportName', 'type', 'generatedDate', 'size', 'format', 'actions'];
-    attendanceStats = {
-        totalDrivers: 0,
-        avgAttendanceRate: 0,
-        totalHours: 0,
-        overtimeHours: 0
-    };
     loading = false;
     savingUser = false;
     savingRule = false;
@@ -208,8 +202,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
                 this.loadVehicles(),
                 this.loadNotifications(),
                 this.loadNotificationRules(),
-                this.loadReports(),
-                this.loadAttendanceStats()
+                this.loadReports()
             ]);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -410,6 +403,24 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
                 }
             });
         });
+    }
+
+    async markAsRead(notification: Notification): Promise<void> {
+        try {
+            const token = this.authService.getToken();
+            const headers = new HttpHeaders({
+                'Authorization': `Bearer ${token}`
+            });
+
+            await this.http.put(`${environment.apiUrl}/notifications/${notification.id}/read`, {}, { headers }).toPromise();
+            notification.isRead = true;
+
+            this.showSnackbar('Notification marked as read', 'success');
+            await this.loadNotifications();
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+            this.showSnackbar('Error updating notification', 'error');
+        }
     }
 
     async sendNotification(): Promise<void> {
@@ -779,76 +790,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         return [headers, ...rows]
             .map(row => row.map((field: any) => `"${field}"`).join(','))
             .join('\n');
-    }
-
-    private async loadAttendanceStats(): Promise<void> {
-        return new Promise((resolve) => {
-            this.driverService.getAllUsers().subscribe({
-                next: async (users) => {
-                    const drivers = users.filter(u => u.role === 'Driver');
-                    const totalDrivers = drivers.length;
-
-                    let totalHours = 0;
-                    let totalDaysPresent = 0;
-                    let totalDaysLate = 0;
-                    let overtimeHours = 0;
-
-                    for (const driver of drivers) {
-                        try {
-                            const endDate = new Date().toISOString().split('T')[0];
-                            const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-                            await new Promise<void>((resolveDriver) => {
-                                this.http.get<any[]>(`${environment.apiUrl}/attendance/driver/${driver.id}/range?startDate=${startDate}&endDate=${endDate}`)
-                                    .subscribe({
-                                        next: (records) => {
-                                            records.forEach(record => {
-                                                if (record.totalHours) {
-                                                    totalHours += parseFloat(record.totalHours);
-                                                    if (record.totalHours > 8) {
-                                                        overtimeHours += (parseFloat(record.totalHours) - 8);
-                                                    }
-                                                }
-                                                if (record.status === 'Present') totalDaysPresent++;
-                                                if (record.status === 'Late') totalDaysLate++;
-                                            });
-                                            resolveDriver();
-                                        },
-                                        error: () => resolveDriver()
-                                    });
-                            });
-                        } catch (error) {
-                            console.error(`Error loading attendance for driver ${driver.id}:`, error);
-                        }
-                    }
-
-                    const workDays = 22;
-                    const avgAttendanceRate = totalDrivers > 0
-                        ? ((totalDaysPresent / (totalDrivers * workDays)) * 100).toFixed(1)
-                        : 0;
-
-                    this.attendanceStats = {
-                        totalDrivers: totalDrivers,
-                        avgAttendanceRate: parseFloat(avgAttendanceRate as string),
-                        totalHours: Math.round(totalHours),
-                        overtimeHours: Math.round(overtimeHours)
-                    };
-
-                    console.log('✅ Attendance stats loaded:', this.attendanceStats);
-                    resolve();
-                },
-                error: (error) => {
-                    console.error('Error loading attendance stats:', error);
-                    this.attendanceStats = {
-                        totalDrivers: 0,
-                        avgAttendanceRate: 0,
-                        totalHours: 0,
-                        overtimeHours: 0
-                    };
-                    resolve();
-                }
-            });
-        });
     }
 
     getUserName(userId: string): string {

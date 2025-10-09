@@ -45,24 +45,20 @@ namespace FleetManagerPro.API.Controllers
 
             var existingInspection = await _context.PreTripInspections
                 .Include(i => i.MaintenanceRequest)
-                .FirstOrDefaultAsync(i => i.RouteId == dto.RouteId && i.DriverId == driverId);
+                .FirstOrDefaultAsync(i => i.RouteId == dto.RouteId);
 
             if (existingInspection != null)
             {
-                // If the previous inspection passed, don't allow another one
                 if (existingInspection.AllItemsPassed)
                 {
                     return BadRequest("Pre-trip inspection already completed for this route");
                 }
 
-                // If the previous inspection failed but maintenance is NOT completed, block
                 if (existingInspection.MaintenanceRequest != null &&
                     existingInspection.MaintenanceRequest.Status != "Completed")
                 {
                     return BadRequest("Maintenance must be completed before submitting a new inspection");
                 }
-
-                // If maintenance is completed, allow the new inspection (continue)
             }
 
             var inspection = new PreTripInspection
@@ -111,7 +107,6 @@ namespace FleetManagerPro.API.Controllers
 
             _context.PreTripInspections.Add(inspection);
 
-            // ONLY CREATE NOTIFICATION IF INSPECTION FAILED
             if (!inspection.AllItemsPassed)
             {
                 try
