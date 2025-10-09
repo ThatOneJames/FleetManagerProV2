@@ -18,6 +18,8 @@ namespace FleetManagerPro.API.Data.Repository
         Task<bool> ClockOutAsync(string driverId, DateTime clockOutTime);
         Task<IEnumerable<DriverAttendance>> GetWeeklyAttendanceAsync(string driverId, DateTime weekStart);
         Task<Dictionary<string, object>> GetAttendanceStatsAsync(string driverId, DateTime startDate, DateTime endDate);
+        Task<DriverAttendance?> GetLatestAttendanceAsync(string driverId);
+
     }
 
     public class AttendanceRepository : IAttendanceRepository
@@ -234,5 +236,16 @@ namespace FleetManagerPro.API.Data.Repository
                 ["AttendancePercentage"] = totalDays > 0 ? Math.Round((decimal)presentRecords.Count / totalDays * 100, 2) : 0
             };
         }
+        public async Task<DriverAttendance?> GetLatestAttendanceAsync(string driverId)
+        {
+            return await _context.DriverAttendances
+                .Include(a => a.Driver)
+                .Include(a => a.Approver)
+                .Where(a => a.DriverId == driverId && a.ClockIn != null)
+                .OrderByDescending(a => a.Date)
+                .ThenByDescending(a => a.ClockIn)
+                .FirstOrDefaultAsync();
+        }
+
     }
 }

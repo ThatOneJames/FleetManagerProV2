@@ -181,9 +181,22 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     private async loadUsers(): Promise<void> {
         return new Promise((resolve) => {
             this.driverService.getAllUsers().subscribe({
-                next: (data) => {
+                next: async (data) => {
                     this.users = data;
-                    console.log('✅ Loaded users:', this.users.length);
+
+                    for (const user of this.users) {
+                        try {
+                            const latestAttendance = await this.http.get<any>(
+                                `${environment.apiUrl}/attendance/driver/${user.id}/latest`
+                            ).toPromise();
+
+                            user.lastAttendance = latestAttendance?.clockIn || null;
+                        } catch (error) {
+                            user.lastAttendance = undefined;
+                        }
+                    }
+
+                    console.log('✅ Loaded users with attendance:', this.users.length);
                     resolve();
                 },
                 error: (error) => {
@@ -193,6 +206,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             });
         });
     }
+
 
     toggleUserForm(): void {
         this.showUserForm = !this.showUserForm;

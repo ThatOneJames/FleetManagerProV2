@@ -15,6 +15,7 @@ export interface User {
     profileImageUrl?: string;
     createdAt: string | Date;
     updatedAt: string | Date;
+    lastAttendance?: Date;
 
     // Driver-specific fields
     licenseNumber?: string;
@@ -30,6 +31,7 @@ export interface User {
     lastLocationLat?: number;
     lastLocationLng?: number;
     lastLocationUpdated?: string | Date;
+
 }
 
 // Keep enums for reference/conversion if needed

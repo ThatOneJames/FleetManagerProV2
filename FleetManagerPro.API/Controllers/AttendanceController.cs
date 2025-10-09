@@ -463,6 +463,27 @@ namespace FleetManagerPro.API.Controllers
             }
         }
 
+        [HttpGet("driver/{driverId}/latest")]
+        [Authorize]
+        public async Task<ActionResult<AttendanceResponseDto>> GetLatestAttendance(string driverId)
+        {
+            try
+            {
+                var latestAttendance = await _attendanceRepository.GetLatestAttendanceAsync(driverId);
+
+                if (latestAttendance == null)
+                    return NotFound(new { message = "No attendance records found" });
+
+                return Ok(MapToResponseDto(latestAttendance));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] GetLatestAttendance failed: {ex.Message}");
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+
         // Helper method to get current user ID from various claim types
         private string? GetCurrentUserId()
         {
