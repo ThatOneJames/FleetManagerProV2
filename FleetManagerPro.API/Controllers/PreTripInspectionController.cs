@@ -49,6 +49,11 @@ namespace FleetManagerPro.API.Controllers
 
             if (existingInspection != null)
             {
+                if (existingInspection.AllItemsPassed)
+                {
+                    return BadRequest("Pre-trip inspection already passed for this route");
+                }
+
                 if (existingInspection.MaintenanceRequest != null &&
                     existingInspection.MaintenanceRequest.Status != "Completed")
                 {
