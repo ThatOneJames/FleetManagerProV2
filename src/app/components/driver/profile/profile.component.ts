@@ -292,7 +292,7 @@ export class DriverProfileComponent implements OnInit {
             'Content-Type': 'application/json'
         });
 
-        this.http.put<any>(`${this.apiUrl}/${userId}`, updatePayload, { headers })
+        this.http.put<any>(`${this.apiUrl}/profile`, updatePayload, { headers })
             .subscribe({
                 next: (response) => {
                     console.log('✅ Profile updated successfully:', response);
