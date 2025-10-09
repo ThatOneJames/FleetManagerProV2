@@ -14,10 +14,12 @@ namespace FleetManagerPro.API.Controllers
     public class PreTripInspectionController : ControllerBase
     {
         private readonly FleetManagerDbContext _context;
+        private readonly ILogger<PreTripInspectionController> _logger;
 
-        public PreTripInspectionController(FleetManagerDbContext context)
+        public PreTripInspectionController(FleetManagerDbContext context, ILogger<PreTripInspectionController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -42,11 +44,25 @@ namespace FleetManagerPro.API.Controllers
             }
 
             var existingInspection = await _context.PreTripInspections
+                .Include(i => i.MaintenanceRequest)
                 .FirstOrDefaultAsync(i => i.RouteId == dto.RouteId && i.DriverId == driverId);
 
             if (existingInspection != null)
             {
-                return BadRequest("Pre-trip inspection already completed for this route");
+                // If the previous inspection passed, don't allow another one
+                if (existingInspection.AllItemsPassed)
+                {
+                    return BadRequest("Pre-trip inspection already completed for this route");
+                }
+
+                // If the previous inspection failed but maintenance is NOT completed, block
+                if (existingInspection.MaintenanceRequest != null &&
+                    existingInspection.MaintenanceRequest.Status != "Completed")
+                {
+                    return BadRequest("Maintenance must be completed before submitting a new inspection");
+                }
+
+                // If maintenance is completed, allow the new inspection (continue)
             }
 
             var inspection = new PreTripInspection
@@ -95,28 +111,46 @@ namespace FleetManagerPro.API.Controllers
 
             _context.PreTripInspections.Add(inspection);
 
-            var driver = await _context.Users.FindAsync(driverId);
-            var adminUsers = await _context.Users.Where(u => u.Role == "Admin").ToListAsync();
-
-            foreach (var admin in adminUsers)
+            // ONLY CREATE NOTIFICATION IF INSPECTION FAILED
+            if (!inspection.AllItemsPassed)
             {
-                var notification = new Notification
+                try
                 {
-                    UserId = admin.Id,
-                    Title = "New Inspection Report",
-                    Message = $"{driver?.Name ?? "A driver"} has submitted a pre-trip inspection report for vehicle {vehicle.LicensePlate} ({inspection.Result})",
-                    Type = inspection.Result == "Pass" ? "Success" : "Warning",
-                    Category = "Maintenance",
-                    RelatedEntityType = "PreTripInspection",
-                    RelatedEntityId = inspection.Id,
-                    IsRead = false,
-                    IsSent = false,
-                    SendEmail = true,
-                    SendSms = false,
-                    CreatedAt = DateTime.UtcNow
-                };
+                    var driver = await _context.Users.FindAsync(driverId);
+                    var adminUsers = await _context.Users.Where(u => u.Role == "Admin").ToListAsync();
 
-                _context.Notifications.Add(notification);
+                    var failedItemsList = System.Text.Json.JsonSerializer.Deserialize<List<string>>(inspection.IssuesFound ?? "[]");
+                    var failedItemsText = failedItemsList != null && failedItemsList.Count > 0
+                        ? string.Join(", ", failedItemsList)
+                        : "Multiple issues";
+
+                    foreach (var admin in adminUsers)
+                    {
+                        var notification = new Notification
+                        {
+                            UserId = admin.Id,
+                            Title = "⚠️ Failed Pre-Trip Inspection",
+                            Message = $"{driver?.Name ?? "A driver"} reported issues with vehicle {vehicle.LicensePlate}: {failedItemsText}",
+                            Type = "Warning",
+                            Category = "Maintenance",
+                            RelatedEntityType = "PreTripInspection",
+                            RelatedEntityId = inspection.Id,
+                            IsRead = false,
+                            IsSent = false,
+                            SendEmail = true,
+                            SendSms = false,
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        _context.Notifications.Add(notification);
+                    }
+
+                    _logger.LogInformation("Created notification for failed inspection {InspectionId}", inspection.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error creating notification for failed inspection {InspectionId}", inspection.Id);
+                }
             }
 
             await _context.SaveChangesAsync();
