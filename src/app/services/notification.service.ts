@@ -50,6 +50,10 @@ export class NotificationService {
     }
 
     getNotifications(unreadOnly: boolean = false): Observable<Notification[]> {
+        return this.http.get<Notification[]>(`${this.apiUrl}/all`);
+    }
+
+    getUserNotifications(unreadOnly: boolean = false): Observable<Notification[]> {
         return this.http.get<Notification[]>(`${this.apiUrl}?unreadOnly=${unreadOnly}`);
     }
 
@@ -76,12 +80,11 @@ export class NotificationService {
     }
 
     refreshUnreadCount(): void {
-        this.getNotifications(true).subscribe(notifications => {
+        this.getUserNotifications(true).subscribe(notifications => {
             this.unreadCountSubject.next(notifications.length);
         });
     }
 
-    // Notification Rules Management
     getRules(): Observable<NotificationRule[]> {
         return this.http.get<NotificationRule[]>(this.rulesApiUrl);
     }

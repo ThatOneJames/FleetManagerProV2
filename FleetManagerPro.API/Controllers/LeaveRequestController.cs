@@ -81,7 +81,6 @@ namespace FleetManagerPro.API.Controllers
             }
         }
 
-
         [HttpGet("{id}")]
         public async Task<IActionResult> GetLeaveRequestById(string id)
         {
@@ -127,6 +126,38 @@ namespace FleetManagerPro.API.Controllers
                 }
 
                 var leaveRequest = await _leaveRequestService.CreateLeaveRequestAsync(dto);
+
+                var driver = await _context.Users.FindAsync(dto.DriverId);
+
+                var leaveTypeName = await _context.Database
+                    .SqlQuery<string>($"SELECT name FROM leave_types WHERE id = {leaveRequest.LeaveTypeId}")
+                    .FirstOrDefaultAsync() ?? "leave";
+
+                var adminUsers = await _context.Users.Where(u => u.Role == "Admin").ToListAsync();
+
+                foreach (var admin in adminUsers)
+                {
+                    var notification = new Notification
+                    {
+                        UserId = admin.Id,
+                        Title = "New Leave Request",
+                        Message = $"{driver?.Name ?? "A driver"} has submitted a {leaveTypeName} request from {leaveRequest.StartDate:MMM dd} to {leaveRequest.EndDate:MMM dd}",
+                        Type = "Info",
+                        Category = "Leave",
+                        RelatedEntityType = "LeaveRequest",
+                        RelatedEntityId = leaveRequest.Id,
+                        IsRead = false,
+                        IsSent = false,
+                        SendEmail = true,
+                        SendSms = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.Notifications.Add(notification);
+                }
+
+                await _context.SaveChangesAsync();
+
                 return CreatedAtAction(nameof(GetLeaveRequestById), new { id = leaveRequest.Id }, leaveRequest);
             }
             catch (ArgumentException ex)

@@ -40,6 +40,25 @@ namespace FleetManagerPro.API.Controllers
             }
         }
 
+        [HttpGet("all")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllNotifications()
+        {
+            try
+            {
+                var notifications = await _context.Notifications
+                    .Include(n => n.User)
+                    .OrderByDescending(n => n.CreatedAt)
+                    .Take(100)
+                    .ToListAsync();
+                return Ok(notifications);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error retrieving notifications", error = ex.Message });
+            }
+        }
+
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateNotification([FromBody] Notification notification)

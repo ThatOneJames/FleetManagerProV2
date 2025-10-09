@@ -7,7 +7,7 @@ import { DriverService, CreateDriverDto, UpdateDriverDto } from '../../../servic
 import { NotificationService, Notification, NotificationRule } from '../../../services/notification.service';
 import { AuthService } from '../../../services/auth.service';
 import { User } from '../../../models/user.model';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -18,7 +18,8 @@ import { environment } from '../../../../environments/environment';
 export class SystemManagementComponent implements OnInit, OnDestroy {
     selectedTabIndex = 0;
     users: User[] = [];
-    userColumns: string[] = ['name', 'email', 'role', 'status', 'lastLogin', 'actions'];
+    vehicles: any[] = [];
+    userColumns: string[] = ['name', 'email', 'role', 'status', 'actions'];
     userForm!: FormGroup;
     editingUser: User | null = null;
     showUserForm = false;
@@ -57,6 +58,9 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         'MaintenanceOverdue',
         'LeaveApproved',
         'LeaveRejected',
+        'LeaveRequested',
+        'InspectionReportSubmitted',
+        'RouteCompleted',
         'DriverStatusChange',
         'VehicleStatusChange',
         'SystemMaintenance',
@@ -81,6 +85,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         this.refreshSubscription = interval(30000).subscribe(() => {
             this.refreshData();
         });
+        this.createDefaultNotificationRules();
     }
 
     ngOnDestroy(): void {
@@ -152,11 +157,55 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         rolesControl?.updateValueAndValidity();
     }
 
+    private async createDefaultNotificationRules(): Promise<void> {
+        const defaultRules = [
+            {
+                name: 'Leave Request Notification',
+                triggerType: 'LeaveRequested',
+                conditionText: 'Notify admin when a driver submits a leave request',
+                recipients: 'Admin',
+                sendEmail: true,
+                sendSms: false,
+                isActive: true
+            },
+            {
+                name: 'Inspection Report Notification',
+                triggerType: 'InspectionReportSubmitted',
+                conditionText: 'Notify admin when an inspection report is submitted',
+                recipients: 'Admin',
+                sendEmail: true,
+                sendSms: false,
+                isActive: true
+            },
+            {
+                name: 'Route Completion Notification',
+                triggerType: 'RouteCompleted',
+                conditionText: 'Notify admin when a driver completes a route',
+                recipients: 'Admin',
+                sendEmail: false,
+                sendSms: false,
+                isActive: true
+            }
+        ];
+
+        for (const rule of defaultRules) {
+            const exists = this.notificationRules.some(r => r.name === rule.name);
+            if (!exists) {
+                try {
+                    await this.notificationService.createRule(rule).toPromise();
+                } catch (error) {
+                    console.error(`Error creating rule ${rule.name}:`, error);
+                }
+            }
+        }
+    }
+
     private async loadAllData(): Promise<void> {
         this.loading = true;
         try {
             await Promise.all([
                 this.loadUsers(),
+                this.loadVehicles(),
                 this.loadNotifications(),
                 this.loadNotificationRules(),
                 this.loadReports(),
@@ -181,22 +230,9 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     private async loadUsers(): Promise<void> {
         return new Promise((resolve) => {
             this.driverService.getAllUsers().subscribe({
-                next: async (data) => {
+                next: (data) => {
                     this.users = data;
-
-                    for (const user of this.users) {
-                        try {
-                            const latestAttendance = await this.http.get<any>(
-                                `${environment.apiUrl}/attendance/driver/${user.id}/latest`
-                            ).toPromise();
-
-                            user.lastAttendance = latestAttendance?.clockIn || null;
-                        } catch (error) {
-                            user.lastAttendance = undefined;
-                        }
-                    }
-
-                    console.log('✅ Loaded users with attendance:', this.users.length);
+                    console.log('✅ Loaded users:', this.users.length);
                     resolve();
                 },
                 error: (error) => {
@@ -207,6 +243,25 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         });
     }
 
+    private async loadVehicles(): Promise<void> {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        return new Promise((resolve) => {
+            this.http.get<any[]>(`${environment.apiUrl}/vehicles`, { headers }).subscribe({
+                next: (data) => {
+                    this.vehicles = data;
+                    resolve();
+                },
+                error: () => resolve()
+            });
+        });
+    }
 
     toggleUserForm(): void {
         this.showUserForm = !this.showUserForm;
@@ -507,14 +562,215 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     }
 
     private async loadReports(): Promise<void> {
-        this.reports = [
-            { reportName: 'Monthly Trip Report - January 2024', type: 'Trips', generatedDate: new Date('2024-01-31'), size: '2.4 MB', format: 'PDF' },
-            { reportName: 'Driver Performance Report', type: 'Drivers', generatedDate: new Date('2024-01-30'), size: '1.8 MB', format: 'Excel' }
-        ];
+        const token = localStorage.getItem('token');
+        if (!token) {
+            this.reports = [];
+            return;
+        }
+
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        this.driverService.getAllUsers().subscribe({
+            next: async (users) => {
+                const drivers = users.filter(u => u.role === 'Driver');
+                const currentMonth = new Date();
+                const attendanceReports: any[] = [];
+
+                for (let i = 0; i < 6; i++) {
+                    const targetMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - i, 1);
+                    const year = targetMonth.getFullYear();
+                    const month = targetMonth.getMonth();
+                    const monthName = targetMonth.toLocaleString('default', { month: 'long' });
+                    const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+                    const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+                    const attendanceData: any[] = [];
+
+                    for (const driver of drivers) {
+                        try {
+                            const records = await this.http.get<any[]>(
+                                `${environment.apiUrl}/attendance/driver/${driver.id}/range?startDate=${startDate}&endDate=${endDate}`,
+                                { headers }
+                            ).toPromise();
+
+                            if (records && records.length > 0) {
+                                attendanceData.push({
+                                    driverId: driver.id,
+                                    driverName: driver.name,
+                                    records: records
+                                });
+                            }
+                        } catch (error) {
+                            console.error(`Error loading attendance for ${driver.name}:`, error);
+                        }
+                    }
+
+                    if (attendanceData.length > 0) {
+                        attendanceReports.push({
+                            reportName: `Driver Attendance Report - ${monthName} ${year}`,
+                            type: 'Attendance',
+                            generatedDate: new Date(),
+                            size: `${(attendanceData.length * 0.05).toFixed(1)} MB`,
+                            format: 'CSV',
+                            monthKey: `${year}-${String(month + 1).padStart(2, '0')}`,
+                            attendanceData: attendanceData
+                        });
+                    }
+                }
+
+                this.http.get<any[]>(`${environment.apiUrl}/routes`, { headers }).subscribe({
+                    next: (routes) => {
+                        const completedRoutes = routes.filter(r => r.status === 'completed');
+                        const monthlyGroups = this.groupRoutesByMonth(completedRoutes);
+
+                        const tripReports = Object.keys(monthlyGroups).map(monthKey => {
+                            const [year, month] = monthKey.split('-');
+                            const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', { month: 'long' });
+                            const routeCount = monthlyGroups[monthKey].length;
+
+                            return {
+                                reportName: `Monthly Trip Report - ${monthName} ${year}`,
+                                type: 'Trips',
+                                generatedDate: new Date(),
+                                size: `${(routeCount * 0.1).toFixed(1)} MB`,
+                                format: 'CSV',
+                                monthKey: monthKey,
+                                routes: monthlyGroups[monthKey]
+                            };
+                        }).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+
+                        this.reports = [...attendanceReports, ...tripReports].sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+                    },
+                    error: (err) => {
+                        console.error('Error loading trip reports:', err);
+                        this.reports = attendanceReports;
+                    }
+                });
+            },
+            error: (err) => {
+                console.error('Error loading reports:', err);
+                this.reports = [];
+            }
+        });
+    }
+
+    private groupRoutesByMonth(routes: any[]): { [key: string]: any[] } {
+        return routes.reduce((groups: any, route) => {
+            const endDate = new Date(route.endTime || route.updatedAt);
+            const monthKey = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}`;
+
+            if (!groups[monthKey]) {
+                groups[monthKey] = [];
+            }
+            groups[monthKey].push(route);
+            return groups;
+        }, {});
     }
 
     async downloadReport(report: any): Promise<void> {
-        this.showSnackbar(`Downloading ${report.reportName}...`, 'success');
+        let csv = '';
+        if (report.type === 'Attendance') {
+            csv = this.generateAttendanceReportCSV(report.attendanceData);
+        } else {
+            csv = this.generateTripReportCSV(report.routes);
+        }
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${report.reportName}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        this.showSnackbar(`Downloaded ${report.reportName}`, 'success');
+    }
+
+    private generateAttendanceReportCSV(attendanceData: any[]): string {
+        const headers = [
+            'Driver ID',
+            'Driver Name',
+            'Date',
+            'Clock In',
+            'Clock Out',
+            'Total Hours',
+            'Break Duration',
+            'Overtime Hours',
+            'Status',
+            'Location',
+            'Notes'
+        ];
+
+        const rows: any[] = [];
+
+        attendanceData.forEach(driverData => {
+            driverData.records.forEach((record: any) => {
+                rows.push([
+                    driverData.driverId || '',
+                    driverData.driverName || '',
+                    record.date ? new Date(record.date).toLocaleDateString() : 'N/A',
+                    record.clockIn || 'N/A',
+                    record.clockOut || 'N/A',
+                    record.totalHours || '0',
+                    record.breakDuration || '0',
+                    record.overtimeHours || '0',
+                    record.status || 'N/A',
+                    record.location || 'N/A',
+                    record.notes || ''
+                ]);
+            });
+        });
+
+        return [headers, ...rows]
+            .map(row => row.map((field: any) => `"${field}"`).join(','))
+            .join('\n');
+    }
+
+    private generateTripReportCSV(routes: any[]): string {
+        const headers = [
+            'Route ID',
+            'Route Name',
+            'Driver',
+            'Vehicle',
+            'Start Date',
+            'End Date',
+            'Total Stops',
+            'Completed Stops',
+            'Status',
+            'Duration (hours)',
+            'Distance (km)'
+        ];
+
+        const rows = routes.map(route => {
+            const driverName = this.users.find(u => u.id === route.driverId)?.name || 'N/A';
+            const vehiclePlate = this.vehicles.find(v => v.id === route.vehicleId)?.licensePlate || 'N/A';
+            const completedStops = route.stops?.filter((s: any) => s.status === 'completed').length || 0;
+
+            return [
+                route.id || '',
+                route.name || '',
+                driverName,
+                vehiclePlate,
+                route.startTime ? new Date(route.startTime).toLocaleString() : 'N/A',
+                route.endTime ? new Date(route.endTime).toLocaleString() : 'N/A',
+                route.stops?.length || 0,
+                completedStops,
+                route.status || 'N/A',
+                route.startTime && route.endTime ?
+                    ((new Date(route.endTime).getTime() - new Date(route.startTime).getTime()) / (1000 * 60 * 60)).toFixed(2) : 'N/A',
+                route.totalDistance || route.estimated_distance || 'N/A'
+            ];
+        });
+
+        return [headers, ...rows]
+            .map(row => row.map((field: any) => `"${field}"`).join(','))
+            .join('\n');
     }
 
     private async loadAttendanceStats(): Promise<void> {
@@ -586,7 +842,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             });
         });
     }
-
 
     getUserName(userId: string): string {
         const user = this.users.find(u => u.id === userId);

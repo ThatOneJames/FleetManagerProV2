@@ -94,6 +94,31 @@ namespace FleetManagerPro.API.Controllers
             }
 
             _context.PreTripInspections.Add(inspection);
+
+            var driver = await _context.Users.FindAsync(driverId);
+            var adminUsers = await _context.Users.Where(u => u.Role == "Admin").ToListAsync();
+
+            foreach (var admin in adminUsers)
+            {
+                var notification = new Notification
+                {
+                    UserId = admin.Id,
+                    Title = "New Inspection Report",
+                    Message = $"{driver?.Name ?? "A driver"} has submitted a pre-trip inspection report for vehicle {vehicle.LicensePlate} ({inspection.Result})",
+                    Type = inspection.Result == "Pass" ? "Success" : "Warning",
+                    Category = "Maintenance",
+                    RelatedEntityType = "PreTripInspection",
+                    RelatedEntityId = inspection.Id,
+                    IsRead = false,
+                    IsSent = false,
+                    SendEmail = true,
+                    SendSms = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Notifications.Add(notification);
+            }
+
             await _context.SaveChangesAsync();
 
             return Ok(new
