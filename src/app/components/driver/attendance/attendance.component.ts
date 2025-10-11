@@ -340,38 +340,28 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
         });
     }
 
-    // ✅ FIXED: Handle backend sending wrong timezone (UTC instead of Philippine time)
     formatTime(timeStr?: string): string {
         if (!timeStr) return 'N/A';
 
         try {
-            console.log('🕐 Formatting time:', timeStr);
-
-            // Remove fractional seconds
             const cleanTime = timeStr.split('.')[0];
 
-            // Backend sends HH:MM format in UTC (needs +8 hours for Philippine time)
             if (cleanTime.length <= 8 && !cleanTime.includes('T') && !cleanTime.includes('Z')) {
                 const parts = cleanTime.split(':');
                 if (parts.length >= 2) {
                     let hours = parseInt(parts[0], 10);
                     const minutes = parseInt(parts[1], 10);
 
-                    // ✅ Add 8 hours for Philippine timezone (UTC+8)
                     hours = (hours + 8) % 24;
 
-                    // Convert to 12-hour format
                     const period = hours >= 12 ? 'PM' : 'AM';
                     const displayHours = hours % 12 || 12;
                     const displayMinutes = minutes.toString().padStart(2, '0');
 
-                    const result = `${displayHours}:${displayMinutes} ${period}`;
-                    console.log(`✅ Converted ${timeStr} -> ${result}`);
-                    return result;
+                    return `${displayHours}:${displayMinutes} ${period}`;
                 }
             }
 
-            // If it's a full ISO datetime string
             const date = new Date(timeStr);
             if (!isNaN(date.getTime())) {
                 return date.toLocaleTimeString('en-PH', {
@@ -383,9 +373,22 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
 
             return 'Invalid time';
         } catch (error) {
-            console.error('❌ Error formatting time:', timeStr, error);
+            console.error('Error formatting time:', timeStr, error);
             return 'Invalid time';
         }
+    }
+
+    formatHours(decimalHours: number | undefined): string {
+        if (!decimalHours || decimalHours === 0) return '0h';
+
+        const hours = Math.floor(decimalHours);
+        const minutes = Math.round((decimalHours - hours) * 60);
+
+        if (minutes === 0) {
+            return `${hours}h`;
+        }
+
+        return `${hours}h ${minutes}m`;
     }
 
     getStatusClass(status?: string): string {
@@ -450,8 +453,36 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
     }
 
     get todayTotalHours(): string {
-        if (!this.todayAttendance?.totalHours) return '0h';
-        return `${this.todayAttendance.totalHours}h`;
+        if (!this.todayAttendance?.clockIn) return '0h';
+
+        if (this.todayAttendance?.totalHours) {
+            return this.formatHours(this.todayAttendance.totalHours);
+        }
+
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        try {
+            const clockInStr = this.todayAttendance.clockIn.split('.')[0];
+            const clockInDateTime = new Date(`${today}T${clockInStr}`);
+
+            const endTime = this.todayAttendance.clockOut
+                ? new Date(`${today}T${this.todayAttendance.clockOut.split('.')[0]}`)
+                : now;
+
+            const diffMs = endTime.getTime() - clockInDateTime.getTime();
+
+            if (diffMs > 0 && diffMs < (24 * 60 * 60 * 1000)) {
+                const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                return `${hours}h ${minutes}m`;
+            }
+
+            return '0h';
+        } catch (error) {
+            console.error('Error calculating hours:', error);
+            return '0h';
+        }
     }
 
     get weeklyStats() {
@@ -464,6 +495,10 @@ export class DriverAttendanceComponent implements OnInit, OnDestroy {
             overtimeHours: 0,
             attendancePercentage: 0
         };
+    }
+
+    get weeklyTotalHoursFormatted(): string {
+        return this.formatHours(this.weeklyStats.totalHours);
     }
 
     getDayName(date: Date): string {

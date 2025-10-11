@@ -1,5 +1,4 @@
 ﻿<div class="p-6 space-y-6">
-
     <div class="flex items-start justify-between">
         <div>
             <h1 class="mb-2">Welcome back, {{ getDriverName() }}!</h1>
@@ -7,7 +6,7 @@
         </div>
         <div class="flex items-center gap-3">
             <span class="px-2 py-1 bg-gray-200 rounded flex items-center gap-1">
-                🚚 {{ assignedVehicle }}
+                🚗 {{ assignedVehicle }}
             </span>
             <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
                 {{ getDriverName().charAt(0).toUpperCase() }}
@@ -15,43 +14,26 @@
         </div>
     </div>
 
-    <!-- Quick Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div class="p-4 border rounded shadow">
-            <div class="text-sm text-gray-500">Miles This Week</div>
-            <div class="text-2xl font-bold">{{ driverStats.milesThisWeek }}</div>
-        </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="p-4 border rounded shadow">
             <div class="text-sm text-gray-500">Trips Completed</div>
             <div class="text-2xl font-bold text-green-600">{{ driverStats.tripsCompleted }}</div>
         </div>
         <div class="p-4 border rounded shadow">
-            <div class="text-sm text-gray-500">On-Time Rate</div>
-            <div class="text-2xl font-bold">{{ getOnTimeRate() }}%</div>
-        </div>
-        <div class="p-4 border rounded shadow">
-            <div class="text-sm text-gray-500">Fuel Efficiency</div>
-            <div class="text-2xl font-bold">{{ driverStats.fuelEfficiency }} MPG</div>
-        </div>
-        <div class="p-4 border rounded shadow">
-            <div class="text-sm text-gray-500">Hours Worked</div>
-            <div class="text-2xl font-bold">{{ driverStats.hoursWorked }}h</div>
+            <div class="text-sm text-gray-500">Hours Worked This Week</div>
+            <div class="text-2xl font-bold">{{ displayHoursWorked }}</div>
         </div>
     </div>
 
-    <!-- Current Trip -->
     <div class="p-4 border rounded shadow">
         <h3 class="font-medium mb-2">Current Trip</h3>
-
         <div *ngIf="currentTrip; else noTrip">
             <div class="flex justify-between mb-3">
                 <div>
                     <div class="font-medium">{{ currentTrip.destination }}</div>
-                    <div class="text-gray-500 text-sm">ETA: {{ currentTrip.estimatedArrival }}</div>
                 </div>
                 <span class="px-2 py-1 bg-gray-200 rounded">{{ currentTrip.distance }}</span>
             </div>
-
             <div *ngFor="let stop of currentTrip.stops; let i = index" class="flex items-center gap-3 mb-2">
                 <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs"
                      [ngClass]="getStatusColor(stop.status)">
@@ -65,7 +47,6 @@
                 </div>
             </div>
         </div>
-
         <ng-template #noTrip>
             <div class="text-center py-8 text-gray-500">
                 <p>No active trip at the moment</p>
@@ -74,26 +55,17 @@
         </ng-template>
     </div>
 
-    <!-- Today's Schedule -->
     <div class="p-4 border rounded shadow">
-        <h3 class="font-medium mb-2">Today's Schedule</h3>
-        <div *ngFor="let item of todaySchedule" class="flex items-center gap-3 p-2 rounded bg-gray-50 mb-1">
-            <div class="w-16 text-sm font-medium">{{ item.time }}</div>
-            <div class="flex-1">
-                <div class="text-sm font-medium">{{ item.task }}</div>
-                <span class="px-1 py-0.5 text-xs rounded" [ngClass]="getStatusColor(item.status)">
-                    {{ item.status }}
-                </span>
-            </div>
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="font-medium">Notifications</h3>
+            <button (click)="viewAllNotifications()"
+                    class="text-sm text-blue-600 hover:text-blue-700 hover:underline">
+                View All
+            </button>
         </div>
-    </div>
-
-    <!-- Notifications -->
-    <div class="p-4 border rounded shadow">
-        <h3 class="font-medium mb-2">Notifications</h3>
-        <div *ngFor="let notification of notifications" class="p-2 mb-2 border rounded">
+        <div *ngFor="let notification of notifications" class="p-2 mb-2 border rounded hover:bg-gray-50 transition-colors">
             <div class="flex justify-between mb-1">
-                <span class="px-1 py-0.5 text-xs rounded" [ngClass]="getPriorityColor(notification.priority)">
+                <span class="px-2 py-1 text-xs rounded" [ngClass]="getPriorityColor(notification.priority)">
                     {{ notification.priority }}
                 </span>
                 <span class="text-gray-500 text-xs">{{ notification.time }}</span>
@@ -101,5 +73,4 @@
             <p class="text-sm">{{ notification.message }}</p>
         </div>
     </div>
-
 </div>

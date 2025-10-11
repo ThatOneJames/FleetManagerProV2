@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+﻿import { Component, OnInit, OnDestroy } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Subject, forkJoin, of } from 'rxjs';
 import { takeUntil, catchError, map } from 'rxjs/operators';
@@ -8,6 +8,7 @@ import { RouteService } from '../../../services/route.service';
 import { DriverService } from '../../../services/driver.service';
 import { environment } from '../../../../environments/environment';
 import { MaintenanceService } from '../../../services/maintenance.service';
+import { MaintenanceRequestService } from '../../../services/maintenancerequest.service';
 
 interface DashboardStats {
     totalVehicles: number;
@@ -23,7 +24,6 @@ interface VehicleStatus {
     licensePlate: string;
     driver: string;
     status: string;
-    location: string;
     fuelLevel: number;
     make?: string;
     model?: string;
@@ -62,7 +62,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     errorMessage = '';
     successMessage = '';
 
-    // Chart data
     chartData = {
         fuelConsumption: [
             { name: 'Mon', value: 0 },
@@ -86,7 +85,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         private vehicleService: VehicleService,
         private routeService: RouteService,
         private driverService: DriverService,
-        private maintenanceService: MaintenanceService
+        private maintenanceService: MaintenanceService,
+        private maintenanceRequestService: MaintenanceRequestService
     ) { }
 
     ngOnInit(): void {
@@ -118,18 +118,22 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
             model: v.model,
             driver: v.currentDriver?.name || 'Unassigned',
             status: v.status || 'Idle',
-            location: v.location || 'Unknown',
             fuelLevel: v.fuelLevel || 0
         }));
 
         const activeCount = vehicles.filter(v =>
-            v.status === 'Active' || v.status === 'InUse' || v.status === 'OnRoute'
+            v.status === 'Active' ||
+            v.status === 'InUse' ||
+            v.status === 'OnRoute' ||
+            v.status === 'Ready'
         ).length;
+
         const maintenanceCount = vehicles.filter(v =>
             v.status === 'Maintenance' || v.status === 'OutOfService'
         ).length;
+
         const idleCount = vehicles.filter(v =>
-            v.status === 'Idle' || v.status === 'Ready' || v.status === 'NotAvailable'
+            v.status === 'Idle' || v.status === 'NotAvailable'
         ).length;
 
         this.chartData.vehicleStatus = [
@@ -141,24 +145,56 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         this.stats.totalMileage = vehicles.reduce((sum, v) => sum + (v.currentMileage || 0), 0);
 
         const totalFuel = vehicles.reduce((sum, v) => sum + (v.fuelLevel || 0), 0);
-        this.stats.fuelConsumption = vehicles.length > 0 ? totalFuel / vehicles.length : 0;
-
-        // Set initial maintenanceDue from vehicle status
-        // This will be overridden by processMaintenance() if maintenance data exists
-        this.stats.maintenanceDue = maintenanceCount;
+        this.stats.fuelConsumption = vehicles.length > 0 ? Math.round(totalFuel / vehicles.length) : 0;
     }
 
+    private async processDrivers(drivers: any[]): Promise<void> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
 
-    private processDrivers(drivers: any[]): void {
-        this.stats.totalDrivers = drivers.filter(d => d.role === 'Driver').length;
+        this.routeService.getAllRoutes().subscribe({
+            next: (routes) => {
+                const driversOnRoute = new Set(
+                    routes
+                        .filter(r => r.status === 'in_progress')
+                        .map(r => r.driverId)
+                );
+
+                const driverPromises = drivers
+                    .filter(d => d.role === 'Driver')
+                    .map(driver =>
+                        this.http.get<any>(`${this.apiUrl}/attendance/driver/${driver.id}/today`, { headers })
+                            .toPromise()
+                            .then(attendance => {
+                                const clockedIn = attendance?.data?.clockIn || attendance?.clockIn;
+                                const clockedOut = attendance?.data?.clockOut || attendance?.clockOut;
+
+                                return clockedIn && !clockedOut ? 1 : 0;
+                            })
+                            .catch(() => 0)
+                    );
+
+                Promise.all(driverPromises).then(counts => {
+                    this.stats.totalDrivers = counts.reduce((sum, count) => sum + count, 0);
+                });
+            },
+            error: (err) => {
+                console.error('Error loading routes for driver check:', err);
+                this.stats.totalDrivers = drivers.filter(d => d.role === 'Driver').length;
+            }
+        });
     }
 
     private processRoutes(routes: any[]): void {
         this.stats.activeRoutes = routes.filter(r =>
-            r.status === 'in_progress' || r.status === 'planned'
+            r.status === 'in_progress' ||
+            r.status === 'planned' ||
+            r.status === 'scheduled'
         ).length;
     }
-
 
     async loadDashboardData(): Promise<void> {
         this.isLoading = true;
@@ -184,11 +220,16 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
                         return of([]);
                     })
                 ),
-                // Use MaintenanceService instead of direct HTTP call
-                maintenance: this.maintenanceService.getAllTasks().pipe(
+                maintenanceTasks: this.maintenanceService.getAllTasks().pipe(
                     catchError(err => {
-                        console.warn('Maintenance endpoint not available:', err);
-                        return of([]); // Return empty array if maintenance endpoint doesn't exist
+                        console.warn('Maintenance tasks endpoint not available:', err);
+                        return of([]);
+                    })
+                ),
+                maintenanceRequests: this.maintenanceRequestService.getAllRequests().pipe(
+                    catchError(err => {
+                        console.warn('Maintenance requests endpoint not available:', err);
+                        return of([]);
                     })
                 )
             }).pipe(
@@ -199,7 +240,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
                     this.processVehicles(data.vehicles);
                     this.processDrivers(data.drivers);
                     this.processRoutes(data.routes);
-                    this.processMaintenance(data.maintenance);
+                    this.processMaintenance(data.maintenanceTasks, data.maintenanceRequests, data.vehicles);
                     this.generateActivities(data);
                     this.isLoading = false;
                     this.successMessage = 'Dashboard loaded successfully';
@@ -219,109 +260,159 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         }
     }
 
-    private processMaintenance(maintenance: any[]): void {
-        if (!maintenance || maintenance.length === 0) {
-            // Calculate from vehicle status - only vehicles currently in maintenance
-            this.stats.maintenanceDue = this.vehicles.filter(v =>
-                v.status === 'Maintenance' || v.status === 'OutOfService'
-            ).length;
-            return;
+    private processMaintenance(tasks: any[], requests: any[], vehicles: any[]): void {
+        let maintenanceCount = 0;
+
+        if (tasks && tasks.length > 0) {
+            const activeTasks = tasks.filter(t =>
+                t.status === 'Scheduled' ||
+                t.status === 'Pending' ||
+                t.status === 'InProgress' ||
+                t.status === 'Overdue'
+            );
+            maintenanceCount += activeTasks.length;
         }
 
-        // Count ONLY pending/scheduled/in-progress maintenance (NOT completed)
-        this.stats.maintenanceDue = maintenance.filter(m =>
-            m.status === 'Scheduled' || m.status === 'Pending' || m.status === 'InProgress'
-        ).length;
+        if (requests && requests.length > 0) {
+            const activeRequests = requests.filter(r => {
+                const status = r.status?.replace(/\s+/g, '');
+                return status === 'Pending' || status === 'InProgress';
+            });
+            maintenanceCount += activeRequests.length;
+        }
 
-        // ALSO check vehicle status and take the higher number
-        const vehiclesInMaintenance = this.vehicles.filter(v =>
+        const vehiclesInMaintenance = vehicles.filter(v =>
             v.status === 'Maintenance' || v.status === 'OutOfService'
         ).length;
 
-        const activeTasks = maintenance.filter(m => 
-        m.status === 'Scheduled' || m.status === 'Pending' || m.status === 'InProgress'
-    ).length;
+        this.stats.maintenanceDue = Math.max(maintenanceCount, vehiclesInMaintenance);
 
-        // Override with active task count if maintenance data is available
-        this.stats.maintenanceDue = activeTasks;
+        console.log('=== Maintenance Due Calculation ===');
+        console.log('Active tasks:', maintenanceCount);
+        console.log('Vehicles in maintenance:', vehiclesInMaintenance);
+        console.log('Final Maintenance Due:', this.stats.maintenanceDue);
+        console.log('===================================');
     }
-
-
 
     private generateActivities(data: any): void {
         const activities: Activity[] = [];
 
-        // Generate activities from recent routes
-        data.routes?.slice(0, 3).forEach((route: any, index: number) => {
-            if (route.status === 'completed') {
-                activities.push({
-                    id: activities.length + 1,
-                    type: 'route_completed',
-                    message: `Route "${route.name}" completed by ${route.driverName || 'Unknown'}`,
-                    timestamp: new Date(route.endTime || route.updatedAt || Date.now() - index * 300000),
-                    icon: 'check_circle',
-                    color: 'success'
-                });
-            } else if (route.status === 'in_progress') {
-                activities.push({
-                    id: activities.length + 1,
-                    type: 'route_started',
-                    message: `Route "${route.name}" started by ${route.driverName || 'Unknown'}`,
-                    timestamp: new Date(route.startTime || route.updatedAt || Date.now() - index * 600000),
-                    icon: 'directions',
-                    color: 'info'
-                });
-            }
-        });
+        const getDriverName = (driverId: string): string => {
+            if (!driverId || !data.drivers) return 'Unknown';
+            const driver = data.drivers.find((d: any) => d.id === driverId);
+            return driver ? driver.name : 'Unknown';
+        };
 
-        // Generate activities from maintenance
-        data.maintenance?.slice(0, 2).forEach((maint: any, index: number) => {
-            const vehicle = data.vehicles.find((v: any) => v.id === maint.vehicleId);
-            const vehicleName = vehicle ? `${vehicle.make} ${vehicle.model} (${vehicle.licensePlate})` : 'Unknown Vehicle';
+        if (data.routes && Array.isArray(data.routes)) {
+            data.routes.slice(0, 5).forEach((route: any, index: number) => {
+                if (!route) return;
 
-            activities.push({
-                id: activities.length + 1,
-                type: 'maintenance_scheduled',
-                message: `${vehicleName} scheduled for ${maint.type || 'maintenance'}`,
-                timestamp: new Date(maint.scheduledDate || maint.createdAt || Date.now() - index * 900000),
-                icon: 'build',
-                color: 'warning'
+                const driverName = getDriverName(route.driverId);
+
+                if (route.status === 'completed') {
+                    activities.push({
+                        id: activities.length + 1,
+                        type: 'route_completed',
+                        message: `Route "${route.name || 'Unnamed'}" completed by ${driverName}`,
+                        timestamp: new Date(route.endTime || route.updatedAt || Date.now() - index * 300000),
+                        icon: 'check_circle',
+                        color: 'success'
+                    });
+                } else if (route.status === 'in_progress') {
+                    activities.push({
+                        id: activities.length + 1,
+                        type: 'route_started',
+                        message: `Route "${route.name || 'Unnamed'}" started by ${driverName}`,
+                        timestamp: new Date(route.startTime || route.updatedAt || Date.now() - index * 600000),
+                        icon: 'directions',
+                        color: 'info'
+                    });
+                } else if (route.status === 'planned' || route.status === 'scheduled') {
+                    activities.push({
+                        id: activities.length + 1,
+                        type: 'route_planned',
+                        message: `Route "${route.name || 'Unnamed'}" scheduled for ${driverName}`,
+                        timestamp: new Date(route.createdAt || route.updatedAt || Date.now() - index * 400000),
+                        icon: 'schedule',
+                        color: 'info'
+                    });
+                }
             });
-        });
+        }
 
-        // Generate activities from vehicle status changes
-        data.vehicles?.slice(0, 2).forEach((vehicle: any, index: number) => {
-            if (vehicle.status === 'OnRoute' || vehicle.status === 'InUse') {
+        if (data.maintenanceTasks && Array.isArray(data.maintenanceTasks)) {
+            data.maintenanceTasks.slice(0, 2).forEach((maint: any, index: number) => {
+                if (!maint) return;
+
+                const vehicle = data.vehicles?.find((v: any) => v.id === maint.vehicleId);
+                const vehicleName = vehicle
+                    ? `${vehicle.make || ''} ${vehicle.model || ''} (${vehicle.licensePlate || ''})`.trim()
+                    : 'Unknown Vehicle';
+
                 activities.push({
                     id: activities.length + 1,
-                    type: 'vehicle_deployed',
-                    message: `${vehicle.make} ${vehicle.model} (${vehicle.licensePlate}) deployed`,
-                    timestamp: new Date(vehicle.updatedAt || Date.now() - index * 1200000),
-                    icon: 'local_shipping',
-                    color: 'info'
+                    type: 'maintenance_scheduled',
+                    message: `${vehicleName} scheduled for ${maint.taskType || 'maintenance'}`,
+                    timestamp: new Date(maint.scheduledDate || maint.createdAt || Date.now() - index * 900000),
+                    icon: 'build',
+                    color: 'warning'
                 });
-            }
-        });
+            });
+        }
+
+        if (data.maintenanceRequests && Array.isArray(data.maintenanceRequests)) {
+            data.maintenanceRequests.slice(0, 2).forEach((request: any, index: number) => {
+                if (!request || request.status === 'Completed') return;
+
+                const vehicle = data.vehicles?.find((v: any) => v.id === request.vehicleId);
+                const vehicleName = vehicle
+                    ? `${vehicle.make || ''} ${vehicle.model || ''} (${vehicle.licensePlate || ''})`.trim()
+                    : 'Unknown Vehicle';
+
+                activities.push({
+                    id: activities.length + 1,
+                    type: 'maintenance_requested',
+                    message: `${vehicleName} - ${request.issueType || 'Issue'} reported (${request.issueSeverity || 'Unknown'} priority)`,
+                    timestamp: new Date(request.reportedDate || request.createdAt || Date.now() - index * 700000),
+                    icon: 'build',
+                    color: 'warning'
+                });
+            });
+        }
+
+        if (data.vehicles && Array.isArray(data.vehicles)) {
+            data.vehicles.slice(0, 2).forEach((vehicle: any, index: number) => {
+                if (!vehicle) return;
+
+                if (vehicle.status === 'OnRoute' || vehicle.status === 'InUse' || vehicle.status === 'Active') {
+                    const vehicleName = `${vehicle.make || ''} ${vehicle.model || ''} (${vehicle.licensePlate || ''})`.trim();
+
+                    activities.push({
+                        id: activities.length + 1,
+                        type: 'vehicle_deployed',
+                        message: `${vehicleName} deployed`,
+                        timestamp: new Date(vehicle.updatedAt || Date.now() - index * 1200000),
+                        icon: 'local_shipping',
+                        color: 'info'
+                    });
+                }
+            });
+        }
 
         this.recentActivities = activities
             .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
             .slice(0, 10);
     }
 
-    private getDriverNameById(driverId?: string): string | null {
-        // This will be populated from the drivers array after loading
-        return null;
-    }
-
     getStatusColor(status: string): string {
         const statusLower = status.toLowerCase();
-        if (statusLower.includes('active') || statusLower === 'inuse' || statusLower === 'onroute') {
+        if (statusLower.includes('active') || statusLower === 'inuse' || statusLower === 'onroute' || statusLower === 'ready') {
             return 'success';
         }
         if (statusLower === 'maintenance' || statusLower === 'outofservice') {
             return 'warn';
         }
-        if (statusLower === 'idle' || statusLower === 'ready') {
+        if (statusLower === 'idle' || statusLower === 'notavailable') {
             return 'accent';
         }
         return 'primary';

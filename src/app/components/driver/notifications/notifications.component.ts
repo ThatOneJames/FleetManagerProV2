@@ -4,7 +4,7 @@ import { interval, Subscription } from 'rxjs';
 import { RouteService, Route } from '../../../services/route.service';
 import { LeaveRequestService, LeaveRequest } from '../../../services/leaverequest.service';
 import { MaintenanceService } from '../../../services/maintenance.service';
-import { MaintenanceTask } from '../../../models/maintenance.model'; // IMPORT FROM YOUR MODEL
+import { MaintenanceTask } from '../../../models/maintenance.model';
 import { VehicleService } from '../../../services/vehicle.service';
 import { AuthService } from '../../../services/auth.service';
 
@@ -37,8 +37,8 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     loading: boolean = false;
     errorMessage: string = '';
 
-    // Subscription for auto-refresh
     private refreshSubscription?: Subscription;
+    private readonly STORAGE_KEY = 'driver_notification_status';
 
     constructor(
         private routeService: RouteService,
@@ -57,10 +57,8 @@ export class NotificationsComponent implements OnInit, OnDestroy {
             return;
         }
 
-        // Initial load
         this.loadNotifications();
 
-        // Auto-refresh every 30 seconds
         this.refreshSubscription = interval(30000).subscribe(() => {
             this.loadNotifications();
         });
@@ -78,19 +76,17 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         this.notifications = [];
 
         try {
-            // Load all notification data in parallel
             await Promise.all([
                 this.loadTripNotifications(),
                 this.loadLeaveNotifications(),
                 this.loadMaintenanceNotifications()
             ]);
 
-            // Sort by timestamp (newest first)
             this.notifications.sort((a, b) =>
                 new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
             );
 
-            // Apply current filter
+            this.applyStoredStatus();
             this.filterNotifications();
 
         } catch (error: any) {
@@ -101,12 +97,43 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         }
     }
 
+    private applyStoredStatus(): void {
+        const stored = this.getStoredNotificationStatus();
+
+        this.notifications = this.notifications.filter(n => !stored.deleted.includes(n.id));
+
+        this.notifications.forEach(notification => {
+            if (stored.read.includes(notification.id)) {
+                notification.isRead = true;
+            }
+        });
+    }
+
+    private getStoredNotificationStatus(): { read: string[], deleted: string[] } {
+        const key = `${this.STORAGE_KEY}_${this.currentUserId}`;
+        const stored = localStorage.getItem(key);
+
+        if (stored) {
+            try {
+                return JSON.parse(stored);
+            } catch {
+                return { read: [], deleted: [] };
+            }
+        }
+
+        return { read: [], deleted: [] };
+    }
+
+    private saveNotificationStatus(status: { read: string[], deleted: string[] }): void {
+        const key = `${this.STORAGE_KEY}_${this.currentUserId}`;
+        localStorage.setItem(key, JSON.stringify(status));
+    }
+
     private async loadTripNotifications(): Promise<void> {
         return new Promise((resolve, reject) => {
             this.routeService.getRoutesByDriver(this.currentUserId).subscribe({
                 next: (routes) => {
                     routes.forEach(route => {
-                        // Only show planned and in_progress trips
                         if (route.status === 'planned' || route.status === 'in_progress') {
                             const notification: Notification = {
                                 id: `trip-${route.id}`,
@@ -127,7 +154,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
                 },
                 error: (error) => {
                     console.error('Error loading trip notifications:', error);
-                    resolve(); // Continue even if this fails
+                    resolve();
                 }
             });
         });
@@ -137,7 +164,6 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         return new Promise((resolve, reject) => {
             this.leaveService.getLeaveRequestsByDriverId(this.currentUserId).subscribe({
                 next: (leaveRequests) => {
-                    // Only show approved/rejected leaves (notifications)
                     leaveRequests
                         .filter(req => req.status === 'Approved' || req.status === 'Rejected')
                         .forEach(leave => {
@@ -167,13 +193,10 @@ export class NotificationsComponent implements OnInit, OnDestroy {
 
     private async loadMaintenanceNotifications(): Promise<void> {
         return new Promise((resolve, reject) => {
-            // First, add the hardcoded weekly safety inspection reminder
             this.addWeeklySafetyInspectionReminder();
 
-            // Then get scheduled maintenance tasks from the system
             this.maintenanceService.getAllTasks().subscribe({
                 next: (tasks) => {
-                    // Filter tasks for vehicles assigned to this driver
                     this.vehicleService.getAllVehicles().subscribe({
                         next: (vehicles) => {
                             const driverVehicles = vehicles.filter(v => v.currentDriverId === this.currentUserId);
@@ -181,7 +204,6 @@ export class NotificationsComponent implements OnInit, OnDestroy {
                             tasks.forEach(task => {
                                 const isDriverVehicle = driverVehicles.some(v => v.id === task.vehicleId);
 
-                                // Only show maintenance for driver's assigned vehicles
                                 if (isDriverVehicle && (task.status === 'Scheduled' || task.status === 'Overdue')) {
                                     const vehicle = driverVehicles.find(v => v.id === task.vehicleId);
 
@@ -210,7 +232,6 @@ export class NotificationsComponent implements OnInit, OnDestroy {
                 },
                 error: (error) => {
                     console.error('Error loading maintenance notifications:', error);
-                    // Still add weekly reminder even if tasks fail to load
                     resolve();
                 }
             });
@@ -219,14 +240,12 @@ export class NotificationsComponent implements OnInit, OnDestroy {
 
     private addWeeklySafetyInspectionReminder(): void {
         const today = new Date();
-        const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const dayOfWeek = today.getDay();
 
-        // Calculate next inspection day (let's use Monday as inspection day)
         const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
         const nextInspectionDate = new Date(today);
         nextInspectionDate.setDate(today.getDate() + daysUntilMonday);
 
-        // Get driver's assigned vehicle
         this.vehicleService.getAllVehicles().subscribe({
             next: (vehicles) => {
                 const driverVehicle = vehicles.find(v => v.currentDriverId === this.currentUserId);
@@ -236,7 +255,6 @@ export class NotificationsComponent implements OnInit, OnDestroy {
                     const isToday = daysUntilMonday === 0;
                     const isTomorrow = daysUntilMonday === 1;
 
-                    // Determine priority based on how close the inspection day is
                     let priority: 'high' | 'medium' | 'low' = 'medium';
                     let actionRequired = false;
 
@@ -313,7 +331,6 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         }
     }
 
-
     private generateTripMessage(route: Route): string {
         const scheduledTime = route.startTime
             ? new Date(route.startTime).toLocaleString('en-US', {
@@ -341,7 +358,6 @@ export class NotificationsComponent implements OnInit, OnDestroy {
 
         return `You have been assigned to Trip #${route.name || route.id} scheduled for ${scheduledTime}. ${vehicleInfo ? vehicleInfo + '. ' : ''}Route: ${firstStop} → ${lastStop}.`;
     }
-
 
     private generateLeaveMessage(leave: LeaveRequest): string {
         if (leave.status === 'Approved') {
@@ -382,7 +398,6 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         return 'low';
     }
 
-    // Filter and tab management
     filterNotifications(): void {
         switch (this.activeTab) {
             case 'unread':
@@ -403,20 +418,42 @@ export class NotificationsComponent implements OnInit, OnDestroy {
 
     markAsRead(notification: Notification): void {
         notification.isRead = true;
+
+        const status = this.getStoredNotificationStatus();
+        if (!status.read.includes(notification.id)) {
+            status.read.push(notification.id);
+            this.saveNotificationStatus(status);
+        }
+
         this.filterNotifications();
     }
 
     markAllAsRead(): void {
-        this.notifications.forEach(n => n.isRead = true);
+        const status = this.getStoredNotificationStatus();
+
+        this.notifications.forEach(n => {
+            n.isRead = true;
+            if (!status.read.includes(n.id)) {
+                status.read.push(n.id);
+            }
+        });
+
+        this.saveNotificationStatus(status);
         this.filterNotifications();
     }
 
     deleteNotification(notification: Notification): void {
+        const status = this.getStoredNotificationStatus();
+
+        if (!status.deleted.includes(notification.id)) {
+            status.deleted.push(notification.id);
+            this.saveNotificationStatus(status);
+        }
+
         this.notifications = this.notifications.filter(n => n.id !== notification.id);
         this.filterNotifications();
     }
 
-    // Getters for stats
     get totalNotifications(): number {
         return this.notifications.length;
     }

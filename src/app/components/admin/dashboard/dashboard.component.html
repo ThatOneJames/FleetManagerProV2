@@ -1,17 +1,14 @@
 ﻿<div class="dashboard-container">
-    <!-- Loading Overlay -->
     <div *ngIf="isLoading" class="loading-overlay">
         <div class="spinner"></div>
         <p>Loading dashboard data...</p>
     </div>
 
-    <!-- Error Message -->
     <div *ngIf="errorMessage" class="error-banner">
         <span>⚠️ {{ errorMessage }}</span>
         <button (click)="refreshData()">Retry</button>
     </div>
 
-    <!-- Main Content -->
     <main class="main-content">
         <header>
             <div>
@@ -23,7 +20,6 @@
             </button>
         </header>
 
-        <!-- Stats Cards -->
         <section class="stats-cards">
             <div class="card">
                 <div class="icon">🚗</div>
@@ -47,7 +43,6 @@
             </div>
         </section>
 
-        <!-- Vehicle Status -->
         <section class="panel">
             <h2>Vehicle Status</h2>
             <div *ngIf="displayVehicles.length === 0" class="empty-state">
@@ -58,7 +53,6 @@
                     <tr>
                         <th>License Plate</th>
                         <th>Driver</th>
-                        <th>Location</th>
                         <th>Fuel Level</th>
                         <th>Status</th>
                     </tr>
@@ -67,7 +61,6 @@
                     <tr *ngFor="let vehicle of displayVehicles">
                         <td><strong>{{ vehicle.licensePlate }}</strong></td>
                         <td>{{ vehicle.driver }}</td>
-                        <td>{{ vehicle.location }}</td>
                         <td>
                             <div class="fuel-bar">
                                 <div class="fuel-fill"
@@ -87,7 +80,6 @@
             </table>
         </section>
 
-        <!-- Recent Activities -->
         <section class="panel">
             <h2>Recent Activities</h2>
             <div *ngIf="recentActivities.length === 0" class="empty-state">
@@ -104,28 +96,6 @@
                     <span class="activity-time">{{ getRelativeTime(activity.timestamp) }}</span>
                 </li>
             </ul>
-        </section>
-
-        <section class="panel">
-            <h2>Fleet Summary</h2>
-            <div class="summary-grid">
-                <div class="summary-item">
-                    <div class="summary-label">Avg Fuel Level</div>
-                    <div class="summary-value">{{ stats.fuelConsumption | number:'1.0-0' }}%</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Total Mileage</div>
-                    <div class="summary-value">{{ stats.totalMileage | number }} km</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Vehicles Active</div>
-                    <div class="summary-value">{{ chartData.vehicleStatus[0].value }}</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Needs Attention</div>
-                    <div class="summary-value">{{ stats.maintenanceDue }}</div>
-                </div>
-            </div>
         </section>
     </main>
 </div>
