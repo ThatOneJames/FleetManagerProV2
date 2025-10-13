@@ -12,8 +12,9 @@
     <mat-card>
         <mat-card-header>
             <mat-card-title>System Management</mat-card-title>
-            <p class="card-subtitle">Manage users, permissions, notifications, and system reports</p>
         </mat-card-header>
+
+        <p class="card-subtitle">Manage users and permissions, receive notifications, and system reports</p>
 
         <mat-card-content>
             <mat-tab-group [(selectedIndex)]="selectedTabIndex" animationDuration="300ms">
@@ -157,7 +158,7 @@
                     </div>
                 </mat-tab>
 
-                <!-- NOTIFICATION HISTORY TAB (Rules removed, only history) -->
+                <!-- NOTIFICATION HISTORY TAB -->
                 <mat-tab label="Notifications">
                     <div class="tab-content">
                         <div class="section-header">

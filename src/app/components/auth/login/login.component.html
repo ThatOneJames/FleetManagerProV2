@@ -1,20 +1,45 @@
-<div class="login-container">
+﻿<div class="login-container">
     <div class="login-card">
-        <h2 class="title">FleetManager Pro</h2>
+        <div class="app-logo">
+            <div class="logo-icon"></div>
+        </div>
+
+        <h1 class="app-title">Evo Cargo Express</h1>
+        <p class="app-subtitle">Fleet Management System</p>
+        <p class="location">Lipa City, Batangas</p>
+
         <form (ngSubmit)="onSubmit()" [formGroup]="loginForm">
             <div class="form-group">
-                <label for="email">Email</label>
-                <input id="email" type="email" formControlName="email" placeholder="Enter your email" />
+                <label for="email">Email Address</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">📧</span>
+                    <input id="email" type="email" formControlName="email" placeholder="Enter your email address" />
+                </div>
+                <span *ngIf="hasError('email', 'required')" class="error-text">Email is required</span>
+                <span *ngIf="hasError('email', 'email')" class="error-text">Please enter a valid email address</span>
             </div>
 
             <div class="form-group">
                 <label for="password">Password</label>
-                <input id="password" type="password" formControlName="password" placeholder="Enter your password" />
+                <div class="input-wrapper">
+                    <span class="input-icon">🔒</span>
+                    <input id="password"
+                           [type]="showPassword ? 'text' : 'password'"
+                           formControlName="password"
+                           placeholder="Enter your password" />
+                    <span class="toggle-password" (click)="togglePasswordVisibility()">
+                        {{ showPassword ? '🙈' : '👁️' }}
+                    </span>
+                </div>
+                <span *ngIf="hasError('password', 'required')" class="error-text">Password is required</span>
+                <span *ngIf="hasError('password', 'minlength')" class="error-text">Password must be at least 6 characters</span>
             </div>
 
-            <button type="submit" class="btn" [disabled]="loginForm.invalid">Login</button>
+            <button type="submit" class="btn-signin" [disabled]="loginForm.invalid || loading">
+                {{ loading ? 'Signing In...' : 'Sign In' }}
+            </button>
 
-            <div *ngIf="errorMessage" class="error">
+            <div *ngIf="errorMessage" class="error-message">
                 {{ errorMessage }}
             </div>
         </form>

@@ -47,12 +47,16 @@ mat-card-title {
     font-size: 24px;
     font-weight: 600;
     color: #1a1a1a;
+    margin-bottom: 0;
 }
 
 .card-subtitle {
     color: #666;
     font-size: 14px;
-    margin: 8px 0 0 0;
+    margin: 0;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e0e0e0;
+    display: block;
 }
 
 mat-card-content {

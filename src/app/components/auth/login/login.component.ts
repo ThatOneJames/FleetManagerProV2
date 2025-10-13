@@ -9,10 +9,11 @@ import { User } from '../../../models/user.model';
     templateUrl: './login.component.html',
     styleUrls: ['./login.component.css']
 })
-export class LoginComponent implements OnInit { // Make sure this export exists
+export class LoginComponent implements OnInit {
     loginForm: FormGroup;
     errorMessage: string | null = null;
     loading = false;
+    showPassword = false;
 
     constructor(
         private fb: FormBuilder,
@@ -26,16 +27,14 @@ export class LoginComponent implements OnInit { // Make sure this export exists
     }
 
     ngOnInit(): void {
-        // Check if user is already logged in
         if (this.authService.isAuthenticated()) {
             const userRole = this.authService.getUserRole();
             this.redirectBasedOnRole(userRole);
         }
+    }
 
-        // Add demo credentials for testing
-        console.log('Demo credentials available:');
-        console.log('- Email: driver@test.com, Password: password123');
-        console.log('- Or create new accounts using the demo buttons');
+    togglePasswordVisibility(): void {
+        this.showPassword = !this.showPassword;
     }
 
     async onSubmit(): Promise<void> {
@@ -48,15 +47,12 @@ export class LoginComponent implements OnInit { // Make sure this export exists
         this.errorMessage = null;
 
         const { email, password } = this.loginForm.value;
-        console.log('Attempting login for:', email);
 
         this.authService.login(email, password).subscribe({
             next: (user: User | null) => {
                 this.loading = false;
-                console.log('Login successful, user:', user);
 
                 if (user) {
-                    console.log('User role:', user.role);
                     this.redirectBasedOnRole(user.role);
                 } else {
                     this.errorMessage = 'Login failed. Invalid credentials.';
@@ -64,7 +60,6 @@ export class LoginComponent implements OnInit { // Make sure this export exists
             },
             error: (error: any) => {
                 this.loading = false;
-                console.error('Login error:', error);
 
                 if (error.status === 401) {
                     this.errorMessage = 'Invalid email or password.';
@@ -80,15 +75,12 @@ export class LoginComponent implements OnInit { // Make sure this export exists
     private redirectBasedOnRole(role: string | null): void {
         switch (role) {
             case 'Admin':
-                console.log('Redirecting to admin dashboard');
                 this.router.navigate(['/admin/dashboard']);
                 break;
             case 'Driver':
-                console.log('Redirecting to driver dashboard');
                 this.router.navigate(['/driver/dashboard']);
                 break;
             default:
-                console.log('Unknown role, redirecting to general dashboard');
                 this.router.navigate(['/dashboard']);
                 break;
         }
@@ -106,41 +98,11 @@ export class LoginComponent implements OnInit { // Make sure this export exists
         return !!(field?.hasError(errorType) && (field?.dirty || field?.touched));
     }
 
-    getErrorMessage(fieldName: string): string {
-        const field = this.loginForm.get(fieldName);
-        if (field?.hasError('required')) {
-            return `${fieldName} is required`;
-        }
-        if (field?.hasError('email')) {
-            return 'Please enter a valid email address';
-        }
-        if (field?.hasError('minlength')) {
-            return `${fieldName} must be at least ${field.errors?.['minlength']?.requiredLength} characters`;
-        }
-        return '';
-    }
-
-    // Getters for template access
     get email() {
         return this.loginForm.get('email');
     }
 
     get password() {
         return this.loginForm.get('password');
-    }
-
-    // Test method to try logging in with existing driver account
-    loginAsTestDriver(): void {
-        this.loginForm.patchValue({
-            email: 'driver@test.com',
-            password: 'password123'
-        });
-        this.onSubmit();
-    }
-
-    // Method to create and login as demo admin (for testing)
-    createDemoAdmin(): void {
-        console.log('This would create a demo admin account - implement registration first');
-        // You can implement this if you add a registration endpoint
     }
 }

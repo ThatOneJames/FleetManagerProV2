@@ -11,7 +11,6 @@
         font-weight: 600;
     }
 
-/* Controls */
 .controls {
     display: flex;
     gap: 15px;
@@ -36,7 +35,6 @@
             box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
         }
 
-/* Messages */
 .message {
     padding: 12px 16px;
     border-radius: 6px;
@@ -56,7 +54,6 @@
         border: 1px solid #f5c6cb;
     }
 
-/* Buttons */
 .btn-primary {
     background: linear-gradient(135deg, #007bff, #0056b3);
     color: white;
@@ -94,6 +91,30 @@
 
     .btn-secondary:hover {
         background: #545b62;
+    }
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #218838);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+    .btn-success:hover {
+        background: linear-gradient(135deg, #218838, #1e7e34);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+    }
+
+    .btn-success:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
     }
 
 .btn-edit {
@@ -139,7 +160,6 @@
         background: #c82333;
     }
 
-/* Form Container */
 .form-container {
     background: white;
     border-radius: 8px;
@@ -184,7 +204,6 @@
         color: #dc3545;
     }
 
-/* Form Grid */
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -233,7 +252,6 @@
     margin-top: 5px;
 }
 
-/* Form Actions */
 .form-actions {
     padding: 20px 25px;
     background: #f8f9fa;
@@ -243,7 +261,6 @@
     justify-content: flex-end;
 }
 
-/* Table Styles */
 .driver-list {
     background: white;
     border-radius: 8px;
@@ -284,7 +301,6 @@
     border-bottom: none;
 }
 
-/* Driver Name Cell */
 .driver-name-cell {
     display: flex;
     align-items: center;
@@ -300,7 +316,6 @@
     font-size: 16px;
 }
 
-/* Status Badges */
 .status-badge {
     padding: 4px 8px;
     border-radius: 12px;
@@ -325,7 +340,6 @@
         color: #856404;
     }
 
-/* Clock-In Status */
 .clock-in-status {
     display: flex;
     flex-direction: column;
@@ -367,7 +381,6 @@
     font-weight: 500;
 }
 
-/* Loading Indicator */
 .loading-indicator {
     display: flex;
     justify-content: center;
@@ -395,7 +408,6 @@
     }
 }
 
-/* Safety Rating */
 .safety-rating {
     display: flex;
     flex-direction: column;
@@ -407,13 +419,11 @@
     line-height: 1;
 }
 
-/* Actions Column */
 .actions {
     text-align: center;
     white-space: nowrap;
 }
 
-/* No Data State */
 .no-data {
     padding: 60px 20px;
     text-align: center;
@@ -425,7 +435,6 @@
         font-size: 16px;
     }
 
-/* Modal Styles */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -471,7 +480,6 @@
     margin-top: 25px;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
     .controls {
         flex-direction: column;
@@ -562,4 +570,3 @@
     color: #c41e3a;
     border: 1px solid #c41e3a;
 }
-

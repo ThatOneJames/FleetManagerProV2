@@ -13,7 +13,6 @@
         </div>
     </div>
 
-    <!-- Statistics Cards -->
     <div class="stats-container">
         <div class="stat-card total">
             <div class="stat-value">{{ stats.total }}</div>
@@ -33,13 +32,11 @@
         </div>
     </div>
 
-    <!-- Loading Indicator -->
     <div *ngIf="loading" class="loading">
         <div class="spinner"></div>
         <span>Processing...</span>
     </div>
 
-    <!-- Messages -->
     <div *ngIf="successMessage" class="alert alert-success">
         {{ successMessage }}
     </div>
@@ -47,7 +44,6 @@
         {{ errorMessage }}
     </div>
 
-    <!-- Filters Section -->
     <div class="filters-section">
         <div class="search-filters">
             <input [(ngModel)]="searchText"
@@ -63,7 +59,6 @@
                 <option value="Pending">Pending</option>
                 <option value="Approved">Approved</option>
                 <option value="Rejected">Rejected</option>
-                <option value="Cancelled">Cancelled</option>
             </select>
 
             <select [(ngModel)]="filterType" class="filter-select">
@@ -86,7 +81,6 @@
         </div>
     </div>
 
-    <!-- Requests Table -->
     <div class="requests-section">
         <div class="table-container">
             <table class="requests-table">
@@ -173,7 +167,6 @@
         </div>
     </div>
 
-    <!-- Details Modal -->
     <div *ngIf="showDetailsModal" class="modal-overlay">
         <div class="modal modal-large">
             <div class="modal-header">
@@ -268,7 +261,6 @@
         </div>
     </div>
 
-    <!-- Approval Modal -->
     <div *ngIf="showApprovalModal" class="modal-overlay">
         <div class="modal">
             <div class="modal-header">
@@ -316,7 +308,6 @@
         </div>
     </div>
 
-    <!-- Rejection Modal -->
     <div *ngIf="showRejectionModal" class="modal-overlay">
         <div class="modal">
             <div class="modal-header">

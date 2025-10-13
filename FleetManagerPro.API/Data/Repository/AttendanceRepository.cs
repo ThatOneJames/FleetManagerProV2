@@ -92,7 +92,6 @@ namespace FleetManagerPro.API.Data.Repository
             _context.DriverAttendances.Add(attendance);
             await _context.SaveChangesAsync();
 
-            // Reload with navigation properties
             var created = await GetByIdAsync(attendance.Id);
             return created ?? attendance;
         }
@@ -129,7 +128,6 @@ namespace FleetManagerPro.API.Data.Repository
 
                 if (existingRecord != null)
                 {
-                    // Update existing record
                     existingRecord.ClockIn = clockInTime.TimeOfDay;
                     existingRecord.Location = location;
                     existingRecord.Notes = notes;
@@ -138,7 +136,6 @@ namespace FleetManagerPro.API.Data.Repository
                 }
                 else
                 {
-                    // Create new record
                     var newRecord = new DriverAttendance
                     {
                         DriverId = driverId,
@@ -170,16 +167,13 @@ namespace FleetManagerPro.API.Data.Repository
 
                 record.ClockOut = clockOutTime.TimeOfDay;
 
-                // Calculate total hours
                 var clockInDateTime = today.Add(record.ClockIn.Value);
                 var clockOutDateTime = today.Add(record.ClockOut.Value);
                 var totalMinutes = (clockOutDateTime - clockInDateTime).TotalMinutes;
 
-                // Subtract break duration
                 totalMinutes -= (double)(record.BreakDuration * 60);
                 record.TotalHours = (decimal)(totalMinutes / 60);
 
-                // Calculate overtime (assuming 8 hours is standard)
                 if (record.TotalHours > 8)
                 {
                     record.OvertimeHours = record.TotalHours.Value - 8;
@@ -211,7 +205,6 @@ namespace FleetManagerPro.API.Data.Repository
             var totalHours = presentRecords.Sum(r => r.TotalHours ?? 0);
             var overtimeHours = presentRecords.Sum(r => r.OvertimeHours);
 
-            // Calculate average clock in time
             var clockInTimes = presentRecords
                 .Where(r => r.ClockIn.HasValue)
                 .Select(r => r.ClockIn.Value)
