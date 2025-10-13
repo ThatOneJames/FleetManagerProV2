@@ -79,13 +79,10 @@ namespace FleetManagerPro.API.DTOs
         public DateTime? EstimatedArrival { get; set; }
         public DateTime? EstimatedDeparture { get; set; }
 
-        [Required]
-        public string StartAddress { get; set; } = string.Empty;
+        public string? StartAddress { get; set; }
 
-        [Required]
-        public string DestinationAddress { get; set; } = string.Empty;
+        public string? DestinationAddress { get; set; }
 
-        [Required]
         [StringLength(20)]
         public string Priority { get; set; } = "normal";
 
@@ -93,7 +90,6 @@ namespace FleetManagerPro.API.DTOs
         public string? ContactName { get; set; }
         public string? ContactPhone { get; set; }
     }
-
 
     public class UpdateRouteDto
     {

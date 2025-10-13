@@ -84,12 +84,10 @@ export class RouteOptimizationComponent implements OnInit {
         });
     }
 
-    // ✅ UPDATED: Filter out vehicles in maintenance, out of service, retired, OR InRoute
     loadVehicles(): void {
         this.vehicleService.getAllVehicles().subscribe({
             next: (data) => {
                 console.log('All vehicles loaded:', data);
-                // ✅ Filter out vehicles that are not available INCLUDING InRoute
                 this.vehicles = data.filter(v =>
                     v.status !== 'Maintenance' &&
                     v.status !== 'OutOfService' &&
@@ -104,7 +102,6 @@ export class RouteOptimizationComponent implements OnInit {
         });
     }
 
-    // ✅ UPDATED: Filter out drivers on active routes
     loadDrivers(): void {
         const token = this.authService.getToken();
         const headers = new HttpHeaders({
@@ -112,7 +109,6 @@ export class RouteOptimizationComponent implements OnInit {
             'Content-Type': 'application/json'
         });
 
-        // ✅ Load all routes to check which drivers are currently on active routes
         this.http.get<any[]>(`${this.apiUrl}/routes`, { headers }).subscribe({
             next: (allRoutes) => {
                 const driversOnRoute = new Set(
@@ -138,7 +134,6 @@ export class RouteOptimizationComponent implements OnInit {
                                 this.drivers = allDrivers.filter((driver: any, index: number) => {
                                     const attendance = attendanceResponses[index];
 
-                                    // ✅ Filter out drivers currently on route
                                     if (driversOnRoute.has(driver.id)) {
                                         console.log(`🚗 ${driver.name}: Currently on active route`);
                                         return false;
@@ -213,24 +208,25 @@ export class RouteOptimizationComponent implements OnInit {
     }
 
     addStopToNewRoute(): void {
-        if (this.newStop.address) {
-            this.newRoute.stops.push({
-                ...this.newStop,
-                startAddress: this.newRoute.startAddress || '',
-                destinationAddress: this.newRoute.destinationAddress || ''
-            });
-
-            this.newStop = {
-                stopOrder: this.newRoute.stops.length + 1,
-                address: '',
-                priority: 'normal',
-                notes: '',
-                contactName: '',
-                contactPhone: ''
-            };
-
-            this.updateGoogleMapsUrl();
+        if (!this.newStop.address) {
+            this.errorMessage = 'Stop address is required';
+            return;
         }
+
+        this.newRoute.stops.push({
+            ...this.newStop
+        });
+
+        this.newStop = {
+            stopOrder: this.newRoute.stops.length + 1,
+            address: '',
+            priority: 'normal',
+            notes: '',
+            contactName: '',
+            contactPhone: ''
+        };
+
+        this.updateGoogleMapsUrl();
     }
 
     removeStopFromNewRoute(index: number): void {
@@ -280,12 +276,6 @@ export class RouteOptimizationComponent implements OnInit {
             this.errorMessage = 'Please fill in all required fields and add at least one stop';
             return;
         }
-
-        this.newRoute.stops = this.newRoute.stops.map(stop => ({
-            ...stop,
-            startAddress: this.newRoute.startAddress || '',
-            destinationAddress: this.newRoute.destinationAddress || ''
-        }));
 
         if (!this.newRoute.googleMapsUrl) {
             this.updateGoogleMapsUrl();
@@ -374,8 +364,8 @@ export class RouteOptimizationComponent implements OnInit {
         this.routeService.updateRoute(routeId, { status: 'in_progress', startTime: new Date() }).subscribe({
             next: () => {
                 this.loadRoutes();
-                this.loadVehicles(); // ✅ Refresh vehicles list
-                this.loadDrivers();  // ✅ Refresh drivers list
+                this.loadVehicles();
+                this.loadDrivers();
             },
             error: (error) => {
                 console.error('Error starting route:', error);
@@ -388,8 +378,8 @@ export class RouteOptimizationComponent implements OnInit {
         this.routeService.updateRoute(routeId, { status: 'completed', endTime: new Date() }).subscribe({
             next: () => {
                 this.loadRoutes();
-                this.loadVehicles(); // ✅ Refresh vehicles list
-                this.loadDrivers();  // ✅ Refresh drivers list
+                this.loadVehicles();
+                this.loadDrivers();
             },
             error: (error) => {
                 console.error('Error completing route:', error);
@@ -398,14 +388,13 @@ export class RouteOptimizationComponent implements OnInit {
         });
     }
 
-    // ✅ Set route to pending
     setPendingRoute(routeId: string): void {
         if (confirm('Are you sure you want to set this route back to pending?')) {
             this.routeService.updateRoute(routeId, { status: 'planned' }).subscribe({
                 next: () => {
                     this.loadRoutes();
-                    this.loadVehicles(); // ✅ Refresh vehicles list
-                    this.loadDrivers();  // ✅ Refresh drivers list
+                    this.loadVehicles();
+                    this.loadDrivers();
                 },
                 error: (error) => {
                     console.error('Error setting route to pending:', error);
@@ -415,14 +404,13 @@ export class RouteOptimizationComponent implements OnInit {
         }
     }
 
-    // ✅ Cancel route
     cancelRoute(routeId: string): void {
         if (confirm('Are you sure you want to cancel this route?')) {
             this.routeService.updateRoute(routeId, { status: 'cancelled' }).subscribe({
                 next: () => {
                     this.loadRoutes();
-                    this.loadVehicles(); // ✅ Refresh vehicles list
-                    this.loadDrivers();  // ✅ Refresh drivers list
+                    this.loadVehicles();
+                    this.loadDrivers();
                 },
                 error: (error) => {
                     console.error('Error cancelling route:', error);
