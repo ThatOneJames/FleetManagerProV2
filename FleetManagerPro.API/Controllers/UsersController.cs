@@ -1,5 +1,6 @@
 ﻿using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Models;
+using FleetManagerPro.API.DTOs.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -534,6 +535,34 @@ namespace FleetManagerPro.API.Controllers
             }
         }
 
+        [HttpPut("{id}/change-password")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ChangeUserPassword(string id, [FromBody] ChangePasswordDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(dto.NewPassword) || dto.NewPassword.Length < 6)
+                    return BadRequest(new { message = "New password must be at least 6 characters" });
+
+                var user = await _context.Users.FindAsync(id);
+                if (user == null)
+                    return NotFound(new { message = "User not found" });
+
+                // Admin can change password without knowing current password
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+                user.UpdatedAt = DateTime.UtcNow;
+
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Password changed successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error changing password", error = ex.Message });
+            }
+        }
+
         private string HashPassword(string password)
         {
             using (var sha256 = SHA256.Create())
@@ -586,16 +615,5 @@ namespace FleetManagerPro.API.Controllers
         public DateTime? LicenseExpiry { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public int? ExperienceYears { get; set; }
-    }
-
-    public class ChangePasswordDto
-    {
-        [Required]
-        [MinLength(6)]
-        public string CurrentPassword { get; set; } = string.Empty;
-
-        [Required]
-        [MinLength(6)]
-        public string NewPassword { get; set; } = string.Empty;
     }
 }
