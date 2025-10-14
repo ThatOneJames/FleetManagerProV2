@@ -1,8 +1,15 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace FleetManagerPro.API.DTOs.Users
 {
     public class ChangePasswordDto
     {
-        public string CurrentPassword { get; set; }
-        public string NewPassword { get; set; }
+        [Required]
+        [MinLength(6)]
+        public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(6)]
+        public string NewPassword { get; set; } = string.Empty;
     }
 }

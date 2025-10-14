@@ -8,15 +8,34 @@
         <p class="app-subtitle">Fleet Management System</p>
         <p class="location">Lipa City, Batangas</p>
 
-        <form (ngSubmit)="onSubmit()" [formGroup]="loginForm">
+        <!-- Toggle Buttons -->
+        <div class="toggle-buttons">
+            <button type="button"
+                    class="toggle-btn"
+                    [class.active]="!isRegisterMode"
+                    (click)="isRegisterMode = false; errorMessage = null; successMessage = null;">
+                <span class="icon">🔒</span>
+                Sign In
+            </button>
+            <button type="button"
+                    class="toggle-btn"
+                    [class.active]="isRegisterMode"
+                    (click)="isRegisterMode = true; errorMessage = null; successMessage = null;">
+                <span class="icon">👤</span>
+                Register
+            </button>
+        </div>
+
+        <!-- Login Form -->
+        <form *ngIf="!isRegisterMode" (ngSubmit)="onSubmit()" [formGroup]="loginForm">
             <div class="form-group">
                 <label for="email">Email Address</label>
                 <div class="input-wrapper">
                     <span class="input-icon">📧</span>
                     <input id="email" type="email" formControlName="email" placeholder="Enter your email address" />
                 </div>
-                <span *ngIf="hasError('email', 'required')" class="error-text">Email is required</span>
-                <span *ngIf="hasError('email', 'email')" class="error-text">Please enter a valid email address</span>
+                <span *ngIf="hasError(loginForm, 'email', 'required')" class="error-text">Email is required</span>
+                <span *ngIf="hasError(loginForm, 'email', 'email')" class="error-text">Please enter a valid email address</span>
             </div>
 
             <div class="form-group">
@@ -31,13 +50,64 @@
                         {{ showPassword ? '🙈' : '👁️' }}
                     </span>
                 </div>
-                <span *ngIf="hasError('password', 'required')" class="error-text">Password is required</span>
-                <span *ngIf="hasError('password', 'minlength')" class="error-text">Password must be at least 6 characters</span>
+                <span *ngIf="hasError(loginForm, 'password', 'required')" class="error-text">Password is required</span>
+                <span *ngIf="hasError(loginForm, 'password', 'minlength')" class="error-text">Password must be at least 6 characters</span>
             </div>
 
             <button type="submit" class="btn-signin" [disabled]="loginForm.invalid || loading">
                 {{ loading ? 'Signing In...' : 'Sign In' }}
             </button>
+
+            <div *ngIf="errorMessage" class="error-message">
+                {{ errorMessage }}
+            </div>
+        </form>
+
+        <!-- Register Form -->
+        <form *ngIf="isRegisterMode" (ngSubmit)="onRegister()" [formGroup]="registerForm">
+            <div class="form-group">
+                <label for="register-name">Name</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">👤</span>
+                    <input id="register-name" type="text" formControlName="name" placeholder="Enter your full name" />
+                </div>
+                <span *ngIf="hasError(registerForm, 'name', 'required')" class="error-text">Name is required</span>
+                <span *ngIf="hasError(registerForm, 'name', 'minlength')" class="error-text">Name must be at least 2 characters</span>
+            </div>
+
+            <div class="form-group">
+                <label for="register-email">Email Address</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">📧</span>
+                    <input id="register-email" type="email" formControlName="email" placeholder="Enter your email address" />
+                </div>
+                <span *ngIf="hasError(registerForm, 'email', 'required')" class="error-text">Email is required</span>
+                <span *ngIf="hasError(registerForm, 'email', 'email')" class="error-text">Please enter a valid email address</span>
+            </div>
+
+            <div class="form-group">
+                <label for="register-password">Password</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">🔒</span>
+                    <input id="register-password"
+                           [type]="showRegisterPassword ? 'text' : 'password'"
+                           formControlName="password"
+                           placeholder="Create a password (min 6 characters)" />
+                    <span class="toggle-password" (click)="toggleRegisterPasswordVisibility()">
+                        {{ showRegisterPassword ? '🙈' : '👁️' }}
+                    </span>
+                </div>
+                <span *ngIf="hasError(registerForm, 'password', 'required')" class="error-text">Password is required</span>
+                <span *ngIf="hasError(registerForm, 'password', 'minlength')" class="error-text">Password must be at least 6 characters</span>
+            </div>
+
+            <button type="submit" class="btn-signin" [disabled]="registerForm.invalid || loading">
+                {{ loading ? 'Creating Account...' : 'Register' }}
+            </button>
+
+            <div *ngIf="successMessage" class="success-message">
+                {{ successMessage }}
+            </div>
 
             <div *ngIf="errorMessage" class="error-message">
                 {{ errorMessage }}

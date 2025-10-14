@@ -23,6 +23,9 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     userForm!: FormGroup;
     editingUser: User | null = null;
     showUserForm = false;
+    showChangePasswordModal = false;
+    changePasswordForm!: FormGroup;
+    selectedUserForPasswordChange: User | null = null;
     notifications: Notification[] = [];
     sendNotificationForm!: FormGroup;
     notificationSubTab = 0;
@@ -75,6 +78,13 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             password: ['', [Validators.minLength(6)]]
         });
 
+        this.changePasswordForm = this.fb.group({
+            newPassword: ['', [Validators.required, Validators.minLength(6)]],
+            confirmPassword: ['', [Validators.required]]
+        }, {
+            validators: this.passwordMatchValidator
+        });
+
         this.sendNotificationForm = this.fb.group({
             recipientType: ['all', Validators.required],
             specificUsers: [[]],
@@ -102,6 +112,15 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             }
             scheduledTimeControl?.updateValueAndValidity();
         });
+    }
+
+    private passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
+        const newPassword = group.get('newPassword')?.value;
+        const confirmPassword = group.get('confirmPassword')?.value;
+        if (newPassword !== confirmPassword) {
+            return { passwordMismatch: true };
+        }
+        return null;
     }
 
     private updateRecipientValidators(form: FormGroup, recipientType: string): void {
@@ -285,6 +304,46 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         this.userForm.reset({ role: 'Driver', status: 'Active' });
         this.userForm.get('password')?.setValidators([Validators.required, Validators.minLength(6)]);
         this.userForm.get('password')?.updateValueAndValidity();
+    }
+
+    openChangePasswordModal(user: User): void {
+        this.selectedUserForPasswordChange = user;
+        this.showChangePasswordModal = true;
+        this.changePasswordForm.reset();
+    }
+
+    closeChangePasswordModal(): void {
+        this.showChangePasswordModal = false;
+        this.selectedUserForPasswordChange = null;
+        this.changePasswordForm.reset();
+    }
+
+    async changeUserPassword(): Promise<void> {
+        if (this.changePasswordForm.invalid || !this.selectedUserForPasswordChange) {
+            this.showSnackbar('Please fill all fields correctly', 'error');
+            return;
+        }
+
+        try {
+            const newPassword = this.changePasswordForm.get('newPassword')?.value;
+            const token = this.authService.getToken();
+            const headers = new HttpHeaders({
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            });
+
+            await this.http.put(
+                `${environment.apiUrl}/users/${this.selectedUserForPasswordChange.id}/change-password`,
+                { newPassword },
+                { headers }
+            ).toPromise();
+
+            this.showSnackbar('Password changed successfully', 'success');
+            this.closeChangePasswordModal();
+        } catch (error) {
+            console.error('Error changing password:', error);
+            this.showSnackbar('Error changing password', 'error');
+        }
     }
 
     private async loadNotifications(): Promise<void> {

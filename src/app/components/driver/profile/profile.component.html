@@ -1,21 +1,24 @@
 ﻿<div class="profile-container">
-    <!-- Loading Spinner -->
     <div *ngIf="isLoading" class="loading-overlay">
         <mat-spinner diameter="50"></mat-spinner>
     </div>
 
-    <!-- Header -->
     <div class="profile-header">
         <h1><mat-icon>person</mat-icon> My Profile</h1>
-        <button mat-raised-button
-                [color]="isEditing ? 'warn' : 'primary'"
-                (click)="toggleEdit()">
-            <mat-icon>{{ isEditing ? 'close' : 'edit' }}</mat-icon>
-            {{ isEditing ? 'Cancel' : 'Edit Profile' }}
-        </button>
+        <div class="header-actions">
+            <button mat-raised-button color="accent" (click)="openChangePasswordModal()">
+                <mat-icon>lock</mat-icon>
+                Change Password
+            </button>
+            <button mat-raised-button
+                    [color]="isEditing ? 'warn' : 'primary'"
+                    (click)="toggleEdit()">
+                <mat-icon>{{ isEditing ? 'close' : 'edit' }}</mat-icon>
+                {{ isEditing ? 'Cancel' : 'Edit Profile' }}
+            </button>
+        </div>
     </div>
 
-    <!-- Messages -->
     <mat-card *ngIf="errorMessage" class="message-card error">
         <mat-icon>error</mat-icon>
         {{ errorMessage }}
@@ -26,11 +29,9 @@
         {{ successMessage }}
     </mat-card>
 
-    <!-- Profile Form -->
     <mat-card class="profile-card">
         <form [formGroup]="profileForm" (ngSubmit)="saveChanges()">
 
-            <!-- Personal Information Section -->
             <div class="section-header">
                 <mat-icon>person_outline</mat-icon>
                 <h2>Personal Information</h2>
@@ -78,7 +79,6 @@
                 </mat-form-field>
             </div>
 
-            <!-- Driver License Section -->
             <div class="section-header">
                 <mat-icon>directions_car</mat-icon>
                 <h2>Driver License Information</h2>
@@ -91,14 +91,12 @@
                     <mat-icon matPrefix>credit_card</mat-icon>
                 </mat-form-field>
 
-                <!-- ✅ LICENSE CLASSES - READ-ONLY VIEW -->
                 <mat-form-field appearance="outline" class="full-width" *ngIf="!isEditing">
                     <mat-label>License Classes</mat-label>
                     <input matInput [value]="licenseClassesFormArray.value.join(', ')" [readonly]="true">
                     <mat-icon matPrefix>category</mat-icon>
                 </mat-form-field>
 
-                <!-- ✅ LICENSE CLASSES - CHECKBOXES (EDIT MODE) -->
                 <div class="form-group license-checkboxes full-width" *ngIf="isEditing">
                     <label class="mat-label">License Classes * (Select at least one)</label>
                     <div class="checkbox-group">
@@ -126,7 +124,6 @@
                 </mat-form-field>
             </div>
 
-            <!-- Action Buttons (Only show in edit mode) -->
             <div class="form-actions" *ngIf="isEditing">
                 <button mat-raised-button type="button" (click)="toggleEdit()">
                     Cancel
@@ -138,4 +135,73 @@
             </div>
         </form>
     </mat-card>
+
+    <div class="modal-overlay" *ngIf="showChangePasswordModal" (click)="closeChangePasswordModal()">
+        <mat-card class="change-password-modal" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <h2><mat-icon>lock</mat-icon> Change Password</h2>
+                <button mat-icon-button (click)="closeChangePasswordModal()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+
+            <form [formGroup]="changePasswordForm" (ngSubmit)="changePassword()">
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Current Password</mat-label>
+                    <input matInput [type]="showCurrentPassword ? 'text' : 'password'" formControlName="currentPassword">
+                    <mat-icon matPrefix>lock_outline</mat-icon>
+                    <button mat-icon-button matSuffix type="button" (click)="toggleCurrentPassword()" tabindex="-1">
+                        <mat-icon>{{ showCurrentPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+                    </button>
+                    <mat-error *ngIf="currentPassword?.hasError('required')">
+                        Current password is required
+                    </mat-error>
+                    <mat-error *ngIf="currentPassword?.hasError('minlength')">
+                        Password must be at least 6 characters
+                    </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>New Password</mat-label>
+                    <input matInput [type]="showNewPassword ? 'text' : 'password'" formControlName="newPassword">
+                    <mat-icon matPrefix>lock</mat-icon>
+                    <button mat-icon-button matSuffix type="button" (click)="toggleNewPassword()" tabindex="-1">
+                        <mat-icon>{{ showNewPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+                    </button>
+                    <mat-error *ngIf="newPassword?.hasError('required')">
+                        New password is required
+                    </mat-error>
+                    <mat-error *ngIf="newPassword?.hasError('minlength')">
+                        Password must be at least 6 characters
+                    </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Confirm New Password</mat-label>
+                    <input matInput [type]="showConfirmPassword ? 'text' : 'password'" formControlName="confirmPassword">
+                    <mat-icon matPrefix>lock</mat-icon>
+                    <button mat-icon-button matSuffix type="button" (click)="toggleConfirmPassword()" tabindex="-1">
+                        <mat-icon>{{ showConfirmPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+                    </button>
+                    <mat-error *ngIf="confirmPassword?.hasError('required')">
+                        Please confirm your password
+                    </mat-error>
+                    <mat-error *ngIf="changePasswordForm.hasError('passwordMismatch') && confirmPassword?.touched">
+                        Passwords do not match
+                    </mat-error>
+                </mat-form-field>
+
+                <div class="modal-actions">
+                    <button mat-button type="button" (click)="closeChangePasswordModal()">
+                        Cancel
+                    </button>
+                    <button mat-raised-button color="primary" type="submit"
+                            [disabled]="changePasswordForm.invalid || isLoading">
+                        <mat-icon>check</mat-icon>
+                        Change Password
+                    </button>
+                </div>
+            </form>
+        </mat-card>
+    </div>
 </div>

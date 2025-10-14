@@ -14,8 +14,14 @@ export class DriverProfileComponent implements OnInit {
     isLoading = false;
     errorMessage: string | null = null;
     successMessage: string | null = null;
+    showChangePasswordModal = false;
+
+    showCurrentPassword = false;
+    showNewPassword = false;
+    showConfirmPassword = false;
 
     profileForm!: FormGroup;
+    changePasswordForm!: FormGroup;
     currentUser: any = null;
 
     hireDate: string = '';
@@ -41,6 +47,7 @@ export class DriverProfileComponent implements OnInit {
         private fb: FormBuilder
     ) {
         this.initializeForm();
+        this.initializeChangePasswordForm();
     }
 
     ngOnInit(): void {
@@ -62,6 +69,26 @@ export class DriverProfileComponent implements OnInit {
         });
     }
 
+    private initializeChangePasswordForm(): void {
+        this.changePasswordForm = this.fb.group({
+            currentPassword: ['', [Validators.required, Validators.minLength(6)]],
+            newPassword: ['', [Validators.required, Validators.minLength(6)]],
+            confirmPassword: ['', [Validators.required]]
+        }, {
+            validators: this.passwordMatchValidator
+        });
+    }
+
+    private passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
+        const newPassword = group.get('newPassword')?.value;
+        const confirmPassword = group.get('confirmPassword')?.value;
+
+        if (newPassword !== confirmPassword) {
+            return { passwordMismatch: true };
+        }
+        return null;
+    }
+
     get name() { return this.profileForm.get('name'); }
     get email() { return this.profileForm.get('email'); }
     get phone() { return this.profileForm.get('phone'); }
@@ -71,6 +98,10 @@ export class DriverProfileComponent implements OnInit {
     get licenseNumber() { return this.profileForm.get('licenseNumber'); }
     get licenseExpiry() { return this.profileForm.get('licenseExpiry'); }
     get experienceYears() { return this.profileForm.get('experienceYears'); }
+
+    get currentPassword() { return this.changePasswordForm.get('currentPassword'); }
+    get newPassword() { return this.changePasswordForm.get('newPassword'); }
+    get confirmPassword() { return this.changePasswordForm.get('confirmPassword'); }
 
     get licenseClassesFormArray(): FormArray {
         return this.profileForm.get('licenseClasses') as FormArray;
@@ -100,10 +131,77 @@ export class DriverProfileComponent implements OnInit {
         }
 
         formArray.markAsTouched();
-        console.log('✅ License classes updated:', formArray.value);
     }
 
-    // ✅ FIXED: ALWAYS LOAD FRESH DATA FROM API
+    toggleCurrentPassword(): void {
+        this.showCurrentPassword = !this.showCurrentPassword;
+    }
+
+    toggleNewPassword(): void {
+        this.showNewPassword = !this.showNewPassword;
+    }
+
+    toggleConfirmPassword(): void {
+        this.showConfirmPassword = !this.showConfirmPassword;
+    }
+
+    openChangePasswordModal(): void {
+        this.showChangePasswordModal = true;
+        this.changePasswordForm.reset();
+        this.showCurrentPassword = false;
+        this.showNewPassword = false;
+        this.showConfirmPassword = false;
+        this.clearMessages();
+    }
+
+    closeChangePasswordModal(): void {
+        this.showChangePasswordModal = false;
+        this.changePasswordForm.reset();
+        this.showCurrentPassword = false;
+        this.showNewPassword = false;
+        this.showConfirmPassword = false;
+        this.clearMessages();
+    }
+
+    changePassword(): void {
+        this.markFormGroupTouched(this.changePasswordForm);
+
+        if (this.changePasswordForm.invalid) {
+            this.errorMessage = 'Please fill out all fields correctly.';
+            return;
+        }
+
+        const { currentPassword, newPassword } = this.changePasswordForm.value;
+
+        this.isLoading = true;
+        this.clearMessages();
+
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        const payload = {
+            currentPassword,
+            newPassword
+        };
+
+        this.http.put<any>(`${this.apiUrl}/change-password`, payload, { headers })
+            .subscribe({
+                next: (response) => {
+                    this.successMessage = 'Password changed successfully!';
+                    this.isLoading = false;
+                    this.closeChangePasswordModal();
+                    this.hideMessages();
+                },
+                error: (err) => {
+                    this.errorMessage = err.error?.message || 'Failed to change password. Please check your current password.';
+                    this.isLoading = false;
+                }
+            });
+    }
+
     private loadCurrentUserProfile(): void {
         this.isLoading = true;
         this.clearMessages();
@@ -119,24 +217,15 @@ export class DriverProfileComponent implements OnInit {
             'Authorization': `Bearer ${token}`
         });
 
-        // ✅ Always fetch from API, don't use cached currentUser$
-        console.log('📡 Fetching fresh user data from API...');
-
         this.http.get<any>(`${this.apiUrl}/current`, { headers }).subscribe({
             next: (response) => {
-                console.log('✅ Fresh user data from /current:', response);
-
-                // If license data is missing, fetch full details
                 if (!response.licenseClass && response.id) {
-                    console.log('⚠️ License class missing, fetching full details...');
                     this.http.get<any>(`${this.apiUrl}/${response.id}`, { headers }).subscribe({
                         next: (fullUser) => {
-                            console.log('✅ Full user details loaded:', fullUser);
                             this.populateForm(fullUser);
                             this.isLoading = false;
                         },
                         error: (err) => {
-                            console.error('❌ Error loading full user:', err);
                             this.populateForm(response);
                             this.isLoading = false;
                         }
@@ -147,7 +236,6 @@ export class DriverProfileComponent implements OnInit {
                 }
             },
             error: (err) => {
-                console.error('❌ Error loading user from API:', err);
                 this.errorMessage = 'Could not load profile data';
                 this.isLoading = false;
 
@@ -159,31 +247,20 @@ export class DriverProfileComponent implements OnInit {
     }
 
     private populateForm(user: any): void {
-        console.log('📝 Populating form with user data:', {
-            id: user.id,
-            name: user.name,
-            licenseClass: user.licenseClass
-        });
-
         this.currentUser = user;
         this.driverId = `Driver ID: ${user.id || 'N/A'}`;
 
-        // ✅ Parse license classes from comma-separated string
         const licenseClassString = user.licenseClass || '';
         const licenseClasses = licenseClassString
             .split(',')
             .map((c: string) => c.trim())
             .filter((c: string) => c.length > 0);
 
-        console.log('✅ Parsed license classes:', licenseClasses);
-
-        // ✅ Clear and rebuild FormArray
         this.licenseClassesFormArray.clear();
         licenseClasses.forEach((code: string) => {
             this.licenseClassesFormArray.push(new FormControl(code));
         });
 
-        // ✅ Patch form values
         this.profileForm.patchValue({
             name: user.name || '',
             email: user.email || '',
@@ -196,9 +273,6 @@ export class DriverProfileComponent implements OnInit {
             experienceYears: user.experienceYears || 0
         }, { emitEvent: false });
 
-        console.log('✅ Form populated. License classes in FormArray:', this.licenseClassesFormArray.value);
-
-        // Set read-only fields
         this.hireDate = user.hireDate ? this.formatDisplayDate(user.hireDate) : user.createdAt ? this.formatDisplayDate(user.createdAt) : '6/15/2023';
         this.joinedDate = user.createdAt ? this.formatDisplayDate(user.createdAt) : user.hireDate ? this.formatDisplayDate(user.hireDate) : '6/15/2023';
         this.safetyRating = user.safetyRating || 0;
@@ -244,13 +318,6 @@ export class DriverProfileComponent implements OnInit {
 
         if (this.profileForm.invalid) {
             this.errorMessage = 'Please fill out all required fields correctly.';
-            console.log('❌ Form invalid');
-            Object.keys(this.profileForm.controls).forEach(key => {
-                const control = this.profileForm.get(key);
-                if (control?.invalid) {
-                    console.log(`❌ ${key} is invalid:`, control.errors);
-                }
-            });
             return;
         }
 
@@ -284,8 +351,6 @@ export class DriverProfileComponent implements OnInit {
             experienceYears: formData.experienceYears || 0
         };
 
-        console.log('💾 Saving profile with payload:', updatePayload);
-
         const token = this.authService.getToken();
         const headers = new HttpHeaders({
             'Authorization': `Bearer ${token}`,
@@ -295,12 +360,10 @@ export class DriverProfileComponent implements OnInit {
         this.http.put<any>(`${this.apiUrl}/profile`, updatePayload, { headers })
             .subscribe({
                 next: (response) => {
-                    console.log('✅ Profile updated successfully:', response);
                     this.successMessage = 'Profile updated successfully!';
                     this.isEditing = false;
                     this.isLoading = false;
 
-                    // ✅ Reload fresh data from API after save
                     this.loadCurrentUserProfile();
 
                     this.hideMessages();
@@ -308,7 +371,6 @@ export class DriverProfileComponent implements OnInit {
                 error: (err) => {
                     this.isLoading = false;
                     this.errorMessage = err.error?.message || 'Error updating profile. Please try again.';
-                    console.error('❌ Error updating profile:', err);
                 }
             });
     }

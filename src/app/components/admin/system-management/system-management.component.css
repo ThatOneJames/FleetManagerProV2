@@ -66,10 +66,15 @@ mat-card-content {
 .tab-content {
     padding: 32px 0;
     min-height: 400px;
+    animation: fadeIn 0.3s ease-in-out;
 }
 
 .subtab-content {
     padding: 24px 0;
+}
+
+.subtab-group {
+    margin-top: 24px;
 }
 
 .section-header {
@@ -382,6 +387,53 @@ tr:last-child td {
     padding: 80px 20px;
 }
 
+/* CHANGE PASSWORD MODAL STYLES */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.change-password-modal {
+    min-width: 450px;
+    max-width: 500px;
+    padding: 0;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+    .modal-header h2 {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 20px;
+        margin: 0;
+    }
+
+.change-password-modal form {
+    padding: 24px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
 @media (max-width: 1024px) {
     .form-grid {
         grid-template-columns: 1fr;
@@ -423,6 +475,11 @@ tr:last-child td {
         white-space: nowrap;
         min-width: 120px;
     }
+
+    .change-password-modal {
+        min-width: 90%;
+        max-width: 90%;
+    }
 }
 
 ::ng-deep .snackbar-success {
@@ -457,12 +514,4 @@ tr:last-child td {
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-.tab-content {
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-.subtab-group {
-    margin-top: 24px;
 }

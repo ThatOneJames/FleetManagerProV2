@@ -44,7 +44,6 @@ namespace FleetManagerPro.API.Services
         {
             var claims = new[]
             {
-                // The fix: We explicitly convert the int Id to a string here.
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.UniqueName, user.Email),
                 new Claim(ClaimTypes.Role, user.Role.ToString())

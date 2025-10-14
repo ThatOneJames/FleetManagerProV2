@@ -141,6 +141,9 @@
                                         <button mat-icon-button (click)="editUser(user)" matTooltip="Edit">
                                             <mat-icon>edit</mat-icon>
                                         </button>
+                                        <button mat-icon-button (click)="openChangePasswordModal(user)" matTooltip="Change Password">
+                                            <mat-icon>lock_reset</mat-icon>
+                                        </button>
                                         <button mat-icon-button (click)="toggleUserStatus(user)"
                                                 [matTooltip]="user.status === 'Active' ? 'Deactivate' : 'Activate'">
                                             <mat-icon>{{ user.status === 'Active' ? 'block' : 'check_circle' }}</mat-icon>
@@ -292,4 +295,55 @@
             </mat-tab-group>
         </mat-card-content>
     </mat-card>
+
+    <!-- Change Password Modal -->
+    <div class="modal-overlay" *ngIf="showChangePasswordModal" (click)="closeChangePasswordModal()">
+        <mat-card class="change-password-modal" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <h2>
+                    <mat-icon>lock_reset</mat-icon>
+                    Change Password for {{ selectedUserForPasswordChange?.name }}
+                </h2>
+                <button mat-icon-button (click)="closeChangePasswordModal()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+
+            <form [formGroup]="changePasswordForm" (ngSubmit)="changeUserPassword()">
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>New Password</mat-label>
+                    <input matInput type="password" formControlName="newPassword" placeholder="Minimum 6 characters">
+                    <mat-icon matPrefix>lock</mat-icon>
+                    <mat-error *ngIf="changePasswordForm.get('newPassword')?.hasError('required')">
+                        Password is required
+                    </mat-error>
+                    <mat-error *ngIf="changePasswordForm.get('newPassword')?.hasError('minlength')">
+                        Minimum 6 characters
+                    </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Confirm New Password</mat-label>
+                    <input matInput type="password" formControlName="confirmPassword" placeholder="Re-enter password">
+                    <mat-icon matPrefix>lock</mat-icon>
+                    <mat-error *ngIf="changePasswordForm.get('confirmPassword')?.hasError('required')">
+                        Please confirm password
+                    </mat-error>
+                    <mat-error *ngIf="changePasswordForm.hasError('passwordMismatch')">
+                        Passwords do not match
+                    </mat-error>
+                </mat-form-field>
+
+                <div class="modal-actions">
+                    <button mat-button type="button" (click)="closeChangePasswordModal()">
+                        Cancel
+                    </button>
+                    <button mat-raised-button color="primary" type="submit" [disabled]="changePasswordForm.invalid">
+                        <mat-icon>check</mat-icon>
+                        Change Password
+                    </button>
+                </div>
+            </form>
+        </mat-card>
+    </div>
 </div>

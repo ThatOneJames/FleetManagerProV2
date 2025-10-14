@@ -146,12 +146,11 @@ namespace FleetManager.Controllers
 
                 var hashedPassword = await _authService.HashPassword(userDto.Password);
 
-                // Generate auto-increment EID
                 var nextEmployeeId = await GenerateNextEmployeeId();
 
                 var user = new User
                 {
-                    Id = nextEmployeeId, // EID-000001, EID-000002, etc.
+                    Id = nextEmployeeId,
                     Email = userDto.Email,
                     Name = userDto.Name,
                     PasswordHash = hashedPassword,
@@ -167,7 +166,6 @@ namespace FleetManager.Controllers
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                // If registering a driver, capture ALL driver-specific fields
                 if (user.Role == "Driver")
                 {
                     user.LicenseNumber = string.IsNullOrWhiteSpace(userDto.LicenseNumber) ? null : userDto.LicenseNumber;
@@ -195,7 +193,6 @@ namespace FleetManager.Controllers
             }
         }
 
-        // Auto-increment EID generation
         private async Task<string> GenerateNextEmployeeId()
         {
             var existingIds = await _context.Users
@@ -215,7 +212,7 @@ namespace FleetManager.Controllers
             }
 
             int nextNumber = maxNumber + 1;
-            return $"EID-{nextNumber:D6}"; // EID-000001, EID-000002, etc.
+            return $"EID-{nextNumber:D6}";
         }
 
         [HttpGet("test")]

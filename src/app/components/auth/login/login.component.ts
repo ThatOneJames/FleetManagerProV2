@@ -3,6 +3,8 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { User } from '../../../models/user.model';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 @Component({
     selector: 'app-login',
@@ -11,16 +13,27 @@ import { User } from '../../../models/user.model';
 })
 export class LoginComponent implements OnInit {
     loginForm: FormGroup;
+    registerForm: FormGroup;
     errorMessage: string | null = null;
+    successMessage: string | null = null;
     loading = false;
     showPassword = false;
+    showRegisterPassword = false;
+    isRegisterMode = false;
 
     constructor(
         private fb: FormBuilder,
         private authService: AuthService,
-        private router: Router
+        private router: Router,
+        private http: HttpClient
     ) {
         this.loginForm = this.fb.group({
+            email: ['', [Validators.required, Validators.email]],
+            password: ['', [Validators.required, Validators.minLength(6)]]
+        });
+
+        this.registerForm = this.fb.group({
+            name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]],
             password: ['', [Validators.required, Validators.minLength(6)]]
         });
@@ -33,13 +46,25 @@ export class LoginComponent implements OnInit {
         }
     }
 
+    toggleMode(): void {
+        this.isRegisterMode = !this.isRegisterMode;
+        this.errorMessage = null;
+        this.successMessage = null;
+        this.loginForm.reset();
+        this.registerForm.reset();
+    }
+
     togglePasswordVisibility(): void {
         this.showPassword = !this.showPassword;
     }
 
+    toggleRegisterPasswordVisibility(): void {
+        this.showRegisterPassword = !this.showRegisterPassword;
+    }
+
     async onSubmit(): Promise<void> {
         if (this.loginForm.invalid) {
-            this.markFormGroupTouched();
+            this.markFormGroupTouched(this.loginForm);
             return;
         }
 
@@ -72,6 +97,65 @@ export class LoginComponent implements OnInit {
         });
     }
 
+    async onRegister(): Promise<void> {
+        if (this.registerForm.invalid) {
+            this.markFormGroupTouched(this.registerForm);
+            return;
+        }
+
+        this.loading = true;
+        this.errorMessage = null;
+        this.successMessage = null;
+
+        const { name, email, password } = this.registerForm.value;
+
+        const registerPayload = {
+            name,
+            email,
+            password,
+            role: 'Driver',
+            status: 'Active',
+            phone: '',
+            address: '',
+            dateOfBirth: null,
+            hireDate: null,
+            emergencyContact: '',
+            profileImageUrl: '',
+            licenseNumber: '',
+            licenseClass: '',
+            licenseExpiry: null,
+            experienceYears: 0,
+            safetyRating: 5,
+            totalMilesDriven: 0,
+            isAvailable: true,
+            hasHelper: false
+        };
+
+        this.http.post(`${environment.apiUrl}/auth/register`, registerPayload).subscribe({
+            next: (response: any) => {
+                this.loading = false;
+                this.successMessage = 'Registration successful! You can now sign in.';
+                this.registerForm.reset();
+
+                setTimeout(() => {
+                    this.isRegisterMode = false;
+                    this.successMessage = null;
+                }, 3000);
+            },
+            error: (error: any) => {
+                this.loading = false;
+
+                if (error.status === 400) {
+                    this.errorMessage = error.error?.message || 'Email already exists.';
+                } else if (error.status === 500) {
+                    this.errorMessage = 'Server error. Please try again later.';
+                } else {
+                    this.errorMessage = error.error?.message || 'Registration failed. Please try again.';
+                }
+            }
+        });
+    }
+
     private redirectBasedOnRole(role: string | null): void {
         switch (role) {
             case 'Admin':
@@ -86,15 +170,15 @@ export class LoginComponent implements OnInit {
         }
     }
 
-    private markFormGroupTouched(): void {
-        Object.keys(this.loginForm.controls).forEach(key => {
-            const control = this.loginForm.get(key);
+    private markFormGroupTouched(formGroup: FormGroup): void {
+        Object.keys(formGroup.controls).forEach(key => {
+            const control = formGroup.get(key);
             control?.markAsTouched();
         });
     }
 
-    hasError(fieldName: string, errorType: string): boolean {
-        const field = this.loginForm.get(fieldName);
+    hasError(formGroup: FormGroup, fieldName: string, errorType: string): boolean {
+        const field = formGroup.get(fieldName);
         return !!(field?.hasError(errorType) && (field?.dirty || field?.touched));
     }
 
@@ -104,5 +188,17 @@ export class LoginComponent implements OnInit {
 
     get password() {
         return this.loginForm.get('password');
+    }
+
+    get registerName() {
+        return this.registerForm.get('name');
+    }
+
+    get registerEmail() {
+        return this.registerForm.get('email');
+    }
+
+    get registerPassword() {
+        return this.registerForm.get('password');
     }
 }
