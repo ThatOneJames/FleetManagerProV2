@@ -34,7 +34,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     sendingNotification = false;
     roles = [
         { id: 'Admin', name: 'Admin' },
-        { id: 'Manager', name: 'Manager' },
         { id: 'Driver', name: 'Driver' }
     ];
     statusOptions = ['Active', 'Inactive', 'Suspended'];
