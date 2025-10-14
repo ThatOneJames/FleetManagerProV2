@@ -537,12 +537,12 @@ namespace FleetManagerPro.API.Controllers
 
         [HttpPut("{id}/change-password")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> ChangeUserPassword(string id, [FromBody] ChangePasswordDto dto)
+        public async Task<IActionResult> ChangeUserPassword(string id, [FromBody] ChangeUserPasswordDto dto)
         {
             try
             {
-                if (string.IsNullOrEmpty(dto.NewPassword) || dto.NewPassword.Length < 6)
-                    return BadRequest(new { message = "New password must be at least 6 characters" });
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
 
                 var user = await _context.Users.FindAsync(id);
                 if (user == null)
