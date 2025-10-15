@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\James\\Documents\\Visual Idea Projects\\FleetManagerProV5\\FleetManagerProV2\\FleetManagerPro.API\\FleetManagerPro.API.csproj": {}
+    "C:\\Users\\James\\Documents\\Visual Idea Projects\\FleetManagerProV5\\FleetManagerProV2\\FleetManagerPro.APi\\FleetManagerPro.API.csproj": {}
   },
   "projects": {
-    "C:\\Users\\James\\Documents\\Visual Idea Projects\\FleetManagerProV5\\FleetManagerProV2\\FleetManagerPro.API\\FleetManagerPro.API.csproj": {
+    "C:\\Users\\James\\Documents\\Visual Idea Projects\\FleetManagerProV5\\FleetManagerProV2\\FleetManagerPro.APi\\FleetManagerPro.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\James\\Documents\\Visual Idea Projects\\FleetManagerProV5\\FleetManagerProV2\\FleetManagerPro.API\\FleetManagerPro.API.csproj",
+        "projectUniqueName": "C:\\Users\\James\\Documents\\Visual Idea Projects\\FleetManagerProV5\\FleetManagerProV2\\FleetManagerPro.APi\\FleetManagerPro.API.csproj",
         "projectName": "FleetManagerPro.API",
-        "projectPath": "C:\\Users\\James\\Documents\\Visual Idea Projects\\FleetManagerProV5\\FleetManagerProV2\\FleetManagerPro.API\\FleetManagerPro.API.csproj",
+        "projectPath": "C:\\Users\\James\\Documents\\Visual Idea Projects\\FleetManagerProV5\\FleetManagerProV2\\FleetManagerPro.APi\\FleetManagerPro.API.csproj",
         "packagesPath": "C:\\Users\\James\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\James\\Documents\\Visual Idea Projects\\FleetManagerProV5\\FleetManagerProV2\\FleetManagerPro.API\\obj\\",
+        "outputPath": "C:\\Users\\James\\Documents\\Visual Idea Projects\\FleetManagerProV5\\FleetManagerProV2\\FleetManagerPro.APi\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

@@ -180,6 +180,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// CRITICAL: CORS must come BEFORE UseHttpsRedirection
 app.UseCors("AllowAll");
 
 if (app.Environment.IsDevelopment())
@@ -215,6 +216,7 @@ app.MapGet("/weatherforecast", () =>
 .WithName("GetWeatherForecast");
 
 Console.WriteLine("[SERVER] Starting application with JWT authentication...");
+Console.WriteLine("[CORS] Enabled for localhost:4200 and Firebase hosting");
 
 app.Run();
 
