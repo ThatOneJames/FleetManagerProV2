@@ -39,8 +39,18 @@ namespace FleetManagerPro.API.Controllers
                         u.Role,
                         u.Phone,
                         u.Address,
+                        u.DateOfBirth,
+                        u.EmergencyContact,
                         u.Status,
                         IsActive = u.Status == "Active",
+                        u.LicenseNumber,
+                        u.LicenseClass,
+                        u.LicenseExpiry,
+                        u.ExperienceYears,
+                        u.SafetyRating,
+                        u.TotalMilesDriven,
+                        u.IsAvailable,
+                        u.HasHelper,
                         u.LastLocationUpdated,
                         u.CreatedAt,
                         u.UpdatedAt
@@ -123,8 +133,17 @@ namespace FleetManagerPro.API.Controllers
                         u.Phone,
                         u.Address,
                         u.DateOfBirth,
+                        u.EmergencyContact,
                         u.Status,
                         IsActive = u.Status == "Active",
+                        u.LicenseNumber,
+                        u.LicenseClass,
+                        u.LicenseExpiry,
+                        u.ExperienceYears,
+                        u.SafetyRating,
+                        u.TotalMilesDriven,
+                        u.IsAvailable,
+                        u.HasHelper,
                         u.LastLocationUpdated,
                         u.CreatedAt,
                         u.UpdatedAt
@@ -160,7 +179,11 @@ namespace FleetManagerPro.API.Controllers
                         u.Phone,
                         u.Role,
                         u.Status,
-                        IsActive = u.Status == "Active"
+                        IsActive = u.Status == "Active",
+                        u.LicenseNumber,
+                        u.LicenseClass,
+                        u.LicenseExpiry,
+                        u.ExperienceYears
                     })
                     .ToListAsync();
 
@@ -548,7 +571,6 @@ namespace FleetManagerPro.API.Controllers
                 if (user == null)
                     return NotFound(new { message = "User not found" });
 
-                // Admin can change password without knowing current password
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
                 user.UpdatedAt = DateTime.UtcNow;
 
