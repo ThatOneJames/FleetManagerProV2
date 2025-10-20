@@ -1,6 +1,6 @@
 ﻿using FleetManagerPro.API.Data.Repository;
-using FleetManagerPro.API.DTOs;
 using FleetManagerPro.API.Models;
+using FleetManagerPro.API.DTOs;
 using FleetManagerPro.API.Data;
 using Microsoft.EntityFrameworkCore;
 using RouteModel = FleetManagerPro.API.Models.Route;
@@ -25,18 +25,29 @@ namespace FleetManagerPro.API.Services
     {
         private readonly IRouteRepository _routeRepository;
         private readonly FleetManagerDbContext _context;
+        private readonly IRouteEstimationService _estimationService;
         private readonly ILogger<RouteService> _logger;
 
-        public RouteService(IRouteRepository routeRepository, FleetManagerDbContext context, ILogger<RouteService> logger)
+        public RouteService(
+            IRouteRepository routeRepository,
+            FleetManagerDbContext context,
+            IRouteEstimationService estimationService,
+            ILogger<RouteService> logger)
         {
             _routeRepository = routeRepository;
             _context = context;
+            _estimationService = estimationService;
             _logger = logger;
         }
 
         public async Task<IEnumerable<RouteDto>> GetAllRoutesAsync()
         {
-            var routes = await _routeRepository.GetAllAsync();
+            var routes = await _context.Routes
+                .Include(r => r.Vehicle)
+                .Include(r => r.Driver)
+                .Include(r => r.Stops)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
             return routes.Select(MapToDto);
         }
 
@@ -48,27 +59,52 @@ namespace FleetManagerPro.API.Services
 
         public async Task<IEnumerable<RouteDto>> GetRoutesByVehicleAsync(string vehicleId)
         {
-            var routes = await _routeRepository.GetRoutesByVehicleAsync(vehicleId);
+            var routes = await _context.Routes
+                .Include(r => r.Vehicle)
+                .Include(r => r.Driver)
+                .Include(r => r.Stops)
+                .Where(r => r.VehicleId == vehicleId)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
             return routes.Select(MapToDto);
         }
 
         public async Task<IEnumerable<RouteDto>> GetRoutesByDriverAsync(string driverId)
         {
-            var routes = await _routeRepository.GetRoutesByDriverAsync(driverId);
+            var routes = await _context.Routes
+                .Include(r => r.Vehicle)
+                .Include(r => r.Driver)
+                .Include(r => r.Stops)
+                .Where(r => r.DriverId == driverId)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
             return routes.Select(MapToDto);
         }
 
         public async Task<IEnumerable<RouteDto>> GetRoutesByStatusAsync(string status)
         {
-            var routes = await _routeRepository.GetRoutesByStatusAsync(status);
+            var routes = await _context.Routes
+                .Include(r => r.Vehicle)
+                .Include(r => r.Driver)
+                .Include(r => r.Stops)
+                .Where(r => r.Status == status)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
             return routes.Select(MapToDto);
         }
 
         public async Task<RouteDto> CreateRouteAsync(CreateRouteDto createDto, string userId)
         {
-            var totalDistance = CalculateTotalDistance(createDto.Stops);
-            var estimatedDuration = CalculateEstimatedDuration(totalDistance);
-            var fuelEstimate = CalculateFuelEstimate(totalDistance);
+            var stopAddresses = createDto.Stops
+                .OrderBy(s => s.StopOrder)
+                .Select(s => s.Address)
+                .ToList();
+
+            var estimation = _estimationService.CalculateRouteEstimation(
+                createDto.StartAddress ?? string.Empty,
+                stopAddresses,
+                createDto.DestinationAddress ?? string.Empty
+            );
 
             var route = new RouteModel
             {
@@ -80,9 +116,9 @@ namespace FleetManagerPro.API.Services
                 DestinationAddress = createDto.DestinationAddress,
                 GoogleMapsUrl = createDto.GoogleMapsUrl,
                 Status = "planned",
-                TotalDistance = totalDistance,
-                EstimatedDuration = estimatedDuration,
-                FuelEstimate = fuelEstimate,
+                TotalDistance = estimation.TotalDistanceKm,
+                EstimatedDuration = estimation.TotalDurationMinutes,
+                FuelEstimate = CalculateFuelEstimate(estimation.TotalDistanceKm),
                 CreatedBy = userId,
                 Stops = createDto.Stops.Select(s => new RouteStop
                 {
@@ -103,7 +139,6 @@ namespace FleetManagerPro.API.Services
             await _routeRepository.AddAsync(route);
             await _context.SaveChangesAsync();
 
-            // Send notification to driver about new trip assignment
             if (!string.IsNullOrEmpty(route.DriverId) && !string.IsNullOrEmpty(route.VehicleId))
             {
                 await SendDriverNotificationAsync(route.Id, route.DriverId, route.VehicleId);
@@ -115,7 +150,10 @@ namespace FleetManagerPro.API.Services
 
         public async Task<RouteDto> UpdateRouteAsync(string id, UpdateRouteDto updateDto)
         {
-            var route = await _context.Routes.FirstOrDefaultAsync(r => r.Id == id);
+            var route = await _context.Routes
+                .Include(r => r.Stops)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
             if (route == null)
                 throw new KeyNotFoundException($"Route with ID {id} not found");
 
@@ -136,6 +174,9 @@ namespace FleetManagerPro.API.Services
             if (!string.IsNullOrEmpty(updateDto.Status))
                 route.Status = updateDto.Status;
 
+            if (!string.IsNullOrEmpty(updateDto.GoogleMapsUrl))
+                route.GoogleMapsUrl = updateDto.GoogleMapsUrl;
+
             if (updateDto.StartTime.HasValue)
                 route.StartTime = updateDto.StartTime;
 
@@ -148,7 +189,59 @@ namespace FleetManagerPro.API.Services
                 }
             }
 
-            // ✅ UPDATE VEHICLE STATUS WHEN ROUTE STARTS
+            if (updateDto.Stops != null && updateDto.Stops.Any())
+            {
+                var existingStopIds = route.Stops.Select(s => s.Id).ToList();
+                var updatedStopIds = updateDto.Stops.Where(s => !string.IsNullOrEmpty(s.Id)).Select(s => s.Id).ToList();
+                var stopsToRemove = route.Stops.Where(s => !updatedStopIds.Contains(s.Id)).ToList();
+
+                foreach (var stop in stopsToRemove)
+                {
+                    _context.RouteStops.Remove(stop);
+                }
+
+                foreach (var stopDto in updateDto.Stops)
+                {
+                    if (!string.IsNullOrEmpty(stopDto.Id))
+                    {
+                        var existingStop = route.Stops.FirstOrDefault(s => s.Id == stopDto.Id);
+                        if (existingStop != null)
+                        {
+                            existingStop.StopOrder = stopDto.StopOrder;
+                            existingStop.Address = stopDto.Address;
+                            existingStop.Priority = stopDto.Priority;
+                            existingStop.Notes = stopDto.Notes;
+                            existingStop.ContactName = stopDto.ContactName;
+                            existingStop.ContactPhone = stopDto.ContactPhone;
+                        }
+                    }
+                    else
+                    {
+                        route.Stops.Add(new RouteStop
+                        {
+                            StopOrder = stopDto.StopOrder,
+                            Address = stopDto.Address,
+                            Priority = stopDto.Priority,
+                            Status = "pending",
+                            Notes = stopDto.Notes,
+                            ContactName = stopDto.ContactName,
+                            ContactPhone = stopDto.ContactPhone
+                        });
+                    }
+                }
+
+                var stopAddresses = updateDto.Stops.OrderBy(s => s.StopOrder).Select(s => s.Address).ToList();
+                var estimation = _estimationService.CalculateRouteEstimation(
+                    route.StartAddress ?? string.Empty,
+                    stopAddresses,
+                    route.DestinationAddress ?? string.Empty
+                );
+
+                route.TotalDistance = estimation.TotalDistanceKm;
+                route.EstimatedDuration = estimation.TotalDurationMinutes;
+                route.FuelEstimate = CalculateFuelEstimate(estimation.TotalDistanceKm);
+            }
+
             if (route.VehicleId != null)
             {
                 var vehicle = await _context.Vehicles.FindAsync(route.VehicleId);
@@ -172,7 +265,6 @@ namespace FleetManagerPro.API.Services
             _context.Routes.Update(route);
             await _context.SaveChangesAsync();
 
-            // Send notification if driver was changed or reassigned
             if (!string.IsNullOrEmpty(route.DriverId) &&
                 !string.IsNullOrEmpty(route.VehicleId) &&
                 route.DriverId != previousDriverId)
@@ -180,7 +272,12 @@ namespace FleetManagerPro.API.Services
                 await SendDriverNotificationAsync(route.Id, route.DriverId, route.VehicleId);
             }
 
-            var updatedRoute = await _routeRepository.GetRouteWithStopsAsync(id);
+            var updatedRoute = await _context.Routes
+                .Include(r => r.Vehicle)
+                .Include(r => r.Driver)
+                .Include(r => r.Stops)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
             return MapToDto(updatedRoute!);
         }
 
@@ -321,55 +418,6 @@ namespace FleetManagerPro.API.Services
                 ContactName = stop.ContactName,
                 ContactPhone = stop.ContactPhone
             };
-        }
-
-        private string GenerateGoogleMapsUrl(RouteModel route)
-        {
-            if (route.Stops == null || !route.Stops.Any())
-                return string.Empty;
-
-            var baseUrl = "https://www.google.com/maps/dir/";
-            var locations = new List<string>();
-
-            // Add route start address if it exists
-            if (!string.IsNullOrWhiteSpace(route.StartAddress))
-            {
-                locations.Add(Uri.EscapeDataString(route.StartAddress));
-            }
-
-            // Add all stops in order
-            var orderedStops = route.Stops.OrderBy(s => s.StopOrder);
-            foreach (var stop in orderedStops)
-            {
-                if (!string.IsNullOrWhiteSpace(stop.Address))
-                {
-                    locations.Add(Uri.EscapeDataString(stop.Address));
-                }
-            }
-
-            // Add route destination address if it exists and is different from last location
-            if (!string.IsNullOrWhiteSpace(route.DestinationAddress))
-            {
-                var lastLocation = locations.LastOrDefault();
-                var encodedDestination = Uri.EscapeDataString(route.DestinationAddress);
-
-                if (lastLocation != encodedDestination)
-                {
-                    locations.Add(encodedDestination);
-                }
-            }
-
-            return locations.Count >= 2 ? baseUrl + string.Join("/", locations) : string.Empty;
-        }
-
-        private decimal CalculateTotalDistance(List<CreateRouteStopDto> stops)
-        {
-            return stops.Count * 10;
-        }
-
-        private int CalculateEstimatedDuration(decimal distance)
-        {
-            return (int)(distance / 50 * 60);
         }
 
         private decimal CalculateFuelEstimate(decimal distance)

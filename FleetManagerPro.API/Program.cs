@@ -66,6 +66,7 @@ builder.Services.AddScoped<IMaintenanceReminderRepository, MaintenanceReminderRe
 builder.Services.AddScoped<IRouteRepository, RouteRepository>();
 builder.Services.AddScoped<IRouteService, RouteService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IRouteEstimationService, RouteEstimationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Only enable email notifications in Development (localhost)
@@ -180,7 +181,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// CRITICAL: CORS must come BEFORE UseHttpsRedirection
 app.UseCors("AllowAll");
 
 if (app.Environment.IsDevelopment())
