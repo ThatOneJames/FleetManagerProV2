@@ -208,7 +208,6 @@
     margin-bottom: 15px;
 }
 
-/* Buttons */
 button {
     cursor: pointer;
     transition: all 0.2s ease;
@@ -295,7 +294,6 @@ button {
         background-color: #0056b3;
     }
 
-/* ✅ NEW: Set to Pending button */
 .btn-pending {
     background-color: #17a2b8;
     color: white;
@@ -309,7 +307,6 @@ button {
         background-color: #138496;
     }
 
-/* ✅ NEW: Cancel Route button */
 .btn-cancel {
     background-color: #e67e22;
     color: white;
@@ -395,7 +392,6 @@ button {
             background-color: #5a6268;
         }
 
-/* Modal */
 .modal {
     position: fixed;
     top: 0;
@@ -421,6 +417,10 @@ button {
 
     .modal-content.stops-modal {
         max-width: 800px;
+    }
+
+    .modal-content.edit-modal {
+        max-width: 900px;
     }
 
 .modal-header {
@@ -501,11 +501,22 @@ button {
         color: #333;
     }
 
+    .stops-section h5 {
+        margin: 15px 0 10px 0;
+        color: #555;
+        font-size: 15px;
+    }
+
 .stops-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
+}
+
+.stops-actions {
+    display: flex;
+    gap: 10px;
 }
 
 .btn-preview {
@@ -524,6 +535,20 @@ button {
     .btn-preview:disabled {
         background-color: #ccc;
         cursor: not-allowed;
+    }
+
+.btn-optimize-auto {
+    background-color: #ffc107;
+    color: #333;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+    .btn-optimize-auto:hover {
+        background-color: #e0a800;
     }
 
 .stop-form {
@@ -595,6 +620,12 @@ button {
     overflow-y: auto;
 }
 
+.stops-list-editable {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
 .stop-item {
     display: flex;
     align-items: center;
@@ -604,6 +635,17 @@ button {
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     margin-bottom: 10px;
+}
+
+.stop-item-editable {
+    display: flex;
+    gap: 12px;
+    padding: 15px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    align-items: flex-start;
 }
 
 .stop-order {
@@ -624,10 +666,26 @@ button {
     flex: 1;
 }
 
+.stop-details-editable {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .stop-address {
     font-weight: 600;
     color: #333;
     margin-bottom: 4px;
+}
+
+.stop-address-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
 }
 
 .stop-meta {
@@ -639,10 +697,34 @@ button {
     flex-wrap: wrap;
 }
 
+.stop-meta-inputs {
+    display: grid;
+    grid-template-columns: 150px 1fr 1fr;
+    gap: 10px;
+}
+
+.priority-select,
+.contact-input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
 .stop-notes {
     margin-top: 6px;
     font-size: 12px;
     color: #666;
+}
+
+.stop-notes-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    resize: vertical;
+    font-family: inherit;
 }
 
 .contact-info {
@@ -676,7 +758,6 @@ button {
     margin-top: 25px;
 }
 
-/* Route Actions Bar */
 .route-actions-bar {
     display: flex;
     gap: 10px;
@@ -702,7 +783,6 @@ button {
         background-color: #138496;
     }
 
-/* Route Overview */
 .route-overview {
     padding: 20px;
     background-color: #f8f9fa;
@@ -731,7 +811,6 @@ button {
         font-size: 14px;
     }
 
-/* Stops Timeline */
 .stops-timeline {
     padding: 20px;
 }
@@ -805,12 +884,6 @@ button {
     flex-wrap: wrap;
 }
 
-.stop-number {
-    font-weight: 700;
-    color: #333;
-    font-size: 15px;
-}
-
 .stop-info,
 .stop-times {
     margin-top: 10px;
@@ -832,7 +905,6 @@ button {
     flex-wrap: wrap;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .route-list {
         grid-template-columns: 1fr;
@@ -872,5 +944,13 @@ button {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
+    }
+
+    .stop-meta-inputs {
+        grid-template-columns: 1fr;
+    }
+
+    .stops-actions {
+        flex-direction: column;
     }
 }

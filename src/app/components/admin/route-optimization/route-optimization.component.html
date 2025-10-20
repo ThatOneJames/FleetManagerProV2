@@ -48,11 +48,11 @@
                     <span>{{ route.driverName }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="label">Distance:</span>
+                    <span class="label">Estimated Distance:</span>
                     <span>{{ route.totalDistance }} km</span>
                 </div>
                 <div class="info-row">
-                    <span class="label">Duration:</span>
+                    <span class="label">Estimated Duration:</span>
                     <span>{{ route.estimatedDuration }} mins</span>
                 </div>
                 <div class="info-row">
@@ -66,7 +66,6 @@
             </div>
 
             <div class="route-actions">
-                <!-- Google Maps Buttons -->
                 <button class="btn-maps"
                         (click)="openGoogleMaps(route)"
                         *ngIf="route.stops && route.stops.length > 0">
@@ -78,12 +77,10 @@
                     <i class="icon-copy"></i> Copy Map Link
                 </button>
 
-                <!-- View Stops -->
                 <button class="btn-view" (click)="viewRouteStops(route)">
                     <i class="icon-list"></i> View Stops
                 </button>
 
-                <!-- Status Control Buttons -->
                 <button class="btn-start"
                         (click)="startRoute(route.id!)"
                         *ngIf="route.status === 'planned'">
@@ -96,26 +93,24 @@
                     <i class="icon-check"></i> Complete
                 </button>
 
-                <!-- ✅ NEW: Set to Pending Button (for completed or cancelled routes) -->
                 <button class="btn-pending"
                         (click)="setPendingRoute(route.id!)"
                         *ngIf="route.status === 'completed' || route.status === 'cancelled'">
                     <i class="icon-reset"></i> Set to Pending
                 </button>
 
-                <!-- ✅ NEW: Cancel Route Button (for planned or in-progress routes) -->
                 <button class="btn-cancel"
                         (click)="cancelRoute(route.id!)"
                         *ngIf="route.status === 'planned' || route.status === 'in_progress'">
                     <i class="icon-cancel"></i> Cancel Route
                 </button>
 
-                <!-- Optimize -->
-                <button class="btn-optimize" (click)="optimizeRoute(route.id!)">
-                    <i class="icon-route"></i> Optimize
+                <button class="btn-optimize"
+                        (click)="openEditModal(route)"
+                        *ngIf="route.status === 'planned'">
+                    <i class="icon-edit"></i> Edit Route
                 </button>
 
-                <!-- Delete (not allowed during in_progress) -->
                 <button class="btn-delete"
                         (click)="deleteRoute(route.id!)"
                         *ngIf="route.status !== 'in_progress'">
@@ -131,7 +126,6 @@
         </div>
     </div>
 
-    <!-- Create Route Modal -->
     <div class="modal" *ngIf="showCreateModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -301,7 +295,164 @@
         </div>
     </div>
 
-    <!-- Route Stops Modal -->
+    <div class="modal" *ngIf="showEditModal && editingRoute">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h3>Edit Route: {{ editingRoute.name }}</h3>
+                <button class="close-btn" (click)="closeEditModal()">×</button>
+            </div>
+
+            <form class="route-form">
+                <div class="form-group">
+                    <label>Route Name *</label>
+                    <input type="text"
+                           [(ngModel)]="editRoute.name"
+                           name="editRouteName"
+                           placeholder="Enter route name"
+                           required />
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea [(ngModel)]="editRoute.description"
+                              name="editDescription"
+                              placeholder="Enter route description"
+                              rows="3"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Vehicle *</label>
+                        <select [(ngModel)]="editRoute.vehicleId" name="editVehicle" required>
+                            <option value="">Select Vehicle</option>
+                            <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
+                                {{ vehicle.licensePlate }} - {{ vehicle.make }} {{ vehicle.model }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Driver *</label>
+                        <select [(ngModel)]="editRoute.driverId" name="editDriver" required>
+                            <option value="">Select Driver</option>
+                            <option *ngFor="let driver of drivers" [value]="driver.id">
+                                {{ driver.name }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="stops-section">
+                    <div class="stops-header">
+                        <h4>Route Stops</h4>
+                        <button type="button"
+                                class="btn-preview"
+                                (click)="previewEditGoogleMaps()"
+                                [disabled]="editRoute.stops.length === 0">
+                            <i class="icon-preview"></i> Preview
+                        </button>
+                    </div>
+
+                    <div class="stops-list-editable" *ngIf="editRoute.stops.length > 0">
+                        <div *ngFor="let stop of editRoute.stops; let i = index" class="stop-item-editable">
+                            <div class="stop-order">{{ stop.stopOrder }}</div>
+
+                            <div class="stop-details-editable">
+                                <input type="text"
+                                       [(ngModel)]="stop.address"
+                                       name="editStopAddress{{i}}"
+                                       placeholder="Stop address"
+                                       class="stop-address-input" />
+
+                                <div class="stop-meta-inputs">
+                                    <select [(ngModel)]="stop.priority" name="editPriority{{i}}" class="priority-select">
+                                        <option value="low">Low Priority</option>
+                                        <option value="normal">Normal Priority</option>
+                                        <option value="high">High Priority</option>
+                                    </select>
+
+                                    <input type="text"
+                                           [(ngModel)]="stop.contactName"
+                                           name="editContactName{{i}}"
+                                           placeholder="Contact name"
+                                           class="contact-input" />
+
+                                    <input type="tel"
+                                           [(ngModel)]="stop.contactPhone"
+                                           name="editContactPhone{{i}}"
+                                           placeholder="Contact phone"
+                                           class="contact-input" />
+                                </div>
+
+                                <textarea [(ngModel)]="stop.notes"
+                                          name="editNotes{{i}}"
+                                          placeholder="Stop notes"
+                                          rows="2"
+                                          class="stop-notes-input"></textarea>
+                            </div>
+
+                            <button type="button" class="btn-remove" (click)="removeStopFromEdit(i)">
+                                ×
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="stop-form">
+                        <h5>Add New Stop</h5>
+                        <div class="form-group">
+                            <input type="text"
+                                   [(ngModel)]="editStop.address"
+                                   name="newEditStopAddress"
+                                   placeholder="Stop address" />
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <select [(ngModel)]="editStop.priority" name="newEditPriority">
+                                    <option value="low">Low Priority</option>
+                                    <option value="normal">Normal Priority</option>
+                                    <option value="high">High Priority</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <input type="text"
+                                       [(ngModel)]="editStop.contactName"
+                                       name="newEditContactName"
+                                       placeholder="Contact name (optional)" />
+                            </div>
+                            <div class="form-group">
+                                <input type="tel"
+                                       [(ngModel)]="editStop.contactPhone"
+                                       name="newEditContactPhone"
+                                       placeholder="Contact phone (optional)" />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <textarea [(ngModel)]="editStop.notes"
+                                      name="newEditStopNotes"
+                                      placeholder="Stop notes (optional)"
+                                      rows="2"></textarea>
+                        </div>
+
+                        <button type="button" class="btn-add-stop" (click)="addStopToEdit()">
+                            <i class="icon-plus"></i> Add Stop
+                        </button>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" (click)="closeEditModal()">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn-primary" (click)="saveEditedRoute()">
+                        <i class="icon-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="modal" *ngIf="showStopsModal && selectedRoute">
         <div class="modal-content stops-modal">
             <div class="modal-header">

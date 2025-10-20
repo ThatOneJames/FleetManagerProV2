@@ -28,8 +28,10 @@ export class RouteOptimizationComponent implements OnInit {
     filterStatus: string = '';
 
     showCreateModal: boolean = false;
+    showEditModal: boolean = false;
     showStopsModal: boolean = false;
     selectedRoute: Route | null = null;
+    editingRoute: Route | null = null;
 
     newRoute: CreateRoute = {
         name: '',
@@ -42,7 +44,27 @@ export class RouteOptimizationComponent implements OnInit {
         stops: []
     };
 
+    editRoute: any = {
+        name: '',
+        description: '',
+        vehicleId: '',
+        driverId: '',
+        startAddress: '',
+        destinationAddress: '',
+        googleMapsUrl: '',
+        stops: []
+    };
+
     newStop: CreateRouteStop = {
+        stopOrder: 1,
+        address: '',
+        priority: 'normal',
+        notes: '',
+        contactName: '',
+        contactPhone: ''
+    };
+
+    editStop: any = {
         stopOrder: 1,
         address: '',
         priority: 'normal',
@@ -87,14 +109,12 @@ export class RouteOptimizationComponent implements OnInit {
     loadVehicles(): void {
         this.vehicleService.getAllVehicles().subscribe({
             next: (data) => {
-                console.log('All vehicles loaded:', data);
                 this.vehicles = data.filter(v =>
                     v.status !== 'Maintenance' &&
                     v.status !== 'OutOfService' &&
                     v.status !== 'Retired' &&
                     v.status !== 'InRoute'
                 );
-                console.log('Available vehicles (filtered):', this.vehicles);
             },
             error: (error) => {
                 console.error('Error loading vehicles:', error);
@@ -117,13 +137,9 @@ export class RouteOptimizationComponent implements OnInit {
                         .map(r => r.driverId)
                 );
 
-                console.log('🚗 Drivers currently on route:', Array.from(driversOnRoute));
-
                 this.http.get<any>(`${this.apiUrl}/users/drivers`, { headers })
                     .subscribe({
                         next: (allDrivers: any) => {
-                            console.log('📋 All drivers loaded:', allDrivers);
-
                             const attendanceRequests = allDrivers.map((driver: any) =>
                                 this.http.get<any>(`${this.apiUrl}/attendance/driver/${driver.id}/today`, { headers })
                                     .toPromise()
@@ -135,23 +151,17 @@ export class RouteOptimizationComponent implements OnInit {
                                     const attendance = attendanceResponses[index];
 
                                     if (driversOnRoute.has(driver.id)) {
-                                        console.log(`🚗 ${driver.name}: Currently on active route`);
                                         return false;
                                     }
 
                                     if (!attendance) {
-                                        console.log(`❌ ${driver.name}: No attendance record`);
                                         return false;
                                     }
 
                                     const clockedIn = attendance?.data?.clockIn || attendance?.clockIn;
                                     const clockedOut = attendance?.data?.clockOut || attendance?.clockOut;
 
-                                    const isAvailable = clockedIn && !clockedOut;
-
-                                    console.log(`${isAvailable ? '✅' : '❌'} ${driver.name}: Clocked In: ${!!clockedIn}, Clocked Out: ${!!clockedOut}`);
-
-                                    return isAvailable;
+                                    return clockedIn && !clockedOut;
                                 }).map((d: any) => ({
                                     id: d.id,
                                     name: d.name,
@@ -160,8 +170,6 @@ export class RouteOptimizationComponent implements OnInit {
                                     licenseNumber: d.licenseNumber,
                                     role: 'Driver'
                                 }));
-
-                                console.log('✅ Available drivers (clocked in, not on route):', this.drivers);
                             });
                         },
                         error: (error: any) => {
@@ -207,6 +215,29 @@ export class RouteOptimizationComponent implements OnInit {
         this.errorMessage = '';
     }
 
+    openEditModal(route: Route): void {
+        this.editingRoute = route;
+        this.editRoute = {
+            name: route.name,
+            description: route.description || '',
+            vehicleId: route.vehicleId,
+            driverId: route.driverId,
+            startAddress: '',
+            destinationAddress: '',
+            googleMapsUrl: route.googleMapsUrl || '',
+            stops: JSON.parse(JSON.stringify(route.stops))
+        };
+        this.showEditModal = true;
+        this.loadDrivers();
+        this.loadVehicles();
+    }
+
+    closeEditModal(): void {
+        this.showEditModal = false;
+        this.editingRoute = null;
+        this.errorMessage = '';
+    }
+
     addStopToNewRoute(): void {
         if (!this.newStop.address) {
             this.errorMessage = 'Stop address is required';
@@ -235,6 +266,48 @@ export class RouteOptimizationComponent implements OnInit {
             stop.stopOrder = idx + 1;
         });
         this.updateGoogleMapsUrl();
+    }
+
+    addStopToEdit(): void {
+        if (!this.editStop.address) {
+            this.errorMessage = 'Stop address is required';
+            return;
+        }
+
+        this.editRoute.stops.push({
+            ...this.editStop,
+            stopOrder: this.editRoute.stops.length + 1
+        });
+
+        this.editStop = {
+            stopOrder: this.editRoute.stops.length + 1,
+            address: '',
+            priority: 'normal',
+            notes: '',
+            contactName: '',
+            contactPhone: ''
+        };
+
+        this.updateEditGoogleMapsUrl();
+    }
+
+    removeStopFromEdit(index: number): void {
+        this.editRoute.stops.splice(index, 1);
+        this.editRoute.stops.forEach((stop: any, idx: number) => {
+            stop.stopOrder = idx + 1;
+        });
+        this.updateEditGoogleMapsUrl();
+    }
+
+    autoOptimizeStops(): void {
+        const stops = this.editRoute.stops;
+        const priorityOrder = { high: 0, normal: 1, low: 2 };
+        stops.sort((a: any, b: any) => (priorityOrder[a.priority as keyof typeof priorityOrder] || 1) - (priorityOrder[b.priority as keyof typeof priorityOrder] || 1));
+        stops.forEach((stop: any, idx: number) => {
+            stop.stopOrder = idx + 1;
+        });
+        this.editRoute.stops = [...stops];
+        this.updateEditGoogleMapsUrl();
     }
 
     updateGoogleMapsUrl(): void {
@@ -271,6 +344,40 @@ export class RouteOptimizationComponent implements OnInit {
         }
     }
 
+    updateEditGoogleMapsUrl(): void {
+        const baseUrl = 'https://www.google.com/maps/dir/';
+        const locations: string[] = [];
+
+        if (this.editRoute.startAddress && this.editRoute.startAddress.trim()) {
+            locations.push(encodeURIComponent(this.editRoute.startAddress.trim()));
+        }
+
+        this.editRoute.stops
+            .sort((a: any, b: any) => a.stopOrder - b.stopOrder)
+            .forEach((stop: any) => {
+                if (stop.address && stop.address.trim()) {
+                    locations.push(encodeURIComponent(stop.address.trim()));
+                }
+            });
+
+        if (this.editRoute.destinationAddress && this.editRoute.destinationAddress.trim()) {
+            const lastLocation = locations[locations.length - 1];
+            const encodedDestination = encodeURIComponent(this.editRoute.destinationAddress.trim());
+
+            if (lastLocation !== encodedDestination) {
+                locations.push(encodedDestination);
+            }
+        }
+
+        if (locations.length >= 2) {
+            this.editRoute.googleMapsUrl = baseUrl + locations.join('/');
+        } else if (locations.length === 1) {
+            this.editRoute.googleMapsUrl = `https://www.google.com/maps/search/${locations[0]}`;
+        } else {
+            this.editRoute.googleMapsUrl = '';
+        }
+    }
+
     createRoute(): void {
         if (!this.newRoute.name || !this.newRoute.vehicleId || !this.newRoute.driverId || this.newRoute.stops.length === 0) {
             this.errorMessage = 'Please fill in all required fields and add at least one stop';
@@ -281,12 +388,10 @@ export class RouteOptimizationComponent implements OnInit {
             this.updateGoogleMapsUrl();
         }
 
-        console.log('Creating route with data:', this.newRoute);
         this.loading = true;
 
         this.routeService.createRoute(this.newRoute).subscribe({
             next: (route) => {
-                console.log('Route created successfully:', route);
                 this.routes.unshift(route);
                 this.closeCreateModal();
                 this.loading = false;
@@ -294,6 +399,44 @@ export class RouteOptimizationComponent implements OnInit {
             error: (error) => {
                 console.error('Error creating route:', error);
                 this.errorMessage = error.error?.errors ? JSON.stringify(error.error.errors) : 'Failed to create route';
+                this.loading = false;
+            }
+        });
+    }
+
+    saveEditedRoute(): void {
+        if (!this.editingRoute) return;
+
+        if (!this.editRoute.name || !this.editRoute.vehicleId || !this.editRoute.driverId) {
+            this.errorMessage = 'Please fill in all required fields';
+            return;
+        }
+
+        this.updateEditGoogleMapsUrl();
+
+        const updateData = {
+            name: this.editRoute.name,
+            description: this.editRoute.description,
+            vehicleId: this.editRoute.vehicleId,
+            driverId: this.editRoute.driverId,
+            googleMapsUrl: this.editRoute.googleMapsUrl,
+            stops: this.editRoute.stops
+        };
+
+        this.loading = true;
+
+        this.routeService.updateRoute(this.editingRoute.id!, updateData).subscribe({
+            next: (updatedRoute) => {
+                const index = this.routes.findIndex(r => r.id === updatedRoute.id);
+                if (index !== -1) {
+                    this.routes[index] = updatedRoute;
+                }
+                this.closeEditModal();
+                this.loading = false;
+            },
+            error: (error) => {
+                console.error('Error updating route:', error);
+                this.errorMessage = 'Failed to update route';
                 this.loading = false;
             }
         });
@@ -325,6 +468,15 @@ export class RouteOptimizationComponent implements OnInit {
 
         if (this.newRoute.googleMapsUrl) {
             window.open(this.newRoute.googleMapsUrl, '_blank');
+        } else {
+            alert('Unable to generate Google Maps URL. Please check your addresses.');
+        }
+    }
+
+    previewEditGoogleMaps(): void {
+        this.updateEditGoogleMapsUrl();
+        if (this.editRoute.googleMapsUrl) {
+            window.open(this.editRoute.googleMapsUrl, '_blank');
         } else {
             alert('Unable to generate Google Maps URL. Please check your addresses.');
         }

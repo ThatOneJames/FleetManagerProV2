@@ -31,7 +31,7 @@ export class AppComponent implements OnInit {
                 { title: 'Driver Management', icon: 'people', route: '/admin/drivers' },
                 { title: 'Leave Management', icon: 'event_note', route: '/admin/leave-management' },
                 { title: 'Fleet Management', icon: 'local_shipping', route: '/admin/fleet' },
-                { title: 'Route Optimization', icon: 'route', route: '/admin/routes' },
+                { title: 'Route Management', icon: 'route', route: '/admin/routes' },
                 { title: 'Maintenance', icon: 'build', route: '/admin/maintenance' }
             ]
         },
