@@ -19,7 +19,6 @@ namespace FleetManagerPro.API.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("NotificationBackgroundService started - checking every 30 seconds");
-
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -30,7 +29,6 @@ namespace FleetManagerPro.API.Services
                 {
                     _logger.LogError(ex, "Error processing notifications");
                 }
-
                 await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
             }
         }
@@ -40,7 +38,6 @@ namespace FleetManagerPro.API.Services
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<FleetManagerDbContext>();
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-
             var pendingNotifications = await context.Notifications
                 .Include(n => n.User)
                 .Where(n => !n.IsSent && n.SendEmail)
@@ -62,7 +59,6 @@ namespace FleetManagerPro.API.Services
                             notification.Title,
                             $"<h2>{notification.Title}</h2><p>{notification.Message}</p>"
                         );
-
                         notification.IsSent = true;
                         _logger.LogInformation("Email sent to {Email} - {Title}", notification.User.Email, notification.Title);
                     }

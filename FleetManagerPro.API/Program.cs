@@ -35,7 +35,6 @@ else
 builder.Services.AddDbContext<FleetManagerDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
-// Configure Email Settings - read from environment variables for production
 var emailSmtpServer = Environment.GetEnvironmentVariable("EMAIL_SMTP_SERVER") ?? builder.Configuration["EmailSettings:SmtpServer"];
 var emailSmtpPort = Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT") ?? builder.Configuration["EmailSettings:SmtpPort"];
 var emailSenderEmail = Environment.GetEnvironmentVariable("EMAIL_SENDER_EMAIL") ?? builder.Configuration["EmailSettings:SenderEmail"];
@@ -69,16 +68,8 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRouteEstimationService, RouteEstimationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
-// Only enable email notifications in Development (localhost)
-if (builder.Environment.IsDevelopment())
-{
-    builder.Services.AddHostedService<NotificationBackgroundService>();
-    Console.WriteLine("[EMAIL] Background email service enabled (localhost only)");
-}
-else
-{
-    Console.WriteLine("[EMAIL] Background email service DISABLED (production)");
-}
+builder.Services.AddHostedService<NotificationBackgroundService>();
+Console.WriteLine("[EMAIL] Background email service ENABLED (all environments)");
 
 builder.Services.AddCors(options =>
 {
@@ -191,10 +182,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.MapGet("/weatherforecast", () =>
