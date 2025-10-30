@@ -10,7 +10,7 @@ const firebaseConfig = {
 
 export const environment = {
     production: false,
-    apiUrl: 'http://localhost:5000/api',
+    apiUrl: 'https://fleetmanagerprov2-production.up.railway.app/api',
     appName: 'Fleet Manager Pro',
     firebaseConfig: firebaseConfig,
     recaptchaSiteKey: '6Lfp3vsrAAAAAPJ2Mu_sq5c_lFUoY8FZkzvgORO1'

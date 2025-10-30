@@ -137,7 +137,9 @@ export class LoginComponent implements OnInit {
         const { name, email, password } = this.registerForm.value;
 
         try {
+            console.log('Starting registration process...');
             const recaptchaToken = await this.getRecaptchaToken();
+            console.log('reCAPTCHA token obtained:', recaptchaToken.substring(0, 20) + '...');
 
             const registerPayload = {
                 userDto: {
@@ -164,9 +166,11 @@ export class LoginComponent implements OnInit {
                 recaptchaToken: recaptchaToken
             };
 
+            console.log('Sending registration payload...');
             this.http.post(`${environment.apiUrl}/auth/register`, registerPayload).subscribe({
                 next: (response: any) => {
                     this.loading = false;
+                    console.log('Registration successful:', response);
                     this.successMessage = 'Registration successful! You can now sign in.';
                     this.registerForm.reset();
 
@@ -177,6 +181,7 @@ export class LoginComponent implements OnInit {
                 },
                 error: (error: any) => {
                     this.loading = false;
+                    console.error('Registration error:', error);
 
                     if (error.error && error.error.error) {
                         this.emailValidationError = error.error.error;
@@ -192,29 +197,40 @@ export class LoginComponent implements OnInit {
             });
         } catch (error) {
             this.loading = false;
+            console.error('reCAPTCHA error:', error);
             this.errorMessage = 'reCAPTCHA verification failed. Please try again.';
         }
     }
 
     private getRecaptchaToken(): Promise<string> {
         return new Promise((resolve, reject) => {
-            const grecaptcha = (window as any).grecaptcha;
+            try {
+                const grecaptcha = (window as any).grecaptcha;
 
-            if (!grecaptcha) {
-                reject('reCAPTCHA not loaded');
-                return;
-            }
+                if (!grecaptcha) {
+                    console.error('reCAPTCHA script not loaded');
+                    reject('reCAPTCHA not loaded. Please refresh the page.');
+                    return;
+                }
 
-            grecaptcha.execute(environment.recaptchaSiteKey, { action: 'register' })
-                .then((token: string) => {
-                    resolve(token);
-                })
-                .catch((error: any) => {
-                    reject(error);
+                console.log('Executing reCAPTCHA...');
+                grecaptcha.ready(() => {
+                    grecaptcha.execute(environment.recaptchaSiteKey, { action: 'register' })
+                        .then((token: string) => {
+                            console.log('reCAPTCHA token generated successfully');
+                            resolve(token);
+                        })
+                        .catch((error: any) => {
+                            console.error('reCAPTCHA execution failed:', error);
+                            reject('Failed to generate reCAPTCHA token');
+                        });
                 });
+            } catch (error) {
+                console.error('reCAPTCHA setup error:', error);
+                reject(error);
+            }
         });
     }
-
 
     private redirectBasedOnRole(role: string | null): void {
         switch (role) {

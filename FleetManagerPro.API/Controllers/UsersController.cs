@@ -245,7 +245,7 @@ namespace FleetManagerPro.API.Controllers
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteUser(string id)
+        public async Task<IActionResult> ArchiveUser(string id)
         {
             try
             {
@@ -255,16 +255,20 @@ namespace FleetManagerPro.API.Controllers
                     return NotFound(new { message = "User not found" });
                 }
 
-                _context.Users.Remove(user);
+                user.Status = "Archived";
+                user.UpdatedAt = DateTime.UtcNow;
+
+                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
-                return Ok(new { message = "User deleted successfully" });
+                return Ok(new { message = "User archived (soft deleted) successfully" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Error deleting user", error = ex.Message });
+                return StatusCode(500, new { message = "Error archiving user", error = ex.Message });
             }
         }
+
 
         [HttpGet("stats")]
         [Authorize(Roles = "Admin")]

@@ -1,4 +1,4 @@
-﻿import { NgModule } from '@angular/core';
+﻿import { NgModule, APP_INITIALIZER } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
@@ -57,6 +57,22 @@ import { AuthService } from './services/auth.service';
 import { DriverService } from './services/driver.service';
 import { VehicleService } from './services/vehicle.service';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+
+export function initializeRecaptcha(): () => Promise<void> {
+    return () => {
+        return new Promise((resolve) => {
+            const checkRecaptcha = () => {
+                if ((window as any).grecaptcha) {
+                    console.log('reCAPTCHA is ready');
+                    resolve();
+                } else {
+                    setTimeout(checkRecaptcha, 100);
+                }
+            };
+            checkRecaptcha();
+        });
+    };
+}
 
 @NgModule({
     declarations: [
@@ -117,6 +133,11 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
         DriverService,
         VehicleService,
         provideAnimationsAsync(),
+        {
+            provide: APP_INITIALIZER,
+            useFactory: initializeRecaptcha,
+            multi: true
+        },
         {
             provide: HTTP_INTERCEPTORS,
             useClass: AuthInterceptor,
