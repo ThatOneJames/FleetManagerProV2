@@ -589,12 +589,19 @@ namespace FleetManagerPro.API.Controllers
 
         [HttpPost("{driverId}/warnings")]
         [Authorize(Roles = "Admin,Manager")]
-        public async Task<IActionResult> AddDriverWarning(string driverId, [FromBody] DriverWarning dto)
+        public async Task<IActionResult> AddDriverWarning(string driverId, [FromBody] CreateDriverWarningDto dto)
         {
             try
             {
-                dto.DriverId = driverId;
-                var result = await _disciplinaryService.AddWarningAsync(dto);
+                var warning = new DriverWarning
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    DriverId = driverId,
+                    Reason = dto.Reason,
+                    IssuedBy = dto.IssuedBy,
+                    DateIssued = DateTime.UtcNow
+                };
+                var result = await _disciplinaryService.AddWarningAsync(warning);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -602,6 +609,7 @@ namespace FleetManagerPro.API.Controllers
                 return StatusCode(500, new { message = "Error adding warning", error = ex.Message });
             }
         }
+
 
         [HttpGet("{driverId}/suspensions")]
         [Authorize(Roles = "Admin,Manager")]
