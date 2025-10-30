@@ -2,29 +2,58 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FleetManagerPro.API.DTOs
 {
-    // Your existing UserDto - corrected based on database schema
     public class UserDto
     {
         public string Id { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Name is required")]
+        [StringLength(255, MinimumLength = 2, ErrorMessage = "Name must be between 2 and 255 characters")]
         public string Name { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty; // For AuthController
+
+        [Required(ErrorMessage = "Password is required")]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
         public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Role is required")]
         public string Role { get; set; } = string.Empty;
+
+        [Phone(ErrorMessage = "Invalid phone number format")]
         public string Phone { get; set; } = string.Empty;
+
+        [StringLength(500, ErrorMessage = "Address cannot exceed 500 characters")]
         public string Address { get; set; } = string.Empty;
+
         public DateTime? DateOfBirth { get; set; }
         public DateTime? HireDate { get; set; }
+
+        [StringLength(200, ErrorMessage = "Emergency contact cannot exceed 200 characters")]
         public string EmergencyContact { get; set; } = string.Empty;
+
         public string ProfileImageUrl { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
 
         // Driver fields - based on your database schema
+        [StringLength(50, ErrorMessage = "License number cannot exceed 50 characters")]
         public string LicenseNumber { get; set; } = string.Empty;
+
+        [StringLength(20, ErrorMessage = "License class cannot exceed 20 characters")]
         public string LicenseClass { get; set; } = string.Empty;
+
         public DateTime? LicenseExpiry { get; set; }
+
+        [Range(0, 50, ErrorMessage = "Experience years must be between 0 and 50")]
         public int ExperienceYears { get; set; }
+
+        [Range(0.0, 5.0, ErrorMessage = "Safety rating must be between 0 and 5")]
         public decimal SafetyRating { get; set; }
+
+        [Range(0, double.MaxValue, ErrorMessage = "Total miles driven cannot be negative")]
         public decimal TotalMilesDriven { get; set; }
+
         public bool IsAvailable { get; set; } = true;
         public bool HasHelper { get; set; } = false;
         public DateTime CreatedAt { get; set; }

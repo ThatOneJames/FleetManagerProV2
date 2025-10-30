@@ -37,7 +37,7 @@ export class FleetManagementComponent implements OnInit {
     successMessage = '';
     errorMessage = '';
 
-    statusOptions = ['Ready', 'Active', 'Maintenance', 'Inactive', 'OnRoute', 'Retired', 'NotAvailable', 'InUse', 'OutOfService'];
+    statusOptions = ['Ready', 'Active', 'Maintenance', 'Inactive', 'InRoute', 'Retired', 'NotAvailable', 'InUse', 'OutOfService'];
     fuelTypeOptions = ['Gasoline', 'Diesel', 'Electric', 'Hybrid'];
 
     constructor(

@@ -10,6 +10,7 @@
 		<!-- ✅ Updated to match .NET 9 -->
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
+		<PackageReference Include="reCAPTCHA.AspNetCore" Version="3.0.10" />
 		<PackageReference Include="Resend" Version="0.1.6" />
 		<PackageReference Include="SendGrid" Version="9.29.3" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />

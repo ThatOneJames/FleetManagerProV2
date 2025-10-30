@@ -1168,6 +1168,18 @@
           }
         }
       },
+      "reCAPTCHA.AspNetCore/3.0.10": {
+        "type": "package",
+        "compile": {
+          "lib/netcoreapp3.1/reCAPTCHA.AspNetCore.dll": {}
+        },
+        "runtime": {
+          "lib/netcoreapp3.1/reCAPTCHA.AspNetCore.dll": {}
+        },
+        "frameworkReferences": [
+          "Microsoft.AspNetCore.App"
+        ]
+      },
       "Resend/0.1.6": {
         "type": "package",
         "dependencies": {
@@ -4246,6 +4258,19 @@
         "pomelo.entityframeworkcore.mysql.nuspec"
       ]
     },
+    "reCAPTCHA.AspNetCore/3.0.10": {
+      "sha512": "MJ3MCMBWr4gd+JZBXyUyT+YOdnMTNlysRrWKne/B/4hSxrpqERxinenvup6hVkQAoPz0DXzzJDujROEQPwohow==",
+      "type": "package",
+      "path": "recaptcha.aspnetcore/3.0.10",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE",
+        "lib/netcoreapp3.1/reCAPTCHA.AspNetCore.dll",
+        "recaptcha.aspnetcore.3.0.10.nupkg.sha512",
+        "recaptcha.aspnetcore.nuspec"
+      ]
+    },
     "Resend/0.1.6": {
       "sha512": "jV/VViNS3vUvkMMN5pT8+KzOErs4S4/3DG0uc3QgbH4InDOsgHEuU0Izep/IrIC2SLfBgHD/H5Lkt75lofFVnA==",
       "type": "package",
@@ -5469,7 +5494,8 @@
       "Resend >= 0.1.6",
       "SendGrid >= 9.29.3",
       "Swashbuckle.AspNetCore >= 7.2.0",
-      "System.IdentityModel.Tokens.Jwt >= 8.1.0"
+      "System.IdentityModel.Tokens.Jwt >= 8.1.0",
+      "reCAPTCHA.AspNetCore >= 3.0.10"
     ]
   },
   "packageFolders": {
@@ -5586,6 +5612,10 @@
           "System.IdentityModel.Tokens.Jwt": {
             "target": "Package",
             "version": "[8.1.0, )"
+          },
+          "reCAPTCHA.AspNetCore": {
+            "target": "Package",
+            "version": "[3.0.10, )"
           }
         },
         "imports": [

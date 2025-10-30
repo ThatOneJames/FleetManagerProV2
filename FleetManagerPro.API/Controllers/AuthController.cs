@@ -26,13 +26,20 @@ namespace FleetManager.Controllers
         private readonly IConfiguration _config;
         private readonly IAuthService _authService;
         private readonly IUserRepository _userRepository;
+        private readonly IEmailDomainValidator _emailDomainValidator; // ADD THIS
 
-        public AuthController(FleetManagerDbContext context, IConfiguration config, IAuthService authService, IUserRepository userRepository)
+        public AuthController(
+            FleetManagerDbContext context,
+            IConfiguration config,
+            IAuthService authService,
+            IUserRepository userRepository,
+            IEmailDomainValidator emailDomainValidator) // ADD THIS
         {
             _context = context;
             _config = config;
             _authService = authService;
             _userRepository = userRepository;
+            _emailDomainValidator = emailDomainValidator; // ADD THIS
         }
 
         [HttpPost("login")]
@@ -139,41 +146,71 @@ namespace FleetManager.Controllers
         {
             try
             {
+                // Validate model state (includes basic email validation)
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+
+                    Console.WriteLine($"[AUTH] Registration validation failed: {string.Join(", ", errors)}");
+                    return BadRequest(new { message = "Validation failed", errors = errors });
+                }
+
+                // VALIDATE EMAIL DOMAIN - CHECK IF REAL EMAIL
+                Console.WriteLine($"[AUTH] Validating email domain for: {userDto.Email}");
+                var (isValidDomain, domainMessage) = await _emailDomainValidator.ValidateEmailDomain(userDto.Email);
+
+                if (!isValidDomain)
+                {
+                    Console.WriteLine($"[AUTH] Email domain validation failed: {domainMessage}");
+                    return BadRequest(new
+                    {
+                        message = "Invalid email address",
+                        error = domainMessage,
+                        details = "Please use a valid email address from a registered domain (e.g., Gmail, Yahoo, Outlook, etc.)"
+                    });
+                }
+
+                Console.WriteLine($"[AUTH] Email domain validation successful for: {userDto.Email}");
+
+                // Check if email already exists
                 if (await _context.Users.AnyAsync(u => u.Email == userDto.Email))
                 {
                     return BadRequest(new { message = "Email already exists" });
                 }
 
                 var hashedPassword = await _authService.HashPassword(userDto.Password);
-
                 var nextEmployeeId = await GenerateNextEmployeeId();
 
                 var user = new User
                 {
                     Id = nextEmployeeId,
-                    Email = userDto.Email,
-                    Name = userDto.Name,
+                    Email = userDto.Email.ToLower().Trim(), // Normalize email
+                    Name = userDto.Name.Trim(),
                     PasswordHash = hashedPassword,
                     Role = userDto.Role,
                     Status = string.IsNullOrWhiteSpace(userDto.Status) ? "Active" : userDto.Status,
-                    Phone = userDto.Phone,
-                    Address = userDto.Address,
+                    Phone = string.IsNullOrWhiteSpace(userDto.Phone) ? null : userDto.Phone.Trim(),
+                    Address = string.IsNullOrWhiteSpace(userDto.Address) ? null : userDto.Address.Trim(),
                     DateOfBirth = userDto.DateOfBirth,
-                    HireDate = userDto.HireDate,
-                    EmergencyContact = userDto.EmergencyContact,
-                    ProfileImageUrl = userDto.ProfileImageUrl,
+                    HireDate = userDto.HireDate ?? DateTime.UtcNow,
+                    EmergencyContact = string.IsNullOrWhiteSpace(userDto.EmergencyContact) ? null : userDto.EmergencyContact.Trim(),
+                    ProfileImageUrl = string.IsNullOrWhiteSpace(userDto.ProfileImageUrl) ? null : userDto.ProfileImageUrl,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
 
+                // Driver-specific fields (UserDto has non-nullable types, so direct assignment works)
                 if (user.Role == "Driver")
                 {
-                    user.LicenseNumber = string.IsNullOrWhiteSpace(userDto.LicenseNumber) ? null : userDto.LicenseNumber;
-                    user.LicenseClass = string.IsNullOrWhiteSpace(userDto.LicenseClass) ? null : userDto.LicenseClass;
+                    user.LicenseNumber = string.IsNullOrWhiteSpace(userDto.LicenseNumber) ? null : userDto.LicenseNumber.Trim();
+                    user.LicenseClass = string.IsNullOrWhiteSpace(userDto.LicenseClass) ? null : userDto.LicenseClass.Trim();
                     user.LicenseExpiry = userDto.LicenseExpiry;
-                    user.ExperienceYears = userDto.ExperienceYears;
-                    user.SafetyRating = userDto.SafetyRating;
-                    user.TotalMilesDriven = userDto.TotalMilesDriven;
+                    user.ExperienceYears = userDto.ExperienceYears; // int to int? - OK
+                    user.SafetyRating = userDto.SafetyRating;       // decimal to decimal? - OK
+                    user.TotalMilesDriven = userDto.TotalMilesDriven; // decimal to decimal? - OK
                     user.IsAvailable = userDto.IsAvailable;
                     user.HasHelper = userDto.HasHelper;
                 }
@@ -183,7 +220,12 @@ namespace FleetManager.Controllers
 
                 Console.WriteLine($"[AUTH] User registered successfully: {user.Email} with ID: {user.Id}");
 
-                return Ok(new { message = "User registered successfully", userId = user.Id });
+                return Ok(new
+                {
+                    message = "User registered successfully",
+                    userId = user.Id,
+                    email = user.Email
+                });
             }
             catch (Exception ex)
             {
@@ -192,6 +234,7 @@ namespace FleetManager.Controllers
                 return StatusCode(500, new { message = "Internal server error during registration", error = ex.Message });
             }
         }
+
 
         private async Task<string> GenerateNextEmployeeId()
         {
@@ -231,5 +274,24 @@ namespace FleetManager.Controllers
                 }
             });
         }
+
+        // TEST ENDPOINT - Para ma-test mo ang email validation
+        [HttpPost("validate-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ValidateEmail([FromBody] EmailValidationRequest request)
+        {
+            var (isValid, message) = await _emailDomainValidator.ValidateEmailDomain(request.Email);
+            return Ok(new
+            {
+                email = request.Email,
+                isValid = isValid,
+                message = message
+            });
+        }
+    }
+
+    public class EmailValidationRequest
+    {
+        public string Email { get; set; } = "";
     }
 }
