@@ -1,12 +1,12 @@
 ﻿using FleetManagerPro.API.Data;
 using FleetManagerPro.API.Models;
 using FleetManagerPro.API.DTOs.Users;
+using FleetManagerPro.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
-using System.ComponentModel.DataAnnotations;
 
 namespace FleetManagerPro.API.Controllers
 {
@@ -17,11 +17,16 @@ namespace FleetManagerPro.API.Controllers
     {
         private readonly FleetManagerDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly DriverDisciplinaryService _disciplinaryService;
 
-        public UsersController(FleetManagerDbContext context, IConfiguration configuration)
+        public UsersController(
+            FleetManagerDbContext context,
+            IConfiguration configuration,
+            DriverDisciplinaryService disciplinaryService)
         {
             _context = context;
             _configuration = configuration;
+            _disciplinaryService = disciplinaryService;
         }
 
         [HttpGet]
@@ -74,16 +79,12 @@ namespace FleetManagerPro.API.Controllers
                 var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
                 if (string.IsNullOrEmpty(userId))
-                {
                     return Unauthorized(new { message = "User not authenticated" });
-                }
 
                 var user = await _context.Users.FindAsync(userId);
 
                 if (user == null)
-                {
                     return NotFound(new { message = "User not found" });
-                }
 
                 return Ok(new
                 {
@@ -151,9 +152,7 @@ namespace FleetManagerPro.API.Controllers
                     .FirstOrDefaultAsync();
 
                 if (user == null)
-                {
                     return NotFound(new { message = "User not found" });
-                }
 
                 return Ok(user);
             }
@@ -202,9 +201,7 @@ namespace FleetManagerPro.API.Controllers
             try
             {
                 if (await _context.Users.AnyAsync(u => u.Email == registerDto.Email))
-                {
                     return BadRequest(new { message = "Email already registered" });
-                }
 
                 var userId = "USR-" + DateTime.UtcNow.Ticks.ToString().Substring(8);
                 var passwordHash = HashPassword(registerDto.Password);
@@ -251,9 +248,7 @@ namespace FleetManagerPro.API.Controllers
             {
                 var user = await _context.Users.FindAsync(id);
                 if (user == null)
-                {
                     return NotFound(new { message = "User not found" });
-                }
 
                 user.Status = "Archived";
                 user.UpdatedAt = DateTime.UtcNow;
@@ -268,7 +263,6 @@ namespace FleetManagerPro.API.Controllers
                 return StatusCode(500, new { message = "Error archiving user", error = ex.Message });
             }
         }
-
 
         [HttpGet("stats")]
         [Authorize(Roles = "Admin")]
@@ -311,9 +305,7 @@ namespace FleetManagerPro.API.Controllers
             {
                 var user = await _context.Users.FindAsync(id);
                 if (user == null)
-                {
                     return NotFound(new { message = "User not found" });
-                }
 
                 user.Status = dto.Status;
                 user.UpdatedAt = DateTime.UtcNow;
@@ -347,15 +339,11 @@ namespace FleetManagerPro.API.Controllers
             {
                 var user = await _context.Users.FindAsync(id);
                 if (user == null)
-                {
                     return NotFound(new { message = "User not found" });
-                }
 
                 var validRoles = new[] { "Admin", "Manager", "Driver" };
                 if (!validRoles.Contains(dto.Role))
-                {
                     return BadRequest(new { message = "Invalid role. Must be Admin, Manager, or Driver" });
-                }
 
                 user.Role = dto.Role;
                 user.UpdatedAt = DateTime.UtcNow;
@@ -389,9 +377,7 @@ namespace FleetManagerPro.API.Controllers
             {
                 var user = await _context.Users.FindAsync(id);
                 if (user == null)
-                {
                     return NotFound(new { message = "User not found" });
-                }
 
                 if (!string.IsNullOrEmpty(dto.Name))
                     user.Name = dto.Name;
@@ -399,9 +385,7 @@ namespace FleetManagerPro.API.Controllers
                 if (!string.IsNullOrEmpty(dto.Email))
                 {
                     if (await _context.Users.AnyAsync(u => u.Email == dto.Email && u.Id != id))
-                    {
                         return BadRequest(new { message = "Email already in use" });
-                    }
                     user.Email = dto.Email;
                 }
 
@@ -449,15 +433,11 @@ namespace FleetManagerPro.API.Controllers
                 var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
                 if (string.IsNullOrEmpty(userId))
-                {
                     return Unauthorized(new { message = "User not authenticated" });
-                }
 
                 var user = await _context.Users.FindAsync(userId);
                 if (user == null)
-                {
                     return NotFound(new { message = "User not found" });
-                }
 
                 if (!string.IsNullOrEmpty(dto.Name))
                     user.Name = dto.Name;
@@ -465,9 +445,7 @@ namespace FleetManagerPro.API.Controllers
                 if (!string.IsNullOrEmpty(dto.Email))
                 {
                     if (await _context.Users.AnyAsync(u => u.Email == dto.Email && u.Id != userId))
-                    {
                         return BadRequest(new { message = "Email already in use" });
-                    }
                     user.Email = dto.Email;
                 }
 
@@ -589,36 +567,75 @@ namespace FleetManagerPro.API.Controllers
             }
         }
 
+        // ---- Warnings and Suspensions ----
+
         [HttpGet("{driverId}/warnings")]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> GetDriverWarnings(string driverId)
         {
-            var warnings = await _context.DriverWarnings
-                .Where(w => w.DriverId == driverId)
-                .OrderByDescending(w => w.DateIssued)
-                .ToListAsync();
+            try
+            {
+                var warnings = await _disciplinaryService.GetWarningsByDriverAsync(driverId);
+                if (warnings == null || warnings.Count == 0)
+                    return NotFound(new { message = "No warnings found for the specified driver" });
 
-            if (warnings == null || warnings.Count == 0)
-                return NotFound(new { message = "No warnings found for the specified driver" });
+                return Ok(warnings);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error retrieving warnings", error = ex.Message });
+            }
+        }
 
-            return Ok(warnings);
+        [HttpPost("{driverId}/warnings")]
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<IActionResult> AddDriverWarning(string driverId, [FromBody] DriverWarning dto)
+        {
+            try
+            {
+                dto.DriverId = driverId;
+                var result = await _disciplinaryService.AddWarningAsync(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error adding warning", error = ex.Message });
+            }
         }
 
         [HttpGet("{driverId}/suspensions")]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> GetDriverSuspensions(string driverId)
         {
-            var suspensions = await _context.DriverSuspensionHistories
-                .Where(s => s.DriverId == driverId)
-                .OrderByDescending(s => s.DateSuspended)
-                .ToListAsync();
+            try
+            {
+                var suspensions = await _disciplinaryService.GetSuspensionsByDriverAsync(driverId);
+                if (suspensions == null || suspensions.Count == 0)
+                    return NotFound(new { message = "No suspensions found for the specified driver" });
 
-            if (suspensions == null || suspensions.Count == 0)
-                return NotFound(new { message = "No suspensions found for the specified driver" });
-
-            return Ok(suspensions);
+                return Ok(suspensions);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error retrieving suspensions", error = ex.Message });
+            }
         }
 
+        [HttpPost("{driverId}/suspensions")]
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<IActionResult> AddDriverSuspension(string driverId, [FromBody] DriverSuspension dto)
+        {
+            try
+            {
+                dto.DriverId = driverId;
+                var result = await _disciplinaryService.AddSuspensionAsync(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error adding suspension", error = ex.Message });
+            }
+        }
 
         private string HashPassword(string password)
         {

@@ -4,6 +4,8 @@ import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { User } from '../models/user.model';
+import { DriverWarning } from '../models/driver-warning.model';
+import { DriverSuspension } from '../models/driver-suspension.model';
 import { environment } from '../../environments/environment';
 
 export interface LoginResponse {
@@ -246,5 +248,16 @@ export class AuthService {
             }),
             catchError(err => throwError(() => err))
         );
+    }
+    addWarning(driverId: string, reason: string, issuedBy: string): Observable<any> {
+        return this.http.post(`${this.apiUrl}/users/${driverId}/warnings`, { reason, issuedBy });
+    }
+
+    getWarnings(driverId: string): Observable<DriverWarning[]> {
+        return this.http.get<DriverWarning[]>(`${this.apiUrl}/users/${driverId}/warnings`);
+    }
+
+    getSuspensionHistory(driverId: string): Observable<DriverSuspension[]> {
+        return this.http.get<DriverSuspension[]>(`${this.apiUrl}/users/${driverId}/suspensions`);
     }
 }

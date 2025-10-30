@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FleetManagerPro.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fc95a8e2955c59c7934c7e9bf6c7fc0530a2e438")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+24f548f2ca916aa93cc704554a1e78838db27f1c")]
 [assembly: System.Reflection.AssemblyProductAttribute("FleetManagerPro.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FleetManagerPro.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -60,7 +60,7 @@ export interface UpdateAvailabilityDto {
     providedIn: 'root'
 })
 export class DriverService {
-    private readonly apiUrl = `${ environment.apiUrl }`;
+    private readonly apiUrl = `${environment.apiUrl}`;
 
     constructor(private http: HttpClient) { }
 
@@ -69,14 +69,12 @@ export class DriverService {
         return this.http.get<any[]>(`${this.apiUrl}/users`)
             .pipe(
                 map(users => {
-                    console.log('Raw users from API:', users); // Debug log
-                    // Filter for drivers on the frontend
+                    console.log('Raw users from API:', users);
                     const drivers = users.filter(user => {
-                        // Handle both string and enum role types
                         const roleString = typeof user.role === 'string' ? user.role : this.getRoleString(user.role);
                         return roleString === 'Driver';
                     });
-                    console.log('Filtered drivers:', drivers); // Debug log
+                    console.log('Filtered drivers:', drivers);
                     return drivers as User[];
                 }),
                 catchError(this.handleError)
@@ -164,6 +162,21 @@ export class DriverService {
         );
     }
 
+    // Add a warning to a driver
+    addWarning(driverId: string, reason: string, issuedBy: string): Observable<any> {
+        return this.http.post(`${this.apiUrl}/users/${driverId}/warnings`, { reason, issuedBy });
+    }
+
+    // Get warning history for a driver
+    getWarnings(driverId: string): Observable<DriverWarning[]> {
+        return this.http.get<DriverWarning[]>(`${this.apiUrl}/users/${driverId}/warnings`);
+    }
+
+    // Get suspension history for a driver
+    getSuspensionHistory(driverId: string): Observable<DriverSuspension[]> {
+        return this.http.get<DriverSuspension[]>(`${this.apiUrl}/users/${driverId}/suspensions`);
+    }
+
     // Helper methods
     private getRoleString(role: number): string {
         switch (role) {
@@ -194,45 +207,12 @@ export class DriverService {
         return expiryDate <= thirtyDaysFromNow && expiryDate >= today;
     }
 
-    // Bulk operations (for future enhancement)
-    bulkUpdateStatus(driverIds: string[], status: string): Observable<any> {
-        const bulkDto = {
-            driverIds,
-            status,
-            action: 'updateStatus'
-        };
-        return this.http.patch<any>(`${this.apiUrl}/users/bulk-update`, bulkDto)
-            .pipe(
-                catchError(this.handleError)
-            );
-    }
-
-    // Export drivers data
-    exportDriversData(): Observable<User[]> {
-        return this.getAllDrivers();
-    }
-
-    // Search drivers
-    searchDrivers(searchTerm: string): Observable<User[]> {
-        return this.getAllDrivers().pipe(
-            map(drivers => drivers.filter(driver =>
-                driver.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                driver.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                driver.licenseNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                driver.phone?.toLowerCase().includes(searchTerm.toLowerCase())
-            ))
-        );
-    }
-
-    // Error handling
     private handleError(error: HttpErrorResponse): Observable<never> {
         let errorMessage = 'An unknown error occurred';
 
         if (error.error instanceof ErrorEvent) {
-            // Client-side error
             errorMessage = `Error: ${error.error.message}`;
         } else {
-            // Server-side error
             if (error.status === 400 && error.error?.message) {
                 errorMessage = error.error.message;
             } else if (error.status === 404) {
@@ -246,15 +226,5 @@ export class DriverService {
 
         console.error('DriverService Error:', errorMessage);
         return throwError(() => new Error(errorMessage));
-    }
-    addWarning(driverId: string, reason: string, issuedBy: string): Observable<any> {
-        return this.http.post(`${this.apiUrl}/drivers/${driverId}/warnings`, { reason, issuedBy });
-    }
-
-    getWarnings(driverId: string): Observable<DriverWarning[]> {
-        return this.http.get<DriverWarning[]>(`${this.apiUrl}/drivers/${driverId}/warnings`);
-    }
-    getSuspensionHistory(driverId: string): Observable<DriverSuspension[]> {
-        return this.http.get<DriverSuspension[]>(`${this.apiUrl}/drivers/${driverId}/suspensions`);
     }
 }
