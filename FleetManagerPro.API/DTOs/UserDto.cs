@@ -21,26 +21,20 @@ namespace FleetManagerPro.API.DTOs
         [Required(ErrorMessage = "Role is required")]
         public string Role { get; set; } = string.Empty;
 
-        [Phone(ErrorMessage = "Invalid phone number format")]
         public string Phone { get; set; } = string.Empty;
 
-        [StringLength(500, ErrorMessage = "Address cannot exceed 500 characters")]
         public string Address { get; set; } = string.Empty;
 
         public DateTime? DateOfBirth { get; set; }
         public DateTime? HireDate { get; set; }
 
-        [StringLength(200, ErrorMessage = "Emergency contact cannot exceed 200 characters")]
         public string EmergencyContact { get; set; } = string.Empty;
 
         public string ProfileImageUrl { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
 
-        // Driver fields - based on your database schema
-        [StringLength(50, ErrorMessage = "License number cannot exceed 50 characters")]
         public string LicenseNumber { get; set; } = string.Empty;
 
-        [StringLength(20, ErrorMessage = "License class cannot exceed 20 characters")]
         public string LicenseClass { get; set; } = string.Empty;
 
         public DateTime? LicenseExpiry { get; set; }
