@@ -44,7 +44,7 @@ namespace FleetManagerPro.API.Services
                 DriverId = driverId,
                 Reason = reason,
                 IssuedBy = issuedBy,
-                DateIssued = DateTime.UtcNow
+                DateIssued = GetPhilippinesTime()
             };
             _context.DriverWarnings.Add(warning);
             await _context.SaveChangesAsync();
@@ -76,7 +76,7 @@ namespace FleetManagerPro.API.Services
                 DriverId = driverId,
                 Reason = reason,
                 IssuedBy = issuedBy,
-                DateSuspended = DateTime.UtcNow,
+                DateSuspended = GetPhilippinesTime(),
                 AutoSuspended = auto
             };
             _context.DriverSuspensionHistory.Add(suspension);
@@ -86,7 +86,7 @@ namespace FleetManagerPro.API.Services
             if (user != null && user.Status != "Archived")
             {
                 user.Status = "Suspended";
-                user.UpdatedAt = DateTime.UtcNow;
+                user.UpdatedAt = GetPhilippinesTime();
             }
 
             await _context.SaveChangesAsync();
@@ -98,11 +98,36 @@ namespace FleetManagerPro.API.Services
             if (suspensionCount >= 3 && user != null && user.Status != "Archived")
             {
                 user.Status = "Archived";
-                user.UpdatedAt = DateTime.UtcNow;
+                user.UpdatedAt = GetPhilippinesTime();
                 await _context.SaveChangesAsync();
             }
 
             return suspension;
+        }
+
+        // Helper: Get current time in Philippines timezone
+        private static DateTime GetPhilippinesTime()
+        {
+            try
+            {
+                // For Windows servers
+                var tz = TimeZoneInfo.FindSystemTimeZoneById("Singapore Standard Time");
+                return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+            }
+            catch
+            {
+                try
+                {
+                    // For Linux/Docker servers
+                    var tz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+                    return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+                }
+                catch
+                {
+                    // Fallback: manually add 8 hours to UTC
+                    return DateTime.UtcNow.AddHours(8);
+                }
+            }
         }
     }
 }

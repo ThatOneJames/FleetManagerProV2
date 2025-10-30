@@ -373,14 +373,14 @@
     <div class="modal-overlay" *ngIf="showWarningHistoryModal">
         <div class="modal">
             <h3>Warning History for {{ selectedDriver?.name }}</h3>
-            <ul class="history-list">
+            <ul class="history-list" *ngIf="warningHistory.length > 0">
                 <li *ngFor="let warn of warningHistory" class="history-item">
-                    <strong>{{ warn.dateIssued | date:'medium' }}</strong> - {{ warn.reason }}
+                    <strong>{{ formatDateToLocal(warn.dateIssued) }}</strong> - {{ warn.reason }}
                     <span class="issued-by">by {{ warn.issuedBy }}</span>
                 </li>
             </ul>
-            <div *ngIf="warningHistory.length === 0" class="no-data">
-                <p>No warnings recorded for this driver.</p>
+            <div class="no-data" *ngIf="warningHistoryMessage">
+                <p>{{ warningHistoryMessage }}</p>
             </div>
             <div class="modal-actions">
                 <button (click)="closeWarningHistoryModal()" class="btn-secondary">Close</button>
@@ -392,19 +392,20 @@
     <div class="modal-overlay" *ngIf="showSuspensionHistoryModal">
         <div class="modal">
             <h3>Suspension History for {{ selectedDriver?.name }}</h3>
-            <ul class="history-list">
+            <ul class="history-list" *ngIf="suspensionHistory.length > 0">
                 <li *ngFor="let susp of suspensionHistory" class="history-item">
-                    <strong>{{ susp.dateSuspended | date:'medium' }}</strong> - {{ susp.reason }}
+                    <strong>{{ formatDateToLocal(susp.dateSuspended) }}</strong> - {{ susp.reason }}
                     <span class="issued-by">by {{ susp.issuedBy }}</span>
                     <span class="auto-badge" *ngIf="susp.autoSuspended">(auto)</span>
                 </li>
             </ul>
-            <div *ngIf="suspensionHistory.length === 0" class="no-data">
-                <p>No suspensions recorded for this driver.</p>
+            <div class="no-data" *ngIf="suspensionHistoryMessage">
+                <p>{{ suspensionHistoryMessage }}</p>
             </div>
             <div class="modal-actions">
                 <button (click)="closeSuspensionHistoryModal()" class="btn-secondary">Close</button>
             </div>
         </div>
     </div>
+
 </div>

@@ -18,6 +18,20 @@ export class DriverManagementComponent implements OnInit {
     drivers: User[] = [];
     searchText: string = '';
     filterStatus: string = 'All';
+    warningHistoryMessage: string = '';
+    suspensionHistoryMessage: string = '';
+
+    formatDateToLocal(dateValue: string | Date): string {
+        if (!dateValue) return '';
+        const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+        return date.toLocaleString('en-PH', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Manila'
+        });
+    }
+
 
     driversAttendance: Map<string, { clockedIn: boolean; clockedOut: boolean }> = new Map();
     driversAttendanceData: Map<string, any> = new Map();
@@ -855,17 +869,49 @@ export class DriverManagementComponent implements OnInit {
 
     openWarningHistory(driver: User) {
         this.selectedDriver = driver;
-        this.driverService.getWarnings(driver.id).subscribe(history => {
-            this.warningHistory = history;
-            this.showWarningHistoryModal = true;
+        this.warningHistoryMessage = '';
+        this.driverService.getWarnings(driver.id).subscribe({
+            next: (history) => {
+                this.warningHistory = history;
+                this.showWarningHistoryModal = true;
+                if (!history || history.length === 0) {
+                    this.warningHistoryMessage = 'No warnings found for the specified driver';
+                }
+            },
+            error: (err) => {
+                if (err.status === 404 && err.error?.message) {
+                    this.warningHistory = [];
+                    this.warningHistoryMessage = err.error.message;
+                    this.showWarningHistoryModal = true;
+                } else {
+                    this.warningHistoryMessage = 'Failed to load warning history.';
+                    this.showWarningHistoryModal = true;
+                }
+            }
         });
     }
 
     openSuspensionHistory(driver: User) {
         this.selectedDriver = driver;
-        this.driverService.getSuspensionHistory(driver.id).subscribe(history => {
-            this.suspensionHistory = history;
-            this.showSuspensionHistoryModal = true;
+        this.suspensionHistoryMessage = '';
+        this.driverService.getSuspensionHistory(driver.id).subscribe({
+            next: (history) => {
+                this.suspensionHistory = history;
+                this.showSuspensionHistoryModal = true;
+                if (!history || history.length === 0) {
+                    this.suspensionHistoryMessage = 'No suspensions found for the specified driver';
+                }
+            },
+            error: (err) => {
+                if (err.status === 404 && err.error?.message) {
+                    this.suspensionHistory = [];
+                    this.suspensionHistoryMessage = err.error.message;
+                    this.showSuspensionHistoryModal = true;
+                } else {
+                    this.suspensionHistoryMessage = 'Failed to load suspension history.';
+                    this.showSuspensionHistoryModal = true;
+                }
+            }
         });
     }
 
