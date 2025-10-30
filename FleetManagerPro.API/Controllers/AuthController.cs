@@ -66,6 +66,11 @@ namespace FleetManager.Controllers
                     new Claim(ClaimTypes.Role, user.Role)
                 };
 
+                if (user.Status == "Suspended" || user.Status == "Archived" || user.Status == "Inactive")
+                {
+                    return Unauthorized(new { message = "Your account is suspended, archived, or inactive. Please contact the administrator." });
+                }
+
                 var jwtKey = _config["Jwt:Key"];
                 var jwtIssuer = _config["Jwt:Issuer"];
                 var jwtAudience = _config["Jwt:Audience"];
