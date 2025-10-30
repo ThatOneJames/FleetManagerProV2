@@ -570,7 +570,7 @@ namespace FleetManagerPro.API.Controllers
         // ---- Warnings and Suspensions ----
 
         [HttpGet("{driverId}/warnings")]
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetDriverWarnings(string driverId)
         {
             try
@@ -588,21 +588,13 @@ namespace FleetManagerPro.API.Controllers
         }
 
         [HttpPost("{driverId}/warnings")]
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AddDriverWarning(string driverId, [FromBody] CreateDriverWarningDto dto)
         {
             try
             {
-                var warning = new DriverWarning
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    DriverId = driverId,
-                    Reason = dto.Reason,
-                    IssuedBy = dto.IssuedBy,
-                    DateIssued = DateTime.UtcNow
-                };
-                var result = await _disciplinaryService.AddWarningAsync(warning);
-                return Ok(result);
+                var warning = await _disciplinaryService.AddWarningAsync(driverId, dto.Reason, dto.IssuedBy);
+                return Ok(warning);
             }
             catch (Exception ex)
             {
@@ -610,9 +602,8 @@ namespace FleetManagerPro.API.Controllers
             }
         }
 
-
         [HttpGet("{driverId}/suspensions")]
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetDriverSuspensions(string driverId)
         {
             try
@@ -630,14 +621,13 @@ namespace FleetManagerPro.API.Controllers
         }
 
         [HttpPost("{driverId}/suspensions")]
-        [Authorize(Roles = "Admin,Manager")]
-        public async Task<IActionResult> AddDriverSuspension(string driverId, [FromBody] DriverSuspension dto)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AddDriverSuspension(string driverId, [FromBody] CreateDriverSuspensionDto dto)
         {
             try
             {
-                dto.DriverId = driverId;
-                var result = await _disciplinaryService.AddSuspensionAsync(dto);
-                return Ok(result);
+                var suspension = await _disciplinaryService.AddSuspensionAsync(driverId, dto.Reason, dto.IssuedBy, dto.AutoSuspended);
+                return Ok(suspension);
             }
             catch (Exception ex)
             {
@@ -653,6 +643,19 @@ namespace FleetManagerPro.API.Controllers
                 return Convert.ToBase64String(hashedBytes);
             }
         }
+    }
+
+    public class CreateDriverWarningDto
+    {
+        public string Reason { get; set; }
+        public string IssuedBy { get; set; }
+    }
+
+    public class CreateDriverSuspensionDto
+    {
+        public string Reason { get; set; }
+        public string IssuedBy { get; set; }
+        public bool AutoSuspended { get; set; }
     }
 
     public class RegisterDto

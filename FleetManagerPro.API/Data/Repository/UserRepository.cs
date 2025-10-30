@@ -76,7 +76,7 @@ namespace FleetManagerPro.API.Data.Repository
 
         public async Task AddDriverSuspensionAsync(DriverSuspension suspension)
         {
-            _context.DriverSuspensionHistories.Add(suspension);
+            _context.DriverSuspensionHistory.Add(suspension);
             await _context.SaveChangesAsync();
         }
 
