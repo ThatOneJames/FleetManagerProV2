@@ -68,6 +68,8 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRouteEstimationService, RouteEstimationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IEmailDomainValidator, EmailDomainValidator>();
+builder.Services.AddScoped<DriverDisciplinaryService>();
+
 
 builder.Services.AddHostedService<NotificationBackgroundService>();
 Console.WriteLine("[EMAIL] Background email service ENABLED (all environments)");
