@@ -162,6 +162,29 @@ input {
     color: #f56565;
 }
 
+.email-domain-error {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #fff5f5;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid #f56565;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.error-icon {
+    font-size: 1rem;
+}
+
+.info-text {
+    display: block;
+    margin-top: 0.375rem;
+    font-size: 0.75rem;
+    color: #4299e1;
+}
+
 .btn-signin {
     width: 100%;
     padding: 0.875rem;

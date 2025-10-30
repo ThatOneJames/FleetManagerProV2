@@ -8,25 +8,23 @@
         <p class="app-subtitle">Fleet Management System</p>
         <p class="location">Lipa City, Batangas</p>
 
-        <!-- Toggle Buttons -->
         <div class="toggle-buttons">
             <button type="button"
                     class="toggle-btn"
                     [class.active]="!isRegisterMode"
-                    (click)="isRegisterMode = false; errorMessage = null; successMessage = null;">
+                    (click)="isRegisterMode = false; errorMessage = null; successMessage = null; emailValidationError = '';">
                 <span class="icon">🔒</span>
                 Sign In
             </button>
             <button type="button"
                     class="toggle-btn"
                     [class.active]="isRegisterMode"
-                    (click)="isRegisterMode = true; errorMessage = null; successMessage = null;">
+                    (click)="isRegisterMode = true; errorMessage = null; successMessage = null; emailValidationError = '';">
                 <span class="icon">👤</span>
                 Register
             </button>
         </div>
 
-        <!-- Login Form -->
         <form *ngIf="!isRegisterMode" (ngSubmit)="onSubmit()" [formGroup]="loginForm">
             <div class="form-group">
                 <label for="email">Email Address</label>
@@ -63,7 +61,6 @@
             </div>
         </form>
 
-        <!-- Register Form -->
         <form *ngIf="isRegisterMode" (ngSubmit)="onRegister()" [formGroup]="registerForm">
             <div class="form-group">
                 <label for="register-name">Name</label>
@@ -79,10 +76,20 @@
                 <label for="register-email">Email Address</label>
                 <div class="input-wrapper">
                     <span class="input-icon">📧</span>
-                    <input id="register-email" type="email" formControlName="email" placeholder="Enter your email address" />
+                    <input id="register-email"
+                           type="email"
+                           formControlName="email"
+                           (blur)="onEmailBlur()"
+                           placeholder="Enter your email address" />
                 </div>
                 <span *ngIf="hasError(registerForm, 'email', 'required')" class="error-text">Email is required</span>
                 <span *ngIf="hasError(registerForm, 'email', 'email')" class="error-text">Please enter a valid email address</span>
+                <span *ngIf="emailValidationError" class="error-text email-domain-error">
+                    <span class="error-icon">⚠️</span> {{ emailValidationError }}
+                </span>
+                <span *ngIf="!emailValidationError && registerEmail?.valid && registerEmail?.touched" class="info-text">
+                    Use a valid email from Gmail, Yahoo, Outlook, etc.
+                </span>
             </div>
 
             <div class="form-group">
@@ -101,7 +108,7 @@
                 <span *ngIf="hasError(registerForm, 'password', 'minlength')" class="error-text">Password must be at least 6 characters</span>
             </div>
 
-            <button type="submit" class="btn-signin" [disabled]="registerForm.invalid || loading">
+            <button type="submit" class="btn-signin" [disabled]="registerForm.invalid || loading || emailValidationError">
                 {{ loading ? 'Creating Account...' : 'Register' }}
             </button>
 

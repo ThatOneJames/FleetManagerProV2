@@ -16,6 +16,7 @@ export class LoginComponent implements OnInit {
     registerForm: FormGroup;
     errorMessage: string | null = null;
     successMessage: string | null = null;
+    emailValidationError: string = '';
     loading = false;
     showPassword = false;
     showRegisterPassword = false;
@@ -50,6 +51,7 @@ export class LoginComponent implements OnInit {
         this.isRegisterMode = !this.isRegisterMode;
         this.errorMessage = null;
         this.successMessage = null;
+        this.emailValidationError = '';
         this.loginForm.reset();
         this.registerForm.reset();
     }
@@ -60,6 +62,26 @@ export class LoginComponent implements OnInit {
 
     toggleRegisterPasswordVisibility(): void {
         this.showRegisterPassword = !this.showRegisterPassword;
+    }
+
+    onEmailBlur(): void {
+        const email = this.registerForm.get('email')?.value;
+        if (email && this.registerForm.get('email')?.valid) {
+            this.emailValidationError = 'Validating email domain...';
+
+            this.http.post(`${environment.apiUrl}/auth/validate-email`, { email }).subscribe({
+                next: (response: any) => {
+                    if (response.isValid) {
+                        this.emailValidationError = '';
+                    } else {
+                        this.emailValidationError = response.message || 'Invalid email domain';
+                    }
+                },
+                error: (error) => {
+                    this.emailValidationError = '';
+                }
+            });
+        }
     }
 
     async onSubmit(): Promise<void> {
@@ -103,6 +125,11 @@ export class LoginComponent implements OnInit {
             return;
         }
 
+        if (this.emailValidationError) {
+            this.errorMessage = 'Please provide a valid email address from a registered domain';
+            return;
+        }
+
         this.loading = true;
         this.errorMessage = null;
         this.successMessage = null;
@@ -111,14 +138,14 @@ export class LoginComponent implements OnInit {
 
         const registerPayload = {
             name,
-            email,
+            email: email.toLowerCase().trim(),
             password,
             role: 'Driver',
             status: 'Active',
             phone: '',
             address: '',
             dateOfBirth: null,
-            hireDate: null,
+            hireDate: new Date(),
             emergencyContact: '',
             profileImageUrl: '',
             licenseNumber: '',
@@ -145,7 +172,10 @@ export class LoginComponent implements OnInit {
             error: (error: any) => {
                 this.loading = false;
 
-                if (error.status === 400) {
+                if (error.error && error.error.error) {
+                    this.emailValidationError = error.error.error;
+                    this.errorMessage = error.error.message || 'Invalid email address';
+                } else if (error.status === 400) {
                     this.errorMessage = error.error?.message || 'Email already exists.';
                 } else if (error.status === 500) {
                     this.errorMessage = 'Server error. Please try again later.';

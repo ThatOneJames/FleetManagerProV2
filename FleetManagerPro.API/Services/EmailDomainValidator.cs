@@ -21,33 +21,27 @@ namespace FleetManagerPro.API.Services
         {
             try
             {
-                // Basic format check
                 if (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
                 {
                     return (false, "Invalid email format");
                 }
 
-                // Extract domain from email
                 var domain = email.Split('@')[1].ToLower().Trim();
 
                 _logger.LogInformation($"Validating domain: {domain}");
 
-                // Check if domain has MX records (Mail Exchange records)
-                var hasMxRecords = await CheckMxRecords(domain);
-
-                if (!hasMxRecords)
+                if (IsCommonEmailProvider(domain))
                 {
-                    // If no MX records, try to check if domain exists via A record
-                    var domainExists = await CheckDomainExists(domain);
+                    _logger.LogInformation($"Domain is a known email provider: {domain}");
+                    return (true, "Email domain is valid");
+                }
 
-                    if (!domainExists)
-                    {
-                        _logger.LogWarning($"Domain does not exist: {domain}");
-                        return (false, "Email domain does not exist or is not configured to receive emails");
-                    }
+                var domainExists = await CheckDomainExists(domain);
 
-                    _logger.LogWarning($"Domain exists but has no MX records: {domain}");
-                    return (false, "Email domain is not configured to receive emails");
+                if (!domainExists)
+                {
+                    _logger.LogWarning($"Domain does not exist: {domain}");
+                    return (false, "Email domain does not exist");
                 }
 
                 _logger.LogInformation($"Domain validated successfully: {domain}");
@@ -60,48 +54,41 @@ namespace FleetManagerPro.API.Services
             }
         }
 
-        private async Task<bool> CheckMxRecords(string domain)
+        private bool IsCommonEmailProvider(string domain)
         {
-            try
+            var commonProviders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                // Use DNS lookup to check for MX records
-                var hostEntry = await Dns.GetHostEntryAsync(domain);
+                "gmail.com",
+                "yahoo.com",
+                "outlook.com",
+                "hotmail.com",
+                "live.com",
+                "msn.com",
+                "icloud.com",
+                "aol.com",
+                "mail.com",
+                "protonmail.com",
+                "zoho.com",
+                "yandex.com",
+                "gmx.com",
+                "yahoo.co.uk",
+                "yahoo.co.jp",
+                "yahoo.fr",
+                "outlook.co.uk",
+                "outlook.fr",
+                "outlook.jp",
+                "googlemail.com",
+                "me.com",
+                "mac.com"
+            };
 
-                // Try to resolve MX records using nslookup command
-                var process = new System.Diagnostics.Process
-                {
-                    StartInfo = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "nslookup",
-                        Arguments = $"-type=MX {domain}",
-                        RedirectStandardOutput = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    }
-                };
-
-                process.Start();
-                var output = await process.StandardOutput.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                // Check if MX records exist in output
-                var hasMx = output.Contains("mail exchanger") || output.Contains("MX preference");
-
-                _logger.LogInformation($"MX record check for {domain}: {hasMx}");
-                return hasMx;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, $"MX record check failed for {domain}, trying A record");
-                return false;
-            }
+            return commonProviders.Contains(domain);
         }
 
         private async Task<bool> CheckDomainExists(string domain)
         {
             try
             {
-                // Check if domain resolves to an IP address (A record)
                 var addresses = await Dns.GetHostAddressesAsync(domain);
                 var exists = addresses != null && addresses.Length > 0;
 
