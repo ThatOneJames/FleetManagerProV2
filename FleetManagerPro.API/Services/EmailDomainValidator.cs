@@ -36,16 +36,8 @@ namespace FleetManagerPro.API.Services
                     return (true, "Email domain is valid");
                 }
 
-                var domainExists = await CheckDomainExists(domain);
-
-                if (!domainExists)
-                {
-                    _logger.LogWarning($"Domain does not exist: {domain}");
-                    return (false, "Email domain does not exist");
-                }
-
-                _logger.LogInformation($"Domain validated successfully: {domain}");
-                return (true, "Email domain is valid");
+                _logger.LogWarning($"Domain not in approved list: {domain}");
+                return (false, "Please use a recognized email provider (Gmail, Yahoo, Outlook, etc.)");
             }
             catch (Exception ex)
             {
@@ -60,51 +52,10 @@ namespace FleetManagerPro.API.Services
             {
                 "gmail.com",
                 "yahoo.com",
-                "outlook.com",
-                "hotmail.com",
-                "live.com",
-                "msn.com",
-                "icloud.com",
-                "aol.com",
-                "mail.com",
-                "protonmail.com",
-                "zoho.com",
-                "yandex.com",
-                "gmx.com",
-                "yahoo.co.uk",
-                "yahoo.co.jp",
-                "yahoo.fr",
-                "outlook.co.uk",
-                "outlook.fr",
-                "outlook.jp",
-                "googlemail.com",
-                "me.com",
-                "mac.com"
+                "evocargoexpress.com",
             };
 
             return commonProviders.Contains(domain);
-        }
-
-        private async Task<bool> CheckDomainExists(string domain)
-        {
-            try
-            {
-                var addresses = await Dns.GetHostAddressesAsync(domain);
-                var exists = addresses != null && addresses.Length > 0;
-
-                _logger.LogInformation($"Domain existence check for {domain}: {exists}");
-                return exists;
-            }
-            catch (SocketException)
-            {
-                _logger.LogWarning($"Domain does not exist: {domain}");
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error checking domain existence: {domain}");
-                return false;
-            }
         }
     }
 }
