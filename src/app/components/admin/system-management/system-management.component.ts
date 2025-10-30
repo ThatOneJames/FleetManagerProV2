@@ -1,5 +1,5 @@
 ﻿import { Component, OnInit, OnDestroy } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { interval, Subscription } from 'rxjs';
@@ -67,19 +67,41 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         this.refreshSubscription?.unsubscribe();
     }
 
+    // ========== ENHANCED FORM INITIALIZATION WITH VALIDATION ==========
     private initializeForms(): void {
         this.userForm = this.fb.group({
-            name: ['', [Validators.required, Validators.maxLength(100)]],
-            email: ['', [Validators.required, Validators.email]],
-            phone: [''],
-            address: [''],
-            role: ['Driver', Validators.required],
-            status: ['Active', Validators.required],
-            password: ['', [Validators.minLength(6)]]
+            name: ['', [
+                Validators.required,
+                Validators.minLength(2),
+                Validators.maxLength(100),
+                Validators.pattern(/^[a-zA-Z\s'-]+$/)
+            ]],
+            email: ['', [
+                Validators.required,
+                Validators.email,
+                Validators.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
+            ]],
+            phone: ['', [
+                Validators.pattern(/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/)
+            ]],
+            address: ['', [Validators.maxLength(500)]],
+            role: ['Driver', [Validators.required]],
+            status: ['Active', [Validators.required]],
+            password: ['', [
+                Validators.required,
+                Validators.minLength(6),
+                Validators.maxLength(50),
+                this.passwordStrengthValidator()
+            ]]
         });
 
         this.changePasswordForm = this.fb.group({
-            newPassword: ['', [Validators.required, Validators.minLength(6)]],
+            newPassword: ['', [
+                Validators.required,
+                Validators.minLength(6),
+                Validators.maxLength(50),
+                this.passwordStrengthValidator()
+            ]],
             confirmPassword: ['', [Validators.required]]
         }, {
             validators: this.passwordMatchValidator
@@ -89,8 +111,16 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             recipientType: ['all', Validators.required],
             specificUsers: [[]],
             specificRoles: [[]],
-            title: ['', [Validators.required, Validators.maxLength(255)]],
-            message: ['', Validators.required],
+            title: ['', [
+                Validators.required,
+                Validators.minLength(3),
+                Validators.maxLength(255)
+            ]],
+            message: ['', [
+                Validators.required,
+                Validators.minLength(10),
+                Validators.maxLength(2000)
+            ]],
             type: ['Info', Validators.required],
             category: ['System', Validators.required],
             sendEmail: [false],
@@ -112,6 +142,27 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             }
             scheduledTimeControl?.updateValueAndValidity();
         });
+    }
+
+    // ========== CUSTOM VALIDATORS ==========
+    private passwordStrengthValidator(): ValidatorFn {
+        return (control: AbstractControl): ValidationErrors | null => {
+            if (!control.value) {
+                return null;
+            }
+
+            const password = control.value;
+            const hasNumber = /[0-9]/.test(password);
+            const hasLetter = /[a-zA-Z]/.test(password);
+
+            const valid = hasNumber && hasLetter;
+
+            if (!valid) {
+                return { passwordStrength: true };
+            }
+
+            return null;
+        };
     }
 
     private passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
@@ -137,6 +188,81 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         rolesControl?.updateValueAndValidity();
     }
 
+    // ========== ERROR MESSAGE HANDLER ==========
+    getFieldErrorMessage(form: FormGroup, fieldName: string): string {
+        const control = form.get(fieldName);
+
+        if (!control || !control.errors || !control.touched) {
+            return '';
+        }
+
+        const errors = control.errors;
+
+        if (errors['required']) {
+            return `${this.getFieldLabel(fieldName)} is required`;
+        }
+
+        if (errors['minlength']) {
+            return `${this.getFieldLabel(fieldName)} must be at least ${errors['minlength'].requiredLength} characters`;
+        }
+
+        if (errors['maxlength']) {
+            return `${this.getFieldLabel(fieldName)} cannot exceed ${errors['maxlength'].requiredLength} characters`;
+        }
+
+        if (errors['email']) {
+            return 'Please enter a valid email address';
+        }
+
+        if (errors['pattern']) {
+            return this.getPatternErrorMessage(fieldName);
+        }
+
+        if (errors['passwordStrength']) {
+            return 'Password must contain at least one letter and one number';
+        }
+
+        if (errors['passwordMismatch']) {
+            return 'Passwords do not match';
+        }
+
+        return 'Invalid input';
+    }
+
+    private getFieldLabel(fieldName: string): string {
+        const labels: { [key: string]: string } = {
+            name: 'Name',
+            email: 'Email',
+            phone: 'Phone',
+            address: 'Address',
+            role: 'Role',
+            status: 'Status',
+            password: 'Password',
+            newPassword: 'New Password',
+            confirmPassword: 'Confirm Password',
+            title: 'Title',
+            message: 'Message'
+        };
+
+        return labels[fieldName] || fieldName;
+    }
+
+    private getPatternErrorMessage(fieldName: string): string {
+        const messages: { [key: string]: string } = {
+            name: 'Name should only contain letters, spaces, hyphens, and apostrophes',
+            email: 'Please enter a valid email address',
+            phone: 'Please enter a valid phone number'
+        };
+
+        return messages[fieldName] || 'Invalid format';
+    }
+
+    isFieldInvalid(form: FormGroup, fieldName: string): boolean {
+        const field = form.get(fieldName);
+        return !!(field && field.invalid && field.touched);
+    }
+
+    // ========== DATA LOADING ==========
     private async loadAllData(): Promise<void> {
         this.loading = true;
         try {
@@ -197,27 +323,50 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         });
     }
 
+    // ========== USER MANAGEMENT WITH VALIDATION ==========
     toggleUserForm(): void {
         this.showUserForm = !this.showUserForm;
         if (!this.showUserForm) {
             this.editingUser = null;
             this.userForm.reset({ role: 'Driver', status: 'Active' });
+            this.userForm.get('password')?.setValidators([
+                Validators.required,
+                Validators.minLength(6),
+                Validators.maxLength(50),
+                this.passwordStrengthValidator()
+            ]);
+            this.userForm.get('password')?.updateValueAndValidity();
         }
     }
 
     async saveUser(): Promise<void> {
+        this.markFormGroupTouched(this.userForm);
+
         if (this.userForm.invalid) {
-            this.showSnackbar('Please fill all required fields', 'error');
+            const errors: string[] = [];
+            Object.keys(this.userForm.controls).forEach(key => {
+                const control = this.userForm.get(key);
+                if (control && control.invalid) {
+                    const message = this.getFieldErrorMessage(this.userForm, key);
+                    if (message) {
+                        errors.push(message);
+                    }
+                }
+            });
+
+            const errorMsg = errors.length > 0 ? errors.join('. ') : 'Please fill all required fields correctly';
+            this.showSnackbar(errorMsg, 'error');
             return;
         }
+
         this.savingUser = true;
         try {
             if (this.editingUser) {
                 const updateData: UpdateDriverDto = {
                     name: this.userForm.get('name')?.value,
                     email: this.userForm.get('email')?.value,
-                    phone: this.userForm.get('phone')?.value,
-                    address: this.userForm.get('address')?.value,
+                    phone: this.userForm.get('phone')?.value || '',
+                    address: this.userForm.get('address')?.value || '',
                     status: this.userForm.get('status')?.value
                 };
                 await this.driverService.updateDriver(this.editingUser.id, updateData).toPromise();
@@ -251,7 +400,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             await this.loadUsers();
         } catch (error: any) {
             console.error('Error saving user:', error);
-            const errorMessage = error?.message || 'Error saving user';
+            const errorMessage = error?.error?.message || error?.message || 'Error saving user';
             this.showSnackbar(errorMessage, 'error');
         } finally {
             this.savingUser = false;
@@ -264,8 +413,8 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         this.userForm.patchValue({
             name: user.name,
             email: user.email,
-            phone: user.phone,
-            address: user.address,
+            phone: user.phone || '',
+            address: user.address || '',
             role: user.role,
             status: user.status
         });
@@ -302,10 +451,16 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         this.editingUser = null;
         this.showUserForm = false;
         this.userForm.reset({ role: 'Driver', status: 'Active' });
-        this.userForm.get('password')?.setValidators([Validators.required, Validators.minLength(6)]);
+        this.userForm.get('password')?.setValidators([
+            Validators.required,
+            Validators.minLength(6),
+            Validators.maxLength(50),
+            this.passwordStrengthValidator()
+        ]);
         this.userForm.get('password')?.updateValueAndValidity();
     }
 
+    // ========== CHANGE PASSWORD WITH VALIDATION ==========
     openChangePasswordModal(user: User): void {
         this.selectedUserForPasswordChange = user;
         this.showChangePasswordModal = true;
@@ -319,8 +474,27 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     }
 
     async changeUserPassword(): Promise<void> {
+        this.markFormGroupTouched(this.changePasswordForm);
+
         if (this.changePasswordForm.invalid || !this.selectedUserForPasswordChange) {
-            this.showSnackbar('Please fill all fields correctly', 'error');
+            const errors: string[] = [];
+
+            if (this.changePasswordForm.errors?.['passwordMismatch']) {
+                errors.push('Passwords do not match');
+            }
+
+            Object.keys(this.changePasswordForm.controls).forEach(key => {
+                const control = this.changePasswordForm.get(key);
+                if (control && control.invalid) {
+                    const message = this.getFieldErrorMessage(this.changePasswordForm, key);
+                    if (message && !errors.includes(message)) {
+                        errors.push(message);
+                    }
+                }
+            });
+
+            const errorMsg = errors.length > 0 ? errors.join('. ') : 'Please fill all fields correctly';
+            this.showSnackbar(errorMsg, 'error');
             return;
         }
 
@@ -346,6 +520,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         }
     }
 
+    // ========== NOTIFICATIONS ==========
     private async loadNotifications(): Promise<void> {
         return new Promise((resolve) => {
             console.log('🔄 Loading notifications...');
@@ -439,6 +614,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         return [];
     }
 
+    // ========== REPORTS (UNCHANGED) ==========
     private async loadReports(): Promise<void> {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -651,6 +827,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             .join('\n');
     }
 
+    // ========== DISPLAY HELPERS ==========
     getUserName(userId: string): string {
         const user = this.users.find(u => u.id === userId);
         return user ? user.name : 'Unknown';
@@ -682,6 +859,14 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
 
     getRoleBadgeClass(role: string): string {
         return `role-${role?.toLowerCase() || 'unknown'}`;
+    }
+
+    // ========== PRIVATE HELPER METHODS ==========
+    private markFormGroupTouched(formGroup: FormGroup): void {
+        Object.keys(formGroup.controls).forEach(field => {
+            const control = formGroup.get(field);
+            control?.markAsTouched({ onlySelf: true });
+        });
     }
 
     private showSnackbar(message: string, type: 'success' | 'error'): void {

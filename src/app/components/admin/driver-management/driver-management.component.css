@@ -1,4 +1,4 @@
-.driver-management {
+﻿.driver-management {
     padding: 20px;
     background-color: #f8f9fa;
     min-height: 100vh;
@@ -714,3 +714,56 @@
     .btn-danger:hover {
         background-color: #bd2130;
     }
+/* Error message styling */
+.error-text {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    animation: slideDown 0.3s ease;
+}
+
+    .error-text::before {
+        content: "⚠ ";
+        margin-right: 4px;
+    }
+
+/* Field hints */
+.field-hint {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* Input validation states */
+input.invalid, select.invalid, textarea.invalid {
+    border-color: #dc3545 !important;
+    background-color: #fff5f5;
+}
+
+input.valid, select.valid, textarea.valid {
+    border-color: #28a745 !important;
+    background-color: #f0fff4;
+}
+
+.checkbox-group.invalid {
+    border: 2px solid #dc3545;
+    border-radius: 6px;
+    padding: 12px;
+    background-color: #fff5f5;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

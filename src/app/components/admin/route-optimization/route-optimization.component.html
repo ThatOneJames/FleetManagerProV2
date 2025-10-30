@@ -6,9 +6,18 @@
         </button>
     </div>
 
-    <div *ngIf="errorMessage" class="error-message">
+    <!-- Success Message -->
+    <div *ngIf="successMessage" class="alert success-alert">
+        <span class="alert-icon">✓</span>
+        {{ successMessage }}
+        <button (click)="successMessage = null" class="close-btn">×</button>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="alert error-alert">
+        <span class="alert-icon">⚠</span>
         {{ errorMessage }}
-        <button (click)="errorMessage = ''" class="close-btn">×</button>
+        <button (click)="errorMessage = null" class="close-btn">×</button>
     </div>
 
     <div class="search-filter">
@@ -126,6 +135,7 @@
         </div>
     </div>
 
+    <!-- CREATE ROUTE MODAL WITH VALIDATION -->
     <div class="modal" *ngIf="showCreateModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -133,63 +143,94 @@
                 <button class="close-btn" (click)="closeCreateModal()">×</button>
             </div>
 
-            <form class="route-form">
+            <form [formGroup]="createRouteForm" class="route-form">
+                <!-- Route Name -->
                 <div class="form-group">
                     <label>Route Name *</label>
                     <input type="text"
-                           [(ngModel)]="newRoute.name"
-                           name="routeName"
+                           formControlName="name"
                            placeholder="Enter route name"
-                           required />
+                           [class.invalid]="isFieldInvalid(createRouteForm, 'name')"
+                           [class.valid]="createRouteForm.get('name')?.valid && createRouteForm.get('name')?.touched" />
+                    <div *ngIf="isFieldInvalid(createRouteForm, 'name')" class="error-text">
+                        {{ getFieldErrorMessage(createRouteForm, 'name') }}
+                    </div>
+                    <div class="field-hint">3-100 characters</div>
                 </div>
 
+                <!-- Description -->
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea [(ngModel)]="newRoute.description"
-                              name="description"
+                    <textarea formControlName="description"
                               placeholder="Enter route description"
-                              rows="3"></textarea>
+                              rows="3"
+                              [class.invalid]="isFieldInvalid(createRouteForm, 'description')"
+                              [class.valid]="createRouteForm.get('description')?.valid && createRouteForm.get('description')?.touched"></textarea>
+                    <div *ngIf="isFieldInvalid(createRouteForm, 'description')" class="error-text">
+                        {{ getFieldErrorMessage(createRouteForm, 'description') }}
+                    </div>
                 </div>
 
+                <!-- Vehicle and Driver -->
                 <div class="form-row">
                     <div class="form-group">
                         <label>Vehicle *</label>
-                        <select [(ngModel)]="newRoute.vehicleId" name="vehicle" required>
+                        <select formControlName="vehicleId"
+                                [class.invalid]="isFieldInvalid(createRouteForm, 'vehicleId')"
+                                [class.valid]="createRouteForm.get('vehicleId')?.valid && createRouteForm.get('vehicleId')?.touched">
                             <option value="">Select Vehicle</option>
                             <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
                                 {{ vehicle.licensePlate }} - {{ vehicle.make }} {{ vehicle.model }}
                             </option>
                         </select>
+                        <div *ngIf="isFieldInvalid(createRouteForm, 'vehicleId')" class="error-text">
+                            {{ getFieldErrorMessage(createRouteForm, 'vehicleId') }}
+                        </div>
                     </div>
 
                     <div class="form-group">
                         <label>Driver *</label>
-                        <select [(ngModel)]="newRoute.driverId" name="driver" required>
+                        <select formControlName="driverId"
+                                [class.invalid]="isFieldInvalid(createRouteForm, 'driverId')"
+                                [class.valid]="createRouteForm.get('driverId')?.valid && createRouteForm.get('driverId')?.touched">
                             <option value="">Select Driver</option>
                             <option *ngFor="let driver of drivers" [value]="driver.id">
                                 {{ driver.name }}
                             </option>
                         </select>
+                        <div *ngIf="isFieldInvalid(createRouteForm, 'driverId')" class="error-text">
+                            {{ getFieldErrorMessage(createRouteForm, 'driverId') }}
+                        </div>
                     </div>
                 </div>
 
+                <!-- Start and Destination -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Start Address</label>
+                        <label>Start Address </label>
                         <input type="text"
-                               [(ngModel)]="newRoute.startAddress"
-                               name="startAddress"
-                               placeholder="Starting location (optional)" />
+                               formControlName="startAddress"
+                               placeholder="Starting location"
+                               [class.invalid]="isFieldInvalid(createRouteForm, 'startAddress')"
+                               [class.valid]="createRouteForm.get('startAddress')?.valid && createRouteForm.get('startAddress')?.touched" />
+                        <div *ngIf="isFieldInvalid(createRouteForm, 'startAddress')" class="error-text">
+                            {{ getFieldErrorMessage(createRouteForm, 'startAddress') }}
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Destination Address</label>
+                        <label>Destination Address </label>
                         <input type="text"
-                               [(ngModel)]="newRoute.destinationAddress"
-                               name="destinationAddress"
-                               placeholder="Final destination (optional)" />
+                               formControlName="destinationAddress"
+                               placeholder="Final destination"
+                               [class.invalid]="isFieldInvalid(createRouteForm, 'destinationAddress')"
+                               [class.valid]="createRouteForm.get('destinationAddress')?.valid && createRouteForm.get('destinationAddress')?.touched" />
+                        <div *ngIf="isFieldInvalid(createRouteForm, 'destinationAddress')" class="error-text">
+                            {{ getFieldErrorMessage(createRouteForm, 'destinationAddress') }}
+                        </div>
                     </div>
                 </div>
 
+                <!-- STOPS SECTION -->
                 <div class="stops-section">
                     <div class="stops-header">
                         <h4>Route Stops *</h4>
@@ -201,17 +242,22 @@
                         </button>
                     </div>
 
-                    <div class="stop-form">
+                    <!-- Add Stop Form -->
+                    <div [formGroup]="newStopForm" class="stop-form">
                         <div class="form-group">
                             <input type="text"
-                                   [(ngModel)]="newStop.address"
-                                   name="stopAddress"
-                                   placeholder="Stop address" />
+                                   formControlName="address"
+                                   placeholder="Stop address *"
+                                   [class.invalid]="isFieldInvalid(newStopForm, 'address')"
+                                   [class.valid]="newStopForm.get('address')?.valid && newStopForm.get('address')?.touched" />
+                            <div *ngIf="isFieldInvalid(newStopForm, 'address')" class="error-text">
+                                {{ getFieldErrorMessage(newStopForm, 'address') }}
+                            </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <select [(ngModel)]="newStop.priority" name="priority">
+                                <select formControlName="priority">
                                     <option value="low">Low Priority</option>
                                     <option value="normal">Normal Priority</option>
                                     <option value="high">High Priority</option>
@@ -219,23 +265,35 @@
                             </div>
                             <div class="form-group">
                                 <input type="text"
-                                       [(ngModel)]="newStop.contactName"
-                                       name="contactName"
-                                       placeholder="Contact name (optional)" />
+                                       formControlName="contactName"
+                                       placeholder="Contact name (optional)"
+                                       [class.invalid]="isFieldInvalid(newStopForm, 'contactName')"
+                                       [class.valid]="newStopForm.get('contactName')?.valid && newStopForm.get('contactName')?.touched" />
+                                <div *ngIf="isFieldInvalid(newStopForm, 'contactName')" class="error-text">
+                                    {{ getFieldErrorMessage(newStopForm, 'contactName') }}
+                                </div>
                             </div>
                             <div class="form-group">
                                 <input type="tel"
-                                       [(ngModel)]="newStop.contactPhone"
-                                       name="contactPhone"
-                                       placeholder="Contact phone (optional)" />
+                                       formControlName="contactPhone"
+                                       placeholder="Contact phone (optional)"
+                                       [class.invalid]="isFieldInvalid(newStopForm, 'contactPhone')"
+                                       [class.valid]="newStopForm.get('contactPhone')?.valid && newStopForm.get('contactPhone')?.touched" />
+                                <div *ngIf="isFieldInvalid(newStopForm, 'contactPhone')" class="error-text">
+                                    {{ getFieldErrorMessage(newStopForm, 'contactPhone') }}
+                                </div>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <textarea [(ngModel)]="newStop.notes"
-                                      name="stopNotes"
+                            <textarea formControlName="notes"
                                       placeholder="Stop notes (optional)"
-                                      rows="2"></textarea>
+                                      rows="2"
+                                      [class.invalid]="isFieldInvalid(newStopForm, 'notes')"
+                                      [class.valid]="newStopForm.get('notes')?.valid && newStopForm.get('notes')?.touched"></textarea>
+                            <div *ngIf="isFieldInvalid(newStopForm, 'notes')" class="error-text">
+                                {{ getFieldErrorMessage(newStopForm, 'notes') }}
+                            </div>
                         </div>
 
                         <button type="button" class="btn-add-stop" (click)="addStopToNewRoute()">
@@ -243,10 +301,11 @@
                         </button>
                     </div>
 
-                    <div class="google-maps-url" *ngIf="newRoute.googleMapsUrl">
+                    <!-- Google Maps URL Display -->
+                    <div class="google-maps-url" *ngIf="createRouteForm.get('googleMapsUrl')?.value">
                         <label>Generated Google Maps URL:</label>
                         <div class="url-display">
-                            <input type="text" [value]="newRoute.googleMapsUrl" readonly />
+                            <input type="text" [value]="createRouteForm.get('googleMapsUrl')?.value" readonly />
                             <button type="button"
                                     class="btn-url-action"
                                     (click)="previewGoogleMaps()"
@@ -256,6 +315,7 @@
                         </div>
                     </div>
 
+                    <!-- Stops List -->
                     <div class="stops-list" *ngIf="newRoute.stops.length > 0">
                         <div *ngFor="let stop of newRoute.stops; let i = index" class="stop-item">
                             <div class="stop-order">{{ stop.stopOrder }}</div>
@@ -281,6 +341,11 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- Validation message for stops -->
+                    <div *ngIf="newRoute.stops.length === 0 && createRouteForm.touched" class="error-text">
+                        Please add at least one stop to the route
+                    </div>
                 </div>
 
                 <div class="modal-actions">
@@ -295,6 +360,7 @@
         </div>
     </div>
 
+    <!-- EDIT ROUTE MODAL WITH VALIDATION -->
     <div class="modal" *ngIf="showEditModal && editingRoute">
         <div class="modal-content edit-modal">
             <div class="modal-header">
@@ -302,43 +368,60 @@
                 <button class="close-btn" (click)="closeEditModal()">×</button>
             </div>
 
-            <form class="route-form">
+            <form [formGroup]="editRouteForm" class="route-form">
                 <div class="form-group">
                     <label>Route Name *</label>
                     <input type="text"
-                           [(ngModel)]="editRoute.name"
-                           name="editRouteName"
+                           formControlName="name"
                            placeholder="Enter route name"
-                           required />
+                           [class.invalid]="isFieldInvalid(editRouteForm, 'name')"
+                           [class.valid]="editRouteForm.get('name')?.valid && editRouteForm.get('name')?.touched" />
+                    <div *ngIf="isFieldInvalid(editRouteForm, 'name')" class="error-text">
+                        {{ getFieldErrorMessage(editRouteForm, 'name') }}
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea [(ngModel)]="editRoute.description"
-                              name="editDescription"
+                    <textarea formControlName="description"
                               placeholder="Enter route description"
-                              rows="3"></textarea>
+                              rows="3"
+                              [class.invalid]="isFieldInvalid(editRouteForm, 'description')"
+                              [class.valid]="editRouteForm.get('description')?.valid && editRouteForm.get('description')?.touched"></textarea>
+                    <div *ngIf="isFieldInvalid(editRouteForm, 'description')" class="error-text">
+                        {{ getFieldErrorMessage(editRouteForm, 'description') }}
+                    </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Vehicle *</label>
-                        <select [(ngModel)]="editRoute.vehicleId" name="editVehicle" required>
+                        <select formControlName="vehicleId"
+                                [class.invalid]="isFieldInvalid(editRouteForm, 'vehicleId')"
+                                [class.valid]="editRouteForm.get('vehicleId')?.valid && editRouteForm.get('vehicleId')?.touched">
                             <option value="">Select Vehicle</option>
                             <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
                                 {{ vehicle.licensePlate }} - {{ vehicle.make }} {{ vehicle.model }}
                             </option>
                         </select>
+                        <div *ngIf="isFieldInvalid(editRouteForm, 'vehicleId')" class="error-text">
+                            {{ getFieldErrorMessage(editRouteForm, 'vehicleId') }}
+                        </div>
                     </div>
 
                     <div class="form-group">
                         <label>Driver *</label>
-                        <select [(ngModel)]="editRoute.driverId" name="editDriver" required>
+                        <select formControlName="driverId"
+                                [class.invalid]="isFieldInvalid(editRouteForm, 'driverId')"
+                                [class.valid]="editRouteForm.get('driverId')?.valid && editRouteForm.get('driverId')?.touched">
                             <option value="">Select Driver</option>
                             <option *ngFor="let driver of drivers" [value]="driver.id">
                                 {{ driver.name }}
                             </option>
                         </select>
+                        <div *ngIf="isFieldInvalid(editRouteForm, 'driverId')" class="error-text">
+                            {{ getFieldErrorMessage(editRouteForm, 'driverId') }}
+                        </div>
                     </div>
                 </div>
 
@@ -353,6 +436,7 @@
                         </button>
                     </div>
 
+                    <!-- Existing Stops (editable) -->
                     <div class="stops-list-editable" *ngIf="editRoute.stops.length > 0">
                         <div *ngFor="let stop of editRoute.stops; let i = index" class="stop-item-editable">
                             <div class="stop-order">{{ stop.stopOrder }}</div>
@@ -360,12 +444,12 @@
                             <div class="stop-details-editable">
                                 <input type="text"
                                        [(ngModel)]="stop.address"
-                                       name="editStopAddress{{i}}"
+                                       [ngModelOptions]="{standalone: true}"
                                        placeholder="Stop address"
                                        class="stop-address-input" />
 
                                 <div class="stop-meta-inputs">
-                                    <select [(ngModel)]="stop.priority" name="editPriority{{i}}" class="priority-select">
+                                    <select [(ngModel)]="stop.priority" [ngModelOptions]="{standalone: true}" class="priority-select">
                                         <option value="low">Low Priority</option>
                                         <option value="normal">Normal Priority</option>
                                         <option value="high">High Priority</option>
@@ -373,19 +457,19 @@
 
                                     <input type="text"
                                            [(ngModel)]="stop.contactName"
-                                           name="editContactName{{i}}"
+                                           [ngModelOptions]="{standalone: true}"
                                            placeholder="Contact name"
                                            class="contact-input" />
 
                                     <input type="tel"
                                            [(ngModel)]="stop.contactPhone"
-                                           name="editContactPhone{{i}}"
+                                           [ngModelOptions]="{standalone: true}"
                                            placeholder="Contact phone"
                                            class="contact-input" />
                                 </div>
 
                                 <textarea [(ngModel)]="stop.notes"
-                                          name="editNotes{{i}}"
+                                          [ngModelOptions]="{standalone: true}"
                                           placeholder="Stop notes"
                                           rows="2"
                                           class="stop-notes-input"></textarea>
@@ -397,18 +481,23 @@
                         </div>
                     </div>
 
-                    <div class="stop-form">
+                    <!-- Add New Stop to Edit -->
+                    <div [formGroup]="editStopForm" class="stop-form">
                         <h5>Add New Stop</h5>
                         <div class="form-group">
                             <input type="text"
-                                   [(ngModel)]="editStop.address"
-                                   name="newEditStopAddress"
-                                   placeholder="Stop address" />
+                                   formControlName="address"
+                                   placeholder="Stop address"
+                                   [class.invalid]="isFieldInvalid(editStopForm, 'address')"
+                                   [class.valid]="editStopForm.get('address')?.valid && editStopForm.get('address')?.touched" />
+                            <div *ngIf="isFieldInvalid(editStopForm, 'address')" class="error-text">
+                                {{ getFieldErrorMessage(editStopForm, 'address') }}
+                            </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <select [(ngModel)]="editStop.priority" name="newEditPriority">
+                                <select formControlName="priority">
                                     <option value="low">Low Priority</option>
                                     <option value="normal">Normal Priority</option>
                                     <option value="high">High Priority</option>
@@ -416,21 +505,23 @@
                             </div>
                             <div class="form-group">
                                 <input type="text"
-                                       [(ngModel)]="editStop.contactName"
-                                       name="newEditContactName"
+                                       formControlName="contactName"
                                        placeholder="Contact name (optional)" />
                             </div>
                             <div class="form-group">
                                 <input type="tel"
-                                       [(ngModel)]="editStop.contactPhone"
-                                       name="newEditContactPhone"
-                                       placeholder="Contact phone (optional)" />
+                                       formControlName="contactPhone"
+                                       placeholder="Contact phone (optional)"
+                                       [class.invalid]="isFieldInvalid(editStopForm, 'contactPhone')"
+                                       [class.valid]="editStopForm.get('contactPhone')?.valid && editStopForm.get('contactPhone')?.touched" />
+                                <div *ngIf="isFieldInvalid(editStopForm, 'contactPhone')" class="error-text">
+                                    {{ getFieldErrorMessage(editStopForm, 'contactPhone') }}
+                                </div>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <textarea [(ngModel)]="editStop.notes"
-                                      name="newEditStopNotes"
+                            <textarea formControlName="notes"
                                       placeholder="Stop notes (optional)"
                                       rows="2"></textarea>
                         </div>
@@ -453,6 +544,7 @@
         </div>
     </div>
 
+    <!-- VIEW STOPS MODAL (unchanged) -->
     <div class="modal" *ngIf="showStopsModal && selectedRoute">
         <div class="modal-content stops-modal">
             <div class="modal-header">

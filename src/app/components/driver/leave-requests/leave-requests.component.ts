@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
 import {
     LeaveRequestService,
     LeaveRequest,
@@ -82,21 +82,147 @@ export class LeaveRequestsComponent implements OnInit {
         this.errorMessage = 'Please log in to access this feature';
     }
 
+    // ========== ENHANCED FORM INITIALIZATION WITH VALIDATION ==========
     private initializeForms(): void {
         this.createLeaveForm = this.fb.group({
-            leaveType: [LeaveType.Annual, Validators.required],
-            startDate: ['', Validators.required],
-            endDate: ['', Validators.required],
-            reason: ['', [Validators.required, Validators.minLength(10)]]
+            leaveType: [LeaveType.Annual, [Validators.required]],
+            startDate: ['', [
+                Validators.required,
+                this.futureDateValidator()
+            ]],
+            endDate: ['', [
+                Validators.required,
+                this.futureDateValidator()
+            ]],
+            reason: ['', [
+                Validators.required,
+                Validators.minLength(10),
+                Validators.maxLength(500)
+            ]]
+        }, {
+            validators: this.dateRangeValidator()
         });
+
         this.approvalForm = this.fb.group({
-            notes: ['']
+            notes: ['', [Validators.maxLength(500)]]
         });
+
         this.rejectionForm = this.fb.group({
-            rejectionReason: ['', [Validators.required, Validators.minLength(10)]]
+            rejectionReason: ['', [
+                Validators.required,
+                Validators.minLength(10),
+                Validators.maxLength(500)
+            ]]
         });
     }
 
+    // ========== CUSTOM VALIDATORS ==========
+    private futureDateValidator(): ValidatorFn {
+        return (control: AbstractControl): ValidationErrors | null => {
+            if (!control.value) {
+                return null;
+            }
+
+            const inputDate = new Date(control.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (inputDate < today) {
+                return { pastDate: true };
+            }
+
+            return null;
+        };
+    }
+
+    private dateRangeValidator(): ValidatorFn {
+        return (group: AbstractControl): ValidationErrors | null => {
+            const startDate = group.get('startDate')?.value;
+            const endDate = group.get('endDate')?.value;
+
+            if (!startDate || !endDate) {
+                return null;
+            }
+
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+
+            if (end < start) {
+                return { invalidDateRange: true };
+            }
+
+            // Check if date range exceeds 30 days
+            const diffTime = Math.abs(end.getTime() - start.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 30) {
+                return { exceedsMaxDuration: true };
+            }
+
+            return null;
+        };
+    }
+
+    // ========== ERROR MESSAGE HANDLER ==========
+    getFieldErrorMessage(form: FormGroup, fieldName: string): string {
+        const control = form.get(fieldName);
+
+        if (!control || !control.errors || !control.touched) {
+            return '';
+        }
+
+        const errors = control.errors;
+
+        if (errors['required']) {
+            return `${this.getFieldLabel(fieldName)} is required`;
+        }
+
+        if (errors['minlength']) {
+            return `${this.getFieldLabel(fieldName)} must be at least ${errors['minlength'].requiredLength} characters`;
+        }
+
+        if (errors['maxlength']) {
+            return `${this.getFieldLabel(fieldName)} cannot exceed ${errors['maxlength'].requiredLength} characters`;
+        }
+
+        if (errors['pastDate']) {
+            return 'Date must be today or in the future';
+        }
+
+        return 'Invalid input';
+    }
+
+    getFormErrorMessage(form: FormGroup): string {
+        if (form.errors?.['invalidDateRange']) {
+            return 'End date must be after start date';
+        }
+
+        if (form.errors?.['exceedsMaxDuration']) {
+            return 'Leave duration cannot exceed 30 days';
+        }
+
+        return '';
+    }
+
+    private getFieldLabel(fieldName: string): string {
+        const labels: { [key: string]: string } = {
+            leaveType: 'Leave Type',
+            startDate: 'Start Date',
+            endDate: 'End Date',
+            reason: 'Reason',
+            rejectionReason: 'Rejection Reason',
+            notes: 'Notes'
+        };
+
+        return labels[fieldName] || fieldName;
+    }
+
+    isFieldInvalid(form: FormGroup, fieldName: string): boolean {
+        const field = form.get(fieldName);
+        return !!(field && field.invalid && field.touched);
+    }
+
+    // ========== DATA LOADING ==========
     async loadData(): Promise<void> {
         this.loading = true;
         try {
@@ -111,6 +237,7 @@ export class LeaveRequestsComponent implements OnInit {
             await this.loadLeaveTypes();
         } catch (error: any) {
             this.errorMessage = error.message || 'Failed to load data';
+            this.hideMessages();
         } finally {
             this.loading = false;
         }
@@ -158,6 +285,7 @@ export class LeaveRequestsComponent implements OnInit {
         });
     }
 
+    // ========== LEAVE REQUEST OPERATIONS WITH VALIDATION ==========
     toggleCreateForm(): void {
         this.showCreateForm = !this.showCreateForm;
         if (this.showCreateForm) {
@@ -168,10 +296,33 @@ export class LeaveRequestsComponent implements OnInit {
     }
 
     async submitLeaveRequest(): Promise<void> {
+        this.markFormGroupTouched(this.createLeaveForm);
+
         if (this.createLeaveForm.invalid) {
-            this.markFormGroupTouched(this.createLeaveForm);
+            const errors: string[] = [];
+
+            // Check form-level errors
+            const formError = this.getFormErrorMessage(this.createLeaveForm);
+            if (formError) {
+                errors.push(formError);
+            }
+
+            // Check field-level errors
+            Object.keys(this.createLeaveForm.controls).forEach(key => {
+                const control = this.createLeaveForm.get(key);
+                if (control && control.invalid) {
+                    const message = this.getFieldErrorMessage(this.createLeaveForm, key);
+                    if (message && !errors.includes(message)) {
+                        errors.push(message);
+                    }
+                }
+            });
+
+            this.errorMessage = errors.length > 0 ? errors.join('. ') : 'Please fill out all required fields correctly';
+            this.hideMessages();
             return;
         }
+
         const formValue = this.createLeaveForm.value;
         const dto: CreateLeaveRequestDto = {
             driverId: this.currentDriverId,
@@ -180,11 +331,14 @@ export class LeaveRequestsComponent implements OnInit {
             endDate: new Date(formValue.endDate).toISOString(),
             reason: formValue.reason
         };
+
         const validationErrors = this.leaveRequestService.validateLeaveRequest(dto);
         if (validationErrors.length > 0) {
             this.errorMessage = validationErrors.join(', ');
+            this.hideMessages();
             return;
         }
+
         try {
             this.loading = true;
             this.leaveRequestService.createLeaveRequest(dto).subscribe({
@@ -196,12 +350,16 @@ export class LeaveRequestsComponent implements OnInit {
                     this.loadLeaveBalance();
                     this.hideMessages();
                 },
-                error: (error) => { this.errorMessage = error.message || 'Failed to submit leave request'; },
+                error: (error) => {
+                    this.errorMessage = error.error?.message || error.message || 'Failed to submit leave request';
+                    this.hideMessages();
+                },
                 complete: () => { this.loading = false; }
             });
         } catch (error: any) {
             this.errorMessage = error.message || 'Failed to submit leave request';
             this.loading = false;
+            this.hideMessages();
         }
     }
 
@@ -221,10 +379,14 @@ export class LeaveRequestsComponent implements OnInit {
 
     async approveRequest(): Promise<void> {
         if (!this.selectedRequest) return;
+
+        this.markFormGroupTouched(this.approvalForm);
+
         const dto: ApproveLeaveRequestDto = {
             approvedBy: this.currentDriverId,
-            notes: this.approvalForm.value.notes
+            notes: this.approvalForm.value.notes || ''
         };
+
         try {
             this.loading = true;
             this.leaveRequestService.approveLeaveRequest(this.selectedRequest.id, dto).subscribe({
@@ -234,24 +396,46 @@ export class LeaveRequestsComponent implements OnInit {
                     this.closeApprovalModal();
                     this.hideMessages();
                 },
-                error: (error) => { this.errorMessage = error.message || 'Failed to approve leave request'; },
+                error: (error) => {
+                    this.errorMessage = error.error?.message || error.message || 'Failed to approve leave request';
+                    this.hideMessages();
+                },
                 complete: () => { this.loading = false; }
             });
         } catch (error: any) {
             this.errorMessage = error.message || 'Failed to approve leave request';
             this.loading = false;
+            this.hideMessages();
         }
     }
 
     async rejectRequest(): Promise<void> {
-        if (!this.selectedRequest || this.rejectionForm.invalid) {
-            this.markFormGroupTouched(this.rejectionForm);
+        if (!this.selectedRequest) return;
+
+        this.markFormGroupTouched(this.rejectionForm);
+
+        if (this.rejectionForm.invalid) {
+            const errors: string[] = [];
+            Object.keys(this.rejectionForm.controls).forEach(key => {
+                const control = this.rejectionForm.get(key);
+                if (control && control.invalid) {
+                    const message = this.getFieldErrorMessage(this.rejectionForm, key);
+                    if (message) {
+                        errors.push(message);
+                    }
+                }
+            });
+
+            this.errorMessage = errors.length > 0 ? errors.join('. ') : 'Please provide a rejection reason';
+            this.hideMessages();
             return;
         }
+
         const dto: RejectLeaveRequestDto = {
             rejectedBy: this.currentDriverId,
             rejectionReason: this.rejectionForm.value.rejectionReason
         };
+
         try {
             this.loading = true;
             this.leaveRequestService.rejectLeaveRequest(this.selectedRequest.id, dto).subscribe({
@@ -261,12 +445,16 @@ export class LeaveRequestsComponent implements OnInit {
                     this.closeRejectionModal();
                     this.hideMessages();
                 },
-                error: (error) => { this.errorMessage = error.message || 'Failed to reject leave request'; },
+                error: (error) => {
+                    this.errorMessage = error.error?.message || error.message || 'Failed to reject leave request';
+                    this.hideMessages();
+                },
                 complete: () => { this.loading = false; }
             });
         } catch (error: any) {
             this.errorMessage = error.message || 'Failed to reject leave request';
             this.loading = false;
+            this.hideMessages();
         }
     }
 
@@ -282,12 +470,16 @@ export class LeaveRequestsComponent implements OnInit {
                     this.leaveRequests = this.leaveRequests.filter(r => r.id !== request.id);
                     this.hideMessages();
                 },
-                error: (error) => { this.errorMessage = error.message || 'Failed to delete leave request'; },
+                error: (error) => {
+                    this.errorMessage = error.error?.message || error.message || 'Failed to delete leave request';
+                    this.hideMessages();
+                },
                 complete: () => { this.loading = false; }
             });
         } catch (error: any) {
             this.errorMessage = error.message || 'Failed to delete leave request';
             this.loading = false;
+            this.hideMessages();
         }
     }
 
@@ -310,6 +502,7 @@ export class LeaveRequestsComponent implements OnInit {
         }
     }
 
+    // ========== PERMISSION HELPERS ==========
     isAdminOrManager(): boolean {
         return this.userRole === 'Admin' || this.userRole === 'FleetManager';
     }
@@ -323,12 +516,13 @@ export class LeaveRequestsComponent implements OnInit {
             (this.isAdminOrManager() || request.driverId === this.currentDriverId);
     }
 
+    // ========== DISPLAY HELPERS ==========
     getLeaveTypeString(leaveType: LeaveType): string {
         return this.leaveRequestService.getLeaveTypeString(leaveType);
     }
 
     getLeaveStatusString(status: string): string {
-        return status; // Since status is already a string, just return it
+        return status;
     }
 
     getStatusClass(status: string): string {
@@ -350,6 +544,7 @@ export class LeaveRequestsComponent implements OnInit {
         }
     }
 
+    // ========== PRIVATE HELPER METHODS ==========
     private markFormGroupTouched(formGroup: FormGroup): void {
         Object.keys(formGroup.controls).forEach(field => {
             const control = formGroup.get(field);
@@ -368,6 +563,7 @@ export class LeaveRequestsComponent implements OnInit {
         }, 5000);
     }
 
+    // ========== CSV EXPORT ==========
     exportRequests(): void {
         const csvData = this.convertToCSV(this.filteredRequests);
         this.downloadCSV(csvData, 'leave_requests_export.csv');

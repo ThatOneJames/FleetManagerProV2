@@ -19,84 +19,121 @@
         </div>
     </div>
 
-    <mat-card *ngIf="errorMessage" class="message-card error">
-        <mat-icon>error</mat-icon>
-        {{ errorMessage }}
-    </mat-card>
-
+    <!-- Success Alert -->
     <mat-card *ngIf="successMessage" class="message-card success">
         <mat-icon>check_circle</mat-icon>
-        {{ successMessage }}
+        <span>{{ successMessage }}</span>
     </mat-card>
 
+    <!-- Error Alert -->
+    <mat-card *ngIf="errorMessage" class="message-card error">
+        <mat-icon>error</mat-icon>
+        <span>{{ errorMessage }}</span>
+    </mat-card>
+
+    <!-- Profile Card -->
     <mat-card class="profile-card">
         <form [formGroup]="profileForm" (ngSubmit)="saveChanges()">
 
+            <!-- Personal Information Section -->
             <div class="section-header">
                 <mat-icon>person_outline</mat-icon>
                 <h2>Personal Information</h2>
             </div>
 
             <div class="form-grid">
+                <!-- Full Name -->
                 <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Full Name</mat-label>
+                    <mat-label>Full Name *</mat-label>
                     <input matInput formControlName="name" [readonly]="!isEditing">
                     <mat-icon matPrefix>badge</mat-icon>
-                    <mat-error *ngIf="name?.hasError('required')">Name is required</mat-error>
-                    <mat-error *ngIf="name?.hasError('minlength')">Name must be at least 2 characters</mat-error>
+                    <mat-error *ngIf="isFieldInvalid(profileForm, 'name')">
+                        {{ getFieldErrorMessage(profileForm, 'name') }}
+                    </mat-error>
+                    <mat-hint>2-100 characters, letters only</mat-hint>
                 </mat-form-field>
 
+                <!-- Email -->
                 <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Email</mat-label>
+                    <mat-label>Email *</mat-label>
                     <input matInput type="email" formControlName="email" [readonly]="!isEditing">
                     <mat-icon matPrefix>email</mat-icon>
-                    <mat-error *ngIf="email?.hasError('required')">Email is required</mat-error>
-                    <mat-error *ngIf="email?.hasError('email')">Please enter a valid email</mat-error>
+                    <mat-error *ngIf="isFieldInvalid(profileForm, 'email')">
+                        {{ getFieldErrorMessage(profileForm, 'email') }}
+                    </mat-error>
                 </mat-form-field>
 
+                <!-- Phone -->
                 <mat-form-field appearance="outline">
                     <mat-label>Phone Number</mat-label>
                     <input matInput formControlName="phone" [readonly]="!isEditing">
                     <mat-icon matPrefix>phone</mat-icon>
+                    <mat-error *ngIf="isFieldInvalid(profileForm, 'phone')">
+                        {{ getFieldErrorMessage(profileForm, 'phone') }}
+                    </mat-error>
+                    <mat-hint>Format: +63 912 345 6789 (Optional)</mat-hint>
                 </mat-form-field>
 
+                <!-- Date of Birth -->
                 <mat-form-field appearance="outline">
                     <mat-label>Date of Birth</mat-label>
                     <input matInput type="date" formControlName="dateOfBirth" [readonly]="!isEditing">
                     <mat-icon matPrefix>cake</mat-icon>
+                    <mat-error *ngIf="isFieldInvalid(profileForm, 'dateOfBirth')">
+                        {{ getFieldErrorMessage(profileForm, 'dateOfBirth') }}
+                    </mat-error>
+                    <mat-hint>Must be between 18 and 75 years old (Optional)</mat-hint>
                 </mat-form-field>
 
+                <!-- Address -->
                 <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Address</mat-label>
                     <textarea matInput rows="2" formControlName="address" [readonly]="!isEditing"></textarea>
                     <mat-icon matPrefix>home</mat-icon>
+                    <mat-error *ngIf="isFieldInvalid(profileForm, 'address')">
+                        {{ getFieldErrorMessage(profileForm, 'address') }}
+                    </mat-error>
+                    <mat-hint>Max 500 characters (Optional)</mat-hint>
                 </mat-form-field>
 
+                <!-- Emergency Contact -->
                 <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Emergency Contact</mat-label>
                     <input matInput formControlName="emergencyContact" [readonly]="!isEditing">
                     <mat-icon matPrefix>emergency</mat-icon>
+                    <mat-error *ngIf="isFieldInvalid(profileForm, 'emergencyContact')">
+                        {{ getFieldErrorMessage(profileForm, 'emergencyContact') }}
+                    </mat-error>
+                    <mat-hint>Max 200 characters (Optional)</mat-hint>
                 </mat-form-field>
             </div>
 
+            <!-- Driver License Information Section -->
             <div class="section-header">
                 <mat-icon>directions_car</mat-icon>
                 <h2>Driver License Information</h2>
             </div>
 
             <div class="form-grid">
+                <!-- License Number -->
                 <mat-form-field appearance="outline">
-                    <mat-label>License Number</mat-label>
+                    <mat-label>License Number *</mat-label>
                     <input matInput formControlName="licenseNumber" [readonly]="!isEditing">
                     <mat-icon matPrefix>credit_card</mat-icon>
+                    <mat-error *ngIf="isFieldInvalid(profileForm, 'licenseNumber')">
+                        {{ getFieldErrorMessage(profileForm, 'licenseNumber') }}
+                    </mat-error>
+                    <mat-hint>5-50 characters</mat-hint>
                 </mat-form-field>
 
+                <!-- License Classes (Display Mode) -->
                 <mat-form-field appearance="outline" class="full-width" *ngIf="!isEditing">
                     <mat-label>License Classes</mat-label>
                     <input matInput [value]="licenseClassesFormArray.value.join(', ')" [readonly]="true">
                     <mat-icon matPrefix>category</mat-icon>
                 </mat-form-field>
 
+                <!-- License Classes (Edit Mode) -->
                 <div class="form-group license-checkboxes full-width" *ngIf="isEditing">
                     <label class="mat-label">License Classes * (Select at least one)</label>
                     <div class="checkbox-group">
@@ -111,24 +148,35 @@
                     </mat-error>
                 </div>
 
+                <!-- License Expiry -->
                 <mat-form-field appearance="outline">
-                    <mat-label>License Expiry</mat-label>
+                    <mat-label>License Expiry *</mat-label>
                     <input matInput type="date" formControlName="licenseExpiry" [readonly]="!isEditing">
                     <mat-icon matPrefix>event</mat-icon>
+                    <mat-error *ngIf="isFieldInvalid(profileForm, 'licenseExpiry')">
+                        {{ getFieldErrorMessage(profileForm, 'licenseExpiry') }}
+                    </mat-error>
+                    <mat-hint>Must be today or in the future</mat-hint>
                 </mat-form-field>
 
+                <!-- Experience Years -->
                 <mat-form-field appearance="outline">
                     <mat-label>Experience (Years)</mat-label>
                     <input matInput type="number" formControlName="experienceYears" [readonly]="!isEditing">
                     <mat-icon matPrefix>timeline</mat-icon>
+                    <mat-error *ngIf="isFieldInvalid(profileForm, 'experienceYears')">
+                        {{ getFieldErrorMessage(profileForm, 'experienceYears') }}
+                    </mat-error>
+                    <mat-hint>0-50 years (Optional)</mat-hint>
                 </mat-form-field>
             </div>
 
+            <!-- Form Actions -->
             <div class="form-actions" *ngIf="isEditing">
                 <button mat-raised-button type="button" (click)="toggleEdit()">
                     Cancel
                 </button>
-                <button mat-raised-button color="primary" type="submit" [disabled]="profileForm.invalid || isLoading">
+                <button mat-raised-button color="primary" type="submit" [disabled]="isLoading">
                     <mat-icon>save</mat-icon>
                     Save Changes
                 </button>
@@ -136,6 +184,7 @@
         </form>
     </mat-card>
 
+    <!-- ENHANCED CHANGE PASSWORD MODAL WITH VALIDATION -->
     <div class="modal-overlay" *ngIf="showChangePasswordModal" (click)="closeChangePasswordModal()">
         <mat-card class="change-password-modal" (click)="$event.stopPropagation()">
             <div class="modal-header">
@@ -146,57 +195,55 @@
             </div>
 
             <form [formGroup]="changePasswordForm" (ngSubmit)="changePassword()">
+                <!-- Current Password -->
                 <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Current Password</mat-label>
+                    <mat-label>Current Password *</mat-label>
                     <input matInput [type]="showCurrentPassword ? 'text' : 'password'" formControlName="currentPassword">
                     <mat-icon matPrefix>lock_outline</mat-icon>
                     <button mat-icon-button matSuffix type="button" (click)="toggleCurrentPassword()" tabindex="-1">
                         <mat-icon>{{ showCurrentPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
                     </button>
-                    <mat-error *ngIf="currentPassword?.hasError('required')">
-                        Current password is required
-                    </mat-error>
-                    <mat-error *ngIf="currentPassword?.hasError('minlength')">
-                        Password must be at least 6 characters
+                    <mat-error *ngIf="isFieldInvalid(changePasswordForm, 'currentPassword')">
+                        {{ getFieldErrorMessage(changePasswordForm, 'currentPassword') }}
                     </mat-error>
                 </mat-form-field>
 
+                <!-- New Password -->
                 <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>New Password</mat-label>
+                    <mat-label>New Password *</mat-label>
                     <input matInput [type]="showNewPassword ? 'text' : 'password'" formControlName="newPassword">
                     <mat-icon matPrefix>lock</mat-icon>
                     <button mat-icon-button matSuffix type="button" (click)="toggleNewPassword()" tabindex="-1">
                         <mat-icon>{{ showNewPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
                     </button>
-                    <mat-error *ngIf="newPassword?.hasError('required')">
-                        New password is required
+                    <mat-error *ngIf="isFieldInvalid(changePasswordForm, 'newPassword')">
+                        {{ getFieldErrorMessage(changePasswordForm, 'newPassword') }}
                     </mat-error>
-                    <mat-error *ngIf="newPassword?.hasError('minlength')">
-                        Password must be at least 6 characters
-                    </mat-error>
+                    <mat-hint>Min 6 chars, must contain letters and numbers</mat-hint>
                 </mat-form-field>
 
+                <!-- Confirm New Password -->
                 <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Confirm New Password</mat-label>
+                    <mat-label>Confirm New Password *</mat-label>
                     <input matInput [type]="showConfirmPassword ? 'text' : 'password'" formControlName="confirmPassword">
                     <mat-icon matPrefix>lock</mat-icon>
                     <button mat-icon-button matSuffix type="button" (click)="toggleConfirmPassword()" tabindex="-1">
                         <mat-icon>{{ showConfirmPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
                     </button>
-                    <mat-error *ngIf="confirmPassword?.hasError('required')">
-                        Please confirm your password
+                    <mat-error *ngIf="isFieldInvalid(changePasswordForm, 'confirmPassword')">
+                        {{ getFieldErrorMessage(changePasswordForm, 'confirmPassword') }}
                     </mat-error>
-                    <mat-error *ngIf="changePasswordForm.hasError('passwordMismatch') && confirmPassword?.touched">
+                    <mat-error *ngIf="changePasswordForm.hasError('passwordMismatch') && changePasswordForm.get('confirmPassword')?.touched">
                         Passwords do not match
                     </mat-error>
                 </mat-form-field>
 
+                <!-- Modal Actions -->
                 <div class="modal-actions">
                     <button mat-button type="button" (click)="closeChangePasswordModal()">
                         Cancel
                     </button>
-                    <button mat-raised-button color="primary" type="submit"
-                            [disabled]="changePasswordForm.invalid || isLoading">
+                    <button mat-raised-button color="primary" type="submit" [disabled]="isLoading">
                         <mat-icon>check</mat-icon>
                         Change Password
                     </button>

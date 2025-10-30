@@ -1,4 +1,5 @@
 ﻿import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MaintenanceService } from '../../../services/maintenance.service';
 import { MaintenanceRequestService, MaintenanceRequest } from '../../../services/maintenancerequest.service';
 import { VehicleService } from '../../../services/vehicle.service';
@@ -42,18 +43,8 @@ export class MaintenanceComponent implements OnInit {
     showRequestDetails: boolean = false;
     selectedRequest: MaintenanceRequest | null = null;
 
-    newTask: CreateMaintenanceTaskDto = {
-        vehicleId: '',
-        categoryId: 0,
-        taskType: '',
-        description: '',
-        priority: 'Medium',
-        status: 'Scheduled',
-        scheduledDate: '',
-        estimatedCost: undefined,
-        assignedTo: '',
-        serviceProvider: ''
-    };
+    // Reactive Form
+    maintenanceForm!: FormGroup;
 
     statusOptions = ['Scheduled', 'InProgress', 'Completed', 'Cancelled', 'Overdue'];
     priorityOptions = ['High', 'Medium', 'Low'];
@@ -62,21 +53,133 @@ export class MaintenanceComponent implements OnInit {
     severityOptions = ['Critical', 'High', 'Medium', 'Low'];
 
     loading: boolean = false;
-    error: string = '';
+    errorMessage: string | null = null;
+    successMessage: string | null = null;
 
     constructor(
         private maintenanceService: MaintenanceService,
         private maintenanceRequestService: MaintenanceRequestService,
-        private vehicleService: VehicleService
+        private vehicleService: VehicleService,
+        private fb: FormBuilder
     ) { }
 
     ngOnInit(): void {
+        this.initializeForm();
         this.loadData();
     }
 
+    // ========== FORM INITIALIZATION WITH VALIDATION ==========
+    initializeForm(): void {
+        this.maintenanceForm = this.fb.group({
+            vehicleId: ['', [Validators.required]],
+            categoryId: [0, [Validators.required, Validators.min(1)]],
+            taskType: ['', [
+                Validators.required,
+                Validators.minLength(3),
+                Validators.maxLength(100)
+            ]],
+            description: ['', [
+                Validators.required,
+                Validators.minLength(10),
+                Validators.maxLength(1000)
+            ]],
+            priority: ['Medium', [Validators.required]],
+            status: ['Scheduled', [Validators.required]],
+            scheduledDate: ['', [
+                Validators.required,
+                this.futureDateValidator()
+            ]],
+            estimatedCost: [0, [
+                Validators.min(0),
+                Validators.max(10000000)
+            ]],
+            assignedTo: ['', [Validators.maxLength(100)]],
+            serviceProvider: ['', [Validators.maxLength(200)]]
+        });
+    }
+
+    // ========== CUSTOM VALIDATORS ==========
+    private futureDateValidator(): ValidatorFn {
+        return (control: AbstractControl): ValidationErrors | null => {
+            if (!control.value) {
+                return null;
+            }
+
+            const inputDate = new Date(control.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (inputDate < today) {
+                return { pastDate: true };
+            }
+
+            return null;
+        };
+    }
+
+    // ========== ERROR MESSAGE HANDLER ==========
+    getFieldErrorMessage(form: FormGroup, fieldName: string): string {
+        const control = form.get(fieldName);
+
+        if (!control || !control.errors || !control.touched) {
+            return '';
+        }
+
+        const errors = control.errors;
+
+        if (errors['required']) {
+            return `${this.getFieldLabel(fieldName)} is required`;
+        }
+
+        if (errors['minlength']) {
+            return `${this.getFieldLabel(fieldName)} must be at least ${errors['minlength'].requiredLength} characters`;
+        }
+
+        if (errors['maxlength']) {
+            return `${this.getFieldLabel(fieldName)} cannot exceed ${errors['maxlength'].requiredLength} characters`;
+        }
+
+        if (errors['min']) {
+            return `${this.getFieldLabel(fieldName)} must be at least ${errors['min'].min}`;
+        }
+
+        if (errors['max']) {
+            return `${this.getFieldLabel(fieldName)} cannot exceed ${errors['max'].max}`;
+        }
+
+        if (errors['pastDate']) {
+            return 'Scheduled date must be today or in the future';
+        }
+
+        return 'Invalid input';
+    }
+
+    private getFieldLabel(fieldName: string): string {
+        const labels: { [key: string]: string } = {
+            vehicleId: 'Vehicle',
+            categoryId: 'Category',
+            taskType: 'Task Type',
+            description: 'Description',
+            priority: 'Priority',
+            status: 'Status',
+            scheduledDate: 'Scheduled Date',
+            estimatedCost: 'Estimated Cost',
+            assignedTo: 'Assigned To',
+            serviceProvider: 'Service Provider'
+        };
+
+        return labels[fieldName] || fieldName;
+    }
+
+    isFieldInvalid(form: FormGroup, fieldName: string): boolean {
+        const field = form.get(fieldName);
+        return !!(field && field.invalid && field.touched);
+    }
+
+    // ========== DATA LOADING ==========
     loadData(): void {
         this.loading = true;
-        this.error = '';
+        this.errorMessage = null;
 
         this.maintenanceService.getAllTasks().subscribe({
             next: (data) => {
@@ -86,9 +189,10 @@ export class MaintenanceComponent implements OnInit {
                 this.loading = false;
             },
             error: (err) => {
-                this.error = 'Failed to load maintenance tasks';
+                this.errorMessage = 'Failed to load maintenance tasks';
                 console.error(err);
                 this.loading = false;
+                this.clearMessages();
             }
         });
 
@@ -148,10 +252,212 @@ export class MaintenanceComponent implements OnInit {
             overdueTasks: overdueFromTasks + overdueFromRequests,
             totalCost: costFromTasks + costFromRequests
         };
-
-        console.log('Statistics updated:', this.statistics);
     }
 
+    // ========== CRUD OPERATIONS WITH VALIDATION ==========
+    toggleAddForm(): void {
+        this.showAddForm = !this.showAddForm;
+        if (!this.showAddForm) {
+            this.resetForm();
+        }
+    }
+
+    resetForm(): void {
+        this.maintenanceForm.reset({
+            vehicleId: '',
+            categoryId: 0,
+            taskType: '',
+            description: '',
+            priority: 'Medium',
+            status: 'Scheduled',
+            scheduledDate: '',
+            estimatedCost: 0,
+            assignedTo: '',
+            serviceProvider: ''
+        });
+        this.editingTask = null;
+        this.errorMessage = null;
+    }
+
+    addTask(): void {
+        this.markFormGroupTouched(this.maintenanceForm);
+
+        if (this.maintenanceForm.invalid) {
+            const errors: string[] = [];
+            Object.keys(this.maintenanceForm.controls).forEach(key => {
+                const control = this.maintenanceForm.get(key);
+                if (control && control.invalid) {
+                    const message = this.getFieldErrorMessage(this.maintenanceForm, key);
+                    if (message) {
+                        errors.push(message);
+                    }
+                }
+            });
+
+            this.errorMessage = errors.length > 0 ? errors.join('. ') : 'Please fill out all required fields correctly';
+            this.clearMessages();
+            return;
+        }
+
+        this.loading = true;
+        const taskData = this.maintenanceForm.value as CreateMaintenanceTaskDto;
+
+        this.maintenanceService.createTask(taskData).subscribe({
+            next: (task) => {
+                this.tasks.unshift(task);
+                this.applyFilters();
+                this.resetForm();
+                this.showAddForm = false;
+                this.successMessage = 'Maintenance task created successfully!';
+                this.loadData();
+                this.loading = false;
+                this.clearMessages();
+            },
+            error: (err) => {
+                this.errorMessage = 'Failed to create task';
+                console.error(err);
+                this.loading = false;
+                this.clearMessages();
+            }
+        });
+    }
+
+    editTask(task: MaintenanceTask): void {
+        this.editingTask = task;
+        this.maintenanceForm.patchValue({
+            vehicleId: task.vehicleId,
+            categoryId: task.categoryId,
+            taskType: task.taskType,
+            description: task.description,
+            priority: task.priority,
+            status: task.status,
+            scheduledDate: typeof task.scheduledDate === 'string'
+                ? task.scheduledDate.split('T')[0]
+                : new Date(task.scheduledDate).toISOString().split('T')[0],
+            estimatedCost: task.estimatedCost || 0,
+            assignedTo: task.assignedTo || '',
+            serviceProvider: task.serviceProvider || ''
+        });
+        this.showAddForm = true;
+    }
+
+    updateTask(): void {
+        this.markFormGroupTouched(this.maintenanceForm);
+
+        if (!this.editingTask || this.maintenanceForm.invalid) {
+            const errors: string[] = [];
+            Object.keys(this.maintenanceForm.controls).forEach(key => {
+                const control = this.maintenanceForm.get(key);
+                if (control && control.invalid) {
+                    const message = this.getFieldErrorMessage(this.maintenanceForm, key);
+                    if (message) {
+                        errors.push(message);
+                    }
+                }
+            });
+
+            this.errorMessage = errors.length > 0 ? errors.join('. ') : 'Please fill out all required fields correctly';
+            this.clearMessages();
+            return;
+        }
+
+        this.loading = true;
+        const taskData = this.maintenanceForm.value;
+
+        this.maintenanceService.updateTask(this.editingTask.id!, taskData as any).subscribe({
+            next: () => {
+                this.successMessage = 'Maintenance task updated successfully!';
+                this.loadData();
+                this.resetForm();
+                this.showAddForm = false;
+                this.loading = false;
+                this.clearMessages();
+            },
+            error: (err) => {
+                this.errorMessage = 'Failed to update task';
+                console.error(err);
+                this.loading = false;
+                this.clearMessages();
+            }
+        });
+    }
+
+    deleteTask(id: string): void {
+        if (!confirm('Are you sure you want to delete this maintenance task?')) {
+            return;
+        }
+
+        this.loading = true;
+        this.maintenanceService.deleteTask(id).subscribe({
+            next: () => {
+                this.tasks = this.tasks.filter(t => t.id !== id);
+                this.applyFilters();
+                this.successMessage = 'Maintenance task deleted successfully!';
+                this.loadData();
+                this.loading = false;
+                this.clearMessages();
+            },
+            error: (err) => {
+                this.errorMessage = 'Failed to delete task';
+                console.error(err);
+                this.loading = false;
+                this.clearMessages();
+            }
+        });
+    }
+
+    completeTask(task: MaintenanceTask): void {
+        const updatedTask = {
+            ...task,
+            status: 'Completed',
+            completedDate: new Date().toISOString()
+        };
+
+        this.maintenanceService.updateTask(task.id!, updatedTask as any).subscribe({
+            next: () => {
+                this.successMessage = 'Task marked as completed!';
+                this.loadData();
+                this.clearMessages();
+            },
+            error: (err) => {
+                this.errorMessage = 'Failed to complete task';
+                console.error(err);
+                this.clearMessages();
+            }
+        });
+    }
+
+    // ========== MAINTENANCE REQUESTS ==========
+    viewRequestDetails(request: MaintenanceRequest): void {
+        this.selectedRequest = request;
+        this.showRequestDetails = true;
+    }
+
+    closeRequestDetails(): void {
+        this.showRequestDetails = false;
+        this.selectedRequest = null;
+    }
+
+    updateRequestStatus(id: string, status: string, mechanic?: string, notes?: string): void {
+        this.maintenanceRequestService.updateRequestStatus(id, status, mechanic, notes).subscribe({
+            next: (response: any) => {
+                const message = response.vehicleStatus
+                    ? `Status updated to ${status}. Vehicle status: ${response.vehicleStatus}`
+                    : `Status updated to ${status}`;
+                this.successMessage = message;
+                this.loadData();
+                this.closeRequestDetails();
+                this.clearMessages();
+            },
+            error: (err) => {
+                this.errorMessage = 'Failed to update request status';
+                console.error(err);
+                this.clearMessages();
+            }
+        });
+    }
+
+    // ========== FILTERS & TAB SWITCHING ==========
     switchTab(tab: 'tasks' | 'requests'): void {
         this.activeTab = tab;
     }
@@ -202,172 +508,7 @@ export class MaintenanceComponent implements OnInit {
         }
     }
 
-    toggleAddForm(): void {
-        this.showAddForm = !this.showAddForm;
-        if (!this.showAddForm) {
-            this.resetForm();
-        }
-    }
-
-    resetForm(): void {
-        this.newTask = {
-            vehicleId: '',
-            categoryId: 0,
-            taskType: '',
-            description: '',
-            priority: 'Medium',
-            status: 'Scheduled',
-            scheduledDate: '',
-            estimatedCost: undefined,
-            assignedTo: '',
-            serviceProvider: ''
-        };
-        this.editingTask = null;
-    }
-
-    addTask(): void {
-        if (!this.validateForm()) {
-            return;
-        }
-
-        this.loading = true;
-        this.maintenanceService.createTask(this.newTask).subscribe({
-            next: (task) => {
-                this.tasks.unshift(task);
-                this.applyFilters();
-                this.resetForm();
-                this.showAddForm = false;
-                this.loadData();
-                this.loading = false;
-            },
-            error: (err) => {
-                this.error = 'Failed to create task';
-                console.error(err);
-                this.loading = false;
-            }
-        });
-    }
-
-    editTask(task: MaintenanceTask): void {
-        this.editingTask = task;
-        this.newTask = {
-            vehicleId: task.vehicleId,
-            categoryId: task.categoryId,
-            taskType: task.taskType,
-            description: task.description,
-            priority: task.priority,
-            status: task.status,
-            scheduledDate: typeof task.scheduledDate === 'string'
-                ? task.scheduledDate.split('T')[0]
-                : new Date(task.scheduledDate).toISOString().split('T')[0],
-            estimatedCost: task.estimatedCost,
-            assignedTo: task.assignedTo,
-            serviceProvider: task.serviceProvider
-        };
-        this.showAddForm = true;
-    }
-
-    updateTask(): void {
-        if (!this.editingTask || !this.validateForm()) {
-            return;
-        }
-
-        this.loading = true;
-        this.maintenanceService.updateTask(this.editingTask.id!, this.newTask as any).subscribe({
-            next: () => {
-                this.loadData();
-                this.resetForm();
-                this.showAddForm = false;
-                this.loading = false;
-            },
-            error: (err) => {
-                this.error = 'Failed to update task';
-                console.error(err);
-                this.loading = false;
-            }
-        });
-    }
-
-    deleteTask(id: string): void {
-        if (!confirm('Are you sure you want to delete this maintenance task?')) {
-            return;
-        }
-
-        this.loading = true;
-        this.maintenanceService.deleteTask(id).subscribe({
-            next: () => {
-                this.tasks = this.tasks.filter(t => t.id !== id);
-                this.applyFilters();
-                this.loadData();
-                this.loading = false;
-            },
-            error: (err) => {
-                this.error = 'Failed to delete task';
-                console.error(err);
-                this.loading = false;
-            }
-        });
-    }
-
-    completeTask(task: MaintenanceTask): void {
-        const updatedTask = {
-            ...task,
-            status: 'Completed',
-            completedDate: new Date().toISOString()
-        };
-
-        this.maintenanceService.updateTask(task.id!, updatedTask as any).subscribe({
-            next: () => {
-                this.loadData();
-            },
-            error: (err) => {
-                this.error = 'Failed to complete task';
-                console.error(err);
-            }
-        });
-    }
-
-    viewRequestDetails(request: MaintenanceRequest): void {
-        this.selectedRequest = request;
-        this.showRequestDetails = true;
-    }
-
-    closeRequestDetails(): void {
-        this.showRequestDetails = false;
-        this.selectedRequest = null;
-    }
-
-    updateRequestStatus(id: string, status: string, mechanic?: string, notes?: string): void {
-        this.maintenanceRequestService.updateRequestStatus(id, status, mechanic, notes).subscribe({
-            next: (response: any) => {
-                console.log('Status updated:', response);
-
-                const message = response.vehicleStatus
-                    ? `Status updated to ${status}. Vehicle status: ${response.vehicleStatus}`
-                    : `Status updated to ${status}`;
-                alert(message);
-
-                this.loadData();
-                this.closeRequestDetails();
-            },
-            error: (err) => {
-                this.error = 'Failed to update request status';
-                console.error(err);
-            }
-        });
-    }
-
-    validateForm(): boolean {
-        if (!this.newTask.vehicleId || !this.newTask.categoryId ||
-            !this.newTask.taskType || !this.newTask.description ||
-            !this.newTask.scheduledDate) {
-            this.error = 'Please fill in all required fields';
-            return false;
-        }
-        this.error = '';
-        return true;
-    }
-
+    // ========== DISPLAY HELPERS ==========
     getVehicleDisplay(task: MaintenanceTask): string {
         if (task.vehicle) {
             return `${task.vehicle.make} ${task.vehicle.model} (${task.vehicle.licensePlate})`;
@@ -431,6 +572,7 @@ export class MaintenanceComponent implements OnInit {
         }).format(amount);
     }
 
+    // ========== CSV EXPORT ==========
     downloadCSV(): void {
         if (this.activeTab === 'tasks') {
             this.downloadTasksCSV();
@@ -511,5 +653,20 @@ export class MaintenanceComponent implements OnInit {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    // ========== PRIVATE HELPER METHODS ==========
+    private markFormGroupTouched(formGroup: FormGroup): void {
+        Object.keys(formGroup.controls).forEach(field => {
+            const control = formGroup.get(field);
+            control?.markAsTouched({ onlySelf: true });
+        });
+    }
+
+    private clearMessages(): void {
+        setTimeout(() => {
+            this.successMessage = null;
+            this.errorMessage = null;
+        }, 5000);
     }
 }

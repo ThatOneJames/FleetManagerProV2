@@ -16,10 +16,18 @@
         </div>
     </div>
 
+    <!-- Success Message -->
+    <div *ngIf="successMessage" class="alert alert-success">
+        <span class="alert-icon">✓</span>
+        {{ successMessage }}
+        <button class="close-btn" (click)="successMessage = null">&times;</button>
+    </div>
+
     <!-- Error Message -->
-    <div *ngIf="error" class="alert alert-error">
-        {{ error }}
-        <button class="close-btn" (click)="error = ''">&times;</button>
+    <div *ngIf="errorMessage" class="alert alert-error">
+        <span class="alert-icon">⚠</span>
+        {{ errorMessage }}
+        <button class="close-btn" (click)="errorMessage = null">&times;</button>
     </div>
 
     <!-- Statistics Dashboard -->
@@ -77,63 +85,87 @@
 
     <!-- ==================== SCHEDULED MAINTENANCE TAB ==================== -->
     <div *ngIf="activeTab === 'tasks'">
-        <!-- Add/Edit Form -->
+        <!-- Add/Edit Form WITH VALIDATION -->
         <div class="maintenance-form-card" *ngIf="showAddForm">
             <h3>{{ editingTask ? 'Edit' : 'Add New' }} Maintenance Task</h3>
-            <form class="maintenance-form">
+            <form [formGroup]="maintenanceForm" class="maintenance-form">
                 <div class="form-row">
+                    <!-- Vehicle -->
                     <div class="form-group">
                         <label>Vehicle *</label>
-                        <select [(ngModel)]="newTask.vehicleId" name="vehicleId" required>
+                        <select formControlName="vehicleId"
+                                [class.invalid]="isFieldInvalid(maintenanceForm, 'vehicleId')"
+                                [class.valid]="maintenanceForm.get('vehicleId')?.valid && maintenanceForm.get('vehicleId')?.touched">
                             <option value="">Select Vehicle</option>
                             <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
                                 {{ vehicle.make }} {{ vehicle.model }} - {{ vehicle.licensePlate }}
                             </option>
                         </select>
+                        <div *ngIf="isFieldInvalid(maintenanceForm, 'vehicleId')" class="error-text">
+                            {{ getFieldErrorMessage(maintenanceForm, 'vehicleId') }}
+                        </div>
                     </div>
 
+                    <!-- Category -->
                     <div class="form-group">
                         <label>Category *</label>
-                        <select [(ngModel)]="newTask.categoryId" name="categoryId" required>
+                        <select formControlName="categoryId"
+                                [class.invalid]="isFieldInvalid(maintenanceForm, 'categoryId')"
+                                [class.valid]="maintenanceForm.get('categoryId')?.valid && maintenanceForm.get('categoryId')?.touched">
                             <option [value]="0">Select Category</option>
                             <option *ngFor="let category of categories" [value]="category.id">
                                 {{ category.name }}
                             </option>
                         </select>
+                        <div *ngIf="isFieldInvalid(maintenanceForm, 'categoryId')" class="error-text">
+                            {{ getFieldErrorMessage(maintenanceForm, 'categoryId') }}
+                        </div>
                     </div>
                 </div>
 
                 <div class="form-row">
+                    <!-- Task Type -->
                     <div class="form-group">
                         <label>Task Type *</label>
-                        <input [(ngModel)]="newTask.taskType"
-                               name="taskType"
+                        <input formControlName="taskType"
                                placeholder="e.g., Oil Change, Tire Rotation"
-                               required />
+                               [class.invalid]="isFieldInvalid(maintenanceForm, 'taskType')"
+                               [class.valid]="maintenanceForm.get('taskType')?.valid && maintenanceForm.get('taskType')?.touched" />
+                        <div *ngIf="isFieldInvalid(maintenanceForm, 'taskType')" class="error-text">
+                            {{ getFieldErrorMessage(maintenanceForm, 'taskType') }}
+                        </div>
+                        <div class="field-hint">3-100 characters</div>
                     </div>
 
+                    <!-- Scheduled Date -->
                     <div class="form-group">
                         <label>Scheduled Date *</label>
-                        <input [(ngModel)]="newTask.scheduledDate"
-                               name="scheduledDate"
+                        <input formControlName="scheduledDate"
                                type="date"
-                               required />
+                               [class.invalid]="isFieldInvalid(maintenanceForm, 'scheduledDate')"
+                               [class.valid]="maintenanceForm.get('scheduledDate')?.valid && maintenanceForm.get('scheduledDate')?.touched" />
+                        <div *ngIf="isFieldInvalid(maintenanceForm, 'scheduledDate')" class="error-text">
+                            {{ getFieldErrorMessage(maintenanceForm, 'scheduledDate') }}
+                        </div>
+                        <div class="field-hint">Must be today or a future date</div>
                     </div>
                 </div>
 
                 <div class="form-row">
+                    <!-- Priority -->
                     <div class="form-group">
                         <label>Priority *</label>
-                        <select [(ngModel)]="newTask.priority" name="priority" required>
+                        <select formControlName="priority">
                             <option *ngFor="let priority of priorityOptions" [value]="priority">
                                 {{ priority }}
                             </option>
                         </select>
                     </div>
 
+                    <!-- Status -->
                     <div class="form-group">
                         <label>Status *</label>
-                        <select [(ngModel)]="newTask.status" name="status" required>
+                        <select formControlName="status">
                             <option *ngFor="let status of statusOptions" [value]="status">
                                 {{ status }}
                             </option>
@@ -141,38 +173,58 @@
                     </div>
                 </div>
 
+                <!-- Description -->
                 <div class="form-group full-width">
                     <label>Description *</label>
-                    <textarea [(ngModel)]="newTask.description"
-                              name="description"
+                    <textarea formControlName="description"
                               placeholder="Detailed description of the maintenance task"
                               rows="3"
-                              required></textarea>
+                              [class.invalid]="isFieldInvalid(maintenanceForm, 'description')"
+                              [class.valid]="maintenanceForm.get('description')?.valid && maintenanceForm.get('description')?.touched"></textarea>
+                    <div *ngIf="isFieldInvalid(maintenanceForm, 'description')" class="error-text">
+                        {{ getFieldErrorMessage(maintenanceForm, 'description') }}
+                    </div>
+                    <div class="field-hint">10-1000 characters - Provide comprehensive details</div>
                 </div>
 
                 <div class="form-row">
+                    <!-- Estimated Cost -->
                     <div class="form-group">
                         <label>Estimated Cost</label>
-                        <input [(ngModel)]="newTask.estimatedCost"
-                               name="estimatedCost"
+                        <input formControlName="estimatedCost"
                                type="number"
                                step="0.01"
-                               placeholder="0.00" />
+                               placeholder="0.00"
+                               [class.invalid]="isFieldInvalid(maintenanceForm, 'estimatedCost')"
+                               [class.valid]="maintenanceForm.get('estimatedCost')?.valid && maintenanceForm.get('estimatedCost')?.touched" />
+                        <div *ngIf="isFieldInvalid(maintenanceForm, 'estimatedCost')" class="error-text">
+                            {{ getFieldErrorMessage(maintenanceForm, 'estimatedCost') }}
+                        </div>
                     </div>
 
+                    <!-- Service Provider -->
                     <div class="form-group">
                         <label>Service Provider</label>
-                        <input [(ngModel)]="newTask.serviceProvider"
-                               name="serviceProvider"
-                               placeholder="e.g., ABC Auto Shop" />
+                        <input formControlName="serviceProvider"
+                               placeholder="e.g., ABC Auto Shop"
+                               [class.invalid]="isFieldInvalid(maintenanceForm, 'serviceProvider')"
+                               [class.valid]="maintenanceForm.get('serviceProvider')?.valid && maintenanceForm.get('serviceProvider')?.touched" />
+                        <div *ngIf="isFieldInvalid(maintenanceForm, 'serviceProvider')" class="error-text">
+                            {{ getFieldErrorMessage(maintenanceForm, 'serviceProvider') }}
+                        </div>
                     </div>
                 </div>
 
+                <!-- Assigned To -->
                 <div class="form-group">
                     <label>Assigned To</label>
-                    <input [(ngModel)]="newTask.assignedTo"
-                           name="assignedTo"
-                           placeholder="Technician name" />
+                    <input formControlName="assignedTo"
+                           placeholder="Technician name"
+                           [class.invalid]="isFieldInvalid(maintenanceForm, 'assignedTo')"
+                           [class.valid]="maintenanceForm.get('assignedTo')?.valid && maintenanceForm.get('assignedTo')?.touched" />
+                    <div *ngIf="isFieldInvalid(maintenanceForm, 'assignedTo')" class="error-text">
+                        {{ getFieldErrorMessage(maintenanceForm, 'assignedTo') }}
+                    </div>
                 </div>
 
                 <div class="form-actions">
@@ -299,6 +351,7 @@
             </div>
         </div>
     </div>
+
     <!-- ==================== INSPECTION REPORTS TAB ==================== -->
     <div *ngIf="activeTab === 'requests'">
         <!-- Filters for Requests -->
@@ -378,7 +431,6 @@
                             </div>
                         </div>
 
-                        <!-- ✅ NEW: Assignment & Route Section -->
                         <div class="request-assignment" *ngIf="request.assignedMechanic || request.route">
                             <div class="assignment-row" *ngIf="request.assignedMechanic">
                                 <span class="assignment-label">Assigned To:</span>
@@ -401,7 +453,7 @@
         </div>
     </div>
 
-    <!-- ✅ Request Details Modal -->
+    <!-- Request Details Modal -->
     <div class="modal-overlay" *ngIf="showRequestDetails && selectedRequest">
         <div class="modal-content">
             <div class="modal-header">
@@ -436,7 +488,6 @@
                         </p>
                     </div>
 
-                    <!-- ✅ NEW: Assignment & Route Details in Modal -->
                     <div class="detail-section" *ngIf="selectedRequest.assignedMechanic || selectedRequest.route">
                         <h4>Assignment & Route Details</h4>
                         <p *ngIf="selectedRequest.assignedMechanic">

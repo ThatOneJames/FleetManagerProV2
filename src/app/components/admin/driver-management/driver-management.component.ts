@@ -4,7 +4,7 @@ import { User, UserStatus, UserRole } from '../../../models/user.model';
 import { DriverWarning } from '../../../models/driver-warning.model';
 import { DriverSuspension } from '../../../models/driver-suspension.model';
 import { AuthService } from '../../../services/auth.service';
-import { FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, FormArray, FormControl, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -32,7 +32,6 @@ export class DriverManagementComponent implements OnInit {
         });
     }
 
-
     driversAttendance: Map<string, { clockedIn: boolean; clockedOut: boolean }> = new Map();
     driversAttendanceData: Map<string, any> = new Map();
     driversOnLeave: Map<string, any> = new Map();
@@ -59,7 +58,6 @@ export class DriverManagementComponent implements OnInit {
         { code: 'CE', name: 'Articulated Trucks' }
     ];
 
-    // ===== WARNINGS & SUSPENSIONS =====
     selectedDriver: User | null = null;
     showWarningModal = false;
     warningReason = '';
@@ -83,40 +81,244 @@ export class DriverManagementComponent implements OnInit {
         this.loadDrivers();
     }
 
+    // ========== ENHANCED FORM INITIALIZATION WITH VALIDATION ==========
     private initializeForms(): void {
         this.registrationForm = this.fb.group({
-            name: ['', [Validators.required, Validators.minLength(2)]],
-            email: ['', [Validators.required, Validators.email]],
-            password: ['', [Validators.required, Validators.minLength(6)]],
-            phone: ['', [Validators.required]],
-            address: [''],
-            dateOfBirth: [''],
-            emergencyContact: ['', [Validators.required]],
+            name: ['', [
+                Validators.required,
+                Validators.minLength(2),
+                Validators.maxLength(100),
+                Validators.pattern(/^[a-zA-Z\s]+$/)
+            ]],
+            email: ['', [
+                Validators.required,
+                Validators.email,
+                Validators.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
+            ]],
+            password: ['', [
+                Validators.required,
+                Validators.minLength(6),
+                Validators.maxLength(50)
+            ]],
+            phone: ['', [
+                Validators.required,
+                Validators.pattern(/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/)
+            ]],
+            address: ['', [Validators.maxLength(500)]],
+            dateOfBirth: ['', [
+                Validators.required,
+                this.ageValidator(18, 70)
+            ]],
+            emergencyContact: ['', [
+                Validators.required,
+                Validators.pattern(/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/)
+            ]],
             status: ['Active', [Validators.required]],
-            licenseNumber: ['', [Validators.required]],
-            licenseClasses: this.fb.array([], Validators.required),
-            licenseExpiry: ['', [Validators.required]],
-            experienceYears: [0, [Validators.min(0)]],
-            safetyRating: [0, [Validators.min(0), Validators.max(5)]]
+            licenseNumber: ['', [
+                Validators.required,
+                Validators.minLength(5),
+                Validators.maxLength(20),
+                Validators.pattern(/^[A-Z0-9-]+$/)
+            ]],
+            licenseClasses: this.fb.array([], [Validators.required, Validators.minLength(1)]),
+            licenseExpiry: ['', [
+                Validators.required,
+                this.futureDateValidator()
+            ]],
+            experienceYears: [0, [
+                Validators.required,
+                Validators.min(0),
+                Validators.max(50)
+            ]],
+            safetyRating: [5, [
+                Validators.required,
+                Validators.min(0),
+                Validators.max(5),
+                Validators.pattern(/^\d+(\.\d{1})?$/)
+            ]]
         });
 
         this.editForm = this.fb.group({
-            name: ['', [Validators.required, Validators.minLength(2)]],
-            email: ['', [Validators.required, Validators.email]],
-            phone: ['', [Validators.required]],
-            address: [''],
-            dateOfBirth: [''],
-            emergencyContact: ['', [Validators.required]],
+            name: ['', [
+                Validators.required,
+                Validators.minLength(2),
+                Validators.maxLength(100),
+                Validators.pattern(/^[a-zA-Z\s]+$/)
+            ]],
+            email: ['', [
+                Validators.required,
+                Validators.email,
+                Validators.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
+            ]],
+            phone: ['', [
+                Validators.required,
+                Validators.pattern(/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/)
+            ]],
+            address: ['', [Validators.maxLength(500)]],
+            dateOfBirth: ['', [this.ageValidator(18, 70)]],
+            emergencyContact: ['', [
+                Validators.required,
+                Validators.pattern(/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/)
+            ]],
             status: ['Active', [Validators.required]],
-            licenseNumber: ['', [Validators.required]],
-            licenseClasses: this.fb.array([], Validators.required),
-            licenseExpiry: ['', [Validators.required]],
-            experienceYears: [0, [Validators.min(0)]],
-            safetyRating: [0, [Validators.min(0), Validators.max(5)]],
-            totalMilesDriven: [0, [Validators.min(0)]],
+            licenseNumber: ['', [
+                Validators.required,
+                Validators.minLength(5),
+                Validators.maxLength(20),
+                Validators.pattern(/^[A-Z0-9-]+$/)
+            ]],
+            licenseClasses: this.fb.array([], [Validators.required, Validators.minLength(1)]),
+            licenseExpiry: ['', [
+                Validators.required,
+                this.futureDateValidator()
+            ]],
+            experienceYears: [0, [
+                Validators.required,
+                Validators.min(0),
+                Validators.max(50)
+            ]],
+            safetyRating: [0, [
+                Validators.required,
+                Validators.min(0),
+                Validators.max(5),
+                Validators.pattern(/^\d+(\.\d{1})?$/)
+            ]],
+            totalMilesDriven: [0, [
+                Validators.required,
+                Validators.min(0),
+                Validators.max(10000000)
+            ]],
             isAvailable: [true],
             hasHelper: [false]
         });
+    }
+
+    // ========== CUSTOM VALIDATORS ==========
+    private ageValidator(minAge: number, maxAge: number): ValidatorFn {
+        return (control: AbstractControl): ValidationErrors | null => {
+            if (!control.value) return null;
+
+            const birthDate = new Date(control.value);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+
+            if (age < minAge) {
+                return { minAge: { requiredAge: minAge, actualAge: age } };
+            }
+
+            if (age > maxAge) {
+                return { maxAge: { requiredAge: maxAge, actualAge: age } };
+            }
+
+            return null;
+        };
+    }
+
+    private futureDateValidator(): ValidatorFn {
+        return (control: AbstractControl): ValidationErrors | null => {
+            if (!control.value) return null;
+
+            const inputDate = new Date(control.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (inputDate <= today) {
+                return { pastDate: true };
+            }
+
+            return null;
+        };
+    }
+
+    // ========== ERROR MESSAGE HANDLER ==========
+    getFieldErrorMessage(form: FormGroup, fieldName: string): string {
+        const control = form.get(fieldName);
+
+        if (!control || !control.errors || !control.touched) {
+            return '';
+        }
+
+        const errors = control.errors;
+
+        if (errors['required']) {
+            return `${this.getFieldLabel(fieldName)} is required`;
+        }
+
+        if (errors['email']) {
+            return 'Please enter a valid email address';
+        }
+
+        if (errors['minlength']) {
+            return `${this.getFieldLabel(fieldName)} must be at least ${errors['minlength'].requiredLength} characters`;
+        }
+
+        if (errors['maxlength']) {
+            return `${this.getFieldLabel(fieldName)} cannot exceed ${errors['maxlength'].requiredLength} characters`;
+        }
+
+        if (errors['min']) {
+            return `${this.getFieldLabel(fieldName)} must be at least ${errors['min'].min}`;
+        }
+
+        if (errors['max']) {
+            return `${this.getFieldLabel(fieldName)} cannot exceed ${errors['max'].max}`;
+        }
+
+        if (errors['pattern']) {
+            return this.getPatternErrorMessage(fieldName);
+        }
+
+        if (errors['minAge']) {
+            return `Driver must be at least ${errors['minAge'].requiredAge} years old`;
+        }
+
+        if (errors['maxAge']) {
+            return `Driver cannot be older than ${errors['maxAge'].requiredAge} years`;
+        }
+
+        if (errors['pastDate']) {
+            return 'Date must be in the future';
+        }
+
+        return 'Invalid input';
+    }
+
+    private getFieldLabel(fieldName: string): string {
+        const labels: { [key: string]: string } = {
+            name: 'Full Name',
+            email: 'Email',
+            password: 'Password',
+            phone: 'Phone Number',
+            address: 'Address',
+            dateOfBirth: 'Date of Birth',
+            emergencyContact: 'Emergency Contact',
+            licenseNumber: 'License Number',
+            licenseExpiry: 'License Expiry',
+            experienceYears: 'Experience Years',
+            safetyRating: 'Safety Rating',
+            totalMilesDriven: 'Total Miles Driven'
+        };
+
+        return labels[fieldName] || fieldName;
+    }
+
+    private getPatternErrorMessage(fieldName: string): string {
+        const messages: { [key: string]: string } = {
+            name: 'Name should only contain letters and spaces',
+            email: 'Please enter a valid email address',
+            password: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+            phone: 'Please enter a valid phone number',
+            emergencyContact: 'Please enter a valid phone number',
+            licenseNumber: 'License number should only contain letters, numbers, and hyphens',
+            safetyRating: 'Safety rating should be a number with one decimal place'
+        };
+
+        return messages[fieldName] || 'Invalid format';
     }
 
     get registrationLicenseClasses(): FormArray {
@@ -145,6 +347,7 @@ export class DriverManagementComponent implements OnInit {
                 formArray.removeAt(index);
             }
         }
+        formArray.markAsTouched();
     }
 
     onEditLicenseChange(code: string, event: any): void {
@@ -157,6 +360,7 @@ export class DriverManagementComponent implements OnInit {
                 formArray.removeAt(index);
             }
         }
+        formArray.markAsTouched();
     }
 
     loadDrivers(): void {
@@ -480,16 +684,32 @@ export class DriverManagementComponent implements OnInit {
         this.showAddDriverForm = !this.showAddDriverForm;
         if (this.showAddDriverForm) {
             this.registrationForm.reset();
-            this.registrationForm.patchValue({ status: 'Active' });
+            this.registrationForm.patchValue({ status: 'Active', safetyRating: 5 });
             this.registrationLicenseClasses.clear();
         }
         this.clearMessages();
     }
 
     addDriver(): void {
+        this.markFormGroupTouched(this.registrationForm);
+
         if (this.registrationForm.invalid) {
-            this.markFormGroupTouched(this.registrationForm);
-            this.errorMessage = 'Please fill out all required fields correctly.';
+            const errors: string[] = [];
+            Object.keys(this.registrationForm.controls).forEach(key => {
+                const control = this.registrationForm.get(key);
+                if (control && control.invalid && key !== 'licenseClasses') {
+                    const message = this.getFieldErrorMessage(this.registrationForm, key);
+                    if (message) {
+                        errors.push(message);
+                    }
+                }
+            });
+
+            if (this.registrationLicenseClasses.length === 0) {
+                errors.push('Please select at least one license class');
+            }
+
+            this.errorMessage = errors.length > 0 ? errors.join('. ') : 'Please fill out all required fields correctly.';
             return;
         }
 
@@ -523,6 +743,7 @@ export class DriverManagementComponent implements OnInit {
                 this.successMessage = 'Driver added successfully!';
                 this.loadDrivers();
                 this.registrationForm.reset();
+                this.registrationForm.patchValue({ status: 'Active', safetyRating: 5 });
                 this.registrationLicenseClasses.clear();
                 this.showAddDriverForm = false;
                 this.hideMessages();
@@ -564,9 +785,25 @@ export class DriverManagementComponent implements OnInit {
     }
 
     updateDriver(): void {
+        this.markFormGroupTouched(this.editForm);
+
         if (this.editForm.invalid || !this.editingDriver) {
-            this.markFormGroupTouched(this.editForm);
-            this.errorMessage = 'Please fill out all required fields correctly.';
+            const errors: string[] = [];
+            Object.keys(this.editForm.controls).forEach(key => {
+                const control = this.editForm.get(key);
+                if (control && control.invalid && key !== 'licenseClasses') {
+                    const message = this.getFieldErrorMessage(this.editForm, key);
+                    if (message) {
+                        errors.push(message);
+                    }
+                }
+            });
+
+            if (this.editLicenseClasses.length === 0) {
+                errors.push('Please select at least one license class');
+            }
+
+            this.errorMessage = errors.length > 0 ? errors.join('. ') : 'Please fill out all required fields correctly.';
             return;
         }
 
@@ -654,6 +891,9 @@ export class DriverManagementComponent implements OnInit {
         Object.keys(formGroup.controls).forEach(field => {
             const control = formGroup.get(field);
             control?.markAsTouched({ onlySelf: true });
+            if (control instanceof FormArray) {
+                control.controls.forEach(c => c.markAsTouched({ onlySelf: true }));
+            }
         });
     }
 
@@ -843,7 +1083,6 @@ export class DriverManagementComponent implements OnInit {
         return '⭐'.repeat(Math.round(rating));
     }
 
-    // ========== WARNING & SUSPENSION METHODS ==========
     openWarningModal(driver: User) {
         this.selectedDriver = driver;
         this.warningReason = '';

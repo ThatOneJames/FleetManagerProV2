@@ -1,5 +1,5 @@
 ﻿import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
 import { VehicleService } from '../../../services/vehicle.service';
 import { DriverService } from '../../../services/driver.service';
 import { Vehicle, CreateVehicleDto, UpdateVehicleDto, VehicleCategory } from '../../../models/vehicle.model';
@@ -14,6 +14,7 @@ export class FleetManagementComponent implements OnInit {
     vehicles: Vehicle[] = [];
     filteredVehicles: Vehicle[] = [];
     availableDrivers: User[] = [];
+
     categories: VehicleCategory[] = [
         { id: '1', name: 'Truck', description: 'Heavy duty trucks', createdAt: new Date() },
         { id: '2', name: 'Van', description: 'Delivery vans', createdAt: new Date() },
@@ -34,8 +35,8 @@ export class FleetManagementComponent implements OnInit {
     categoryFilter = '';
     fuelTypeFilter = '';
 
-    successMessage = '';
-    errorMessage = '';
+    successMessage: string | null = null;
+    errorMessage: string | null = null;
 
     statusOptions = ['Ready', 'Active', 'Maintenance', 'Inactive', 'InRoute', 'Retired', 'NotAvailable', 'InUse', 'OutOfService'];
     fuelTypeOptions = ['Gasoline', 'Diesel', 'Electric', 'Hybrid'];
@@ -52,47 +53,227 @@ export class FleetManagementComponent implements OnInit {
         this.loadDrivers();
     }
 
+    // ========== ENHANCED FORM INITIALIZATION WITH VALIDATION ==========
     initializeForms(): void {
+        const currentYear = new Date().getFullYear();
+
         this.vehicleForm = this.formBuilder.group({
             categoryId: ['1', [Validators.required]],
-            make: ['', [Validators.required, Validators.minLength(2)]],
-            model: ['', [Validators.required, Validators.minLength(2)]],
-            year: [new Date().getFullYear(), [Validators.required, Validators.min(1900), Validators.max(new Date().getFullYear() + 1)]],
-            licensePlate: ['', [Validators.required]],
-            color: [''],
-            fuelType: ['Gasoline', Validators.required],
-            fuelCapacity: [0, [Validators.min(0)]],
-            currentMileage: [0, [Validators.required, Validators.min(0)]],
-            status: ['Ready', Validators.required],
-            fuelLevel: [100, [Validators.required, Validators.min(0), Validators.max(100)]],
-            registrationExpiry: ['', Validators.required],
-            insuranceExpiry: ['', Validators.required],
-            insurancePolicy: [''],
+            make: ['', [
+                Validators.required,
+                Validators.minLength(2),
+                Validators.maxLength(50),
+                Validators.pattern(/^[a-zA-Z\s-]+$/)
+            ]],
+            model: ['', [
+                Validators.required,
+                Validators.minLength(2),
+                Validators.maxLength(50),
+                Validators.pattern(/^[a-zA-Z0-9\s-]+$/)
+            ]],
+            year: [currentYear, [
+                Validators.required,
+                Validators.min(1900),
+                Validators.max(currentYear + 1)
+            ]],
+            licensePlate: ['', [
+                Validators.required,
+                Validators.minLength(3),
+                Validators.maxLength(15),
+                Validators.pattern(/^[A-Z0-9-]+$/)
+            ]],
+            color: ['', [Validators.maxLength(30)]],
+            fuelType: ['Gasoline', [Validators.required]],
+            fuelCapacity: [0, [Validators.min(0), Validators.max(500)]],
+            currentMileage: [0, [
+                Validators.required,
+                Validators.min(0),
+                Validators.max(10000000)
+            ]],
+            status: ['Ready', [Validators.required]],
+            fuelLevel: [100, [
+                Validators.required,
+                Validators.min(0),
+                Validators.max(100)
+            ]],
+            registrationExpiry: ['', [
+                Validators.required,
+                this.futureDateValidator()
+            ]],
+            insuranceExpiry: ['', [
+                Validators.required,
+                this.futureDateValidator()
+            ]],
+            insurancePolicy: ['', [
+                Validators.minLength(3),
+                Validators.maxLength(50)
+            ]],
             purchaseDate: [''],
-            purchasePrice: [0, [Validators.min(0)]]
+            purchasePrice: [0, [Validators.min(0), Validators.max(10000000)]]
         });
 
         this.editForm = this.formBuilder.group({
             categoryId: ['1', [Validators.required]],
-            make: ['', [Validators.required, Validators.minLength(2)]],
-            model: ['', [Validators.required, Validators.minLength(2)]],
-            year: [new Date().getFullYear(), [Validators.required, Validators.min(1900), Validators.max(new Date().getFullYear() + 1)]],
-            licensePlate: ['', [Validators.required]],
-            color: [''],
-            fuelType: ['Gasoline', Validators.required],
-            fuelCapacity: [0, [Validators.min(0)]],
-            currentMileage: [0, [Validators.required, Validators.min(0)]],
-            status: ['Ready', Validators.required],
-            fuelLevel: [100, [Validators.required, Validators.min(0), Validators.max(100)]],
-            registrationExpiry: ['', Validators.required],
-            insuranceExpiry: ['', Validators.required],
-            insurancePolicy: [''],
+            make: ['', [
+                Validators.required,
+                Validators.minLength(2),
+                Validators.maxLength(50),
+                Validators.pattern(/^[a-zA-Z\s-]+$/)
+            ]],
+            model: ['', [
+                Validators.required,
+                Validators.minLength(2),
+                Validators.maxLength(50),
+                Validators.pattern(/^[a-zA-Z0-9\s-]+$/)
+            ]],
+            year: [currentYear, [
+                Validators.required,
+                Validators.min(1900),
+                Validators.max(currentYear + 1)
+            ]],
+            licensePlate: ['', [
+                Validators.required,
+                Validators.minLength(3),
+                Validators.maxLength(15),
+                Validators.pattern(/^[A-Z0-9-]+$/)
+            ]],
+            color: ['', [Validators.maxLength(30)]],
+            fuelType: ['Gasoline', [Validators.required]],
+            fuelCapacity: [0, [Validators.min(0), Validators.max(500)]],
+            currentMileage: [0, [
+                Validators.required,
+                Validators.min(0),
+                Validators.max(10000000)
+            ]],
+            status: ['Ready', [Validators.required]],
+            fuelLevel: [100, [
+                Validators.required,
+                Validators.min(0),
+                Validators.max(100)
+            ]],
+            registrationExpiry: ['', [
+                Validators.required,
+                this.futureDateValidator()
+            ]],
+            insuranceExpiry: ['', [
+                Validators.required,
+                this.futureDateValidator()
+            ]],
+            insurancePolicy: ['', [
+                Validators.minLength(3),
+                Validators.maxLength(50)
+            ]],
             purchaseDate: [''],
-            purchasePrice: [0, [Validators.min(0)]],
-            currentDriverId: ['']
+            purchasePrice: [0, [Validators.min(0), Validators.max(10000000)]],
+            currentDriverId: [''] // NOT REQUIRED
         });
     }
 
+    // ========== CUSTOM VALIDATORS ==========
+    private futureDateValidator(): ValidatorFn {
+        return (control: AbstractControl): ValidationErrors | null => {
+            if (!control.value) {
+                return null;
+            }
+
+            const inputDate = new Date(control.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (inputDate <= today) {
+                return { pastDate: true };
+            }
+
+            return null;
+        };
+    }
+
+    // ========== ERROR MESSAGE HANDLER ==========
+    getFieldErrorMessage(form: FormGroup, fieldName: string): string {
+        const control = form.get(fieldName);
+
+        if (!control || !control.errors || !control.touched) {
+            return '';
+        }
+
+        const errors = control.errors;
+
+        if (errors['required']) {
+            return `${this.getFieldLabel(fieldName)} is required`;
+        }
+
+        if (errors['minlength']) {
+            return `${this.getFieldLabel(fieldName)} must be at least ${errors['minlength'].requiredLength} characters`;
+        }
+
+        if (errors['maxlength']) {
+            return `${this.getFieldLabel(fieldName)} cannot exceed ${errors['maxlength'].requiredLength} characters`;
+        }
+
+        if (errors['min']) {
+            return `${this.getFieldLabel(fieldName)} must be at least ${errors['min'].min}`;
+        }
+
+        if (errors['max']) {
+            return `${this.getFieldLabel(fieldName)} cannot exceed ${errors['max'].max}`;
+        }
+
+        if (errors['pattern']) {
+            return this.getPatternErrorMessage(fieldName);
+        }
+
+        if (errors['pastDate']) {
+            return 'Date must be in the future';
+        }
+
+        return 'Invalid input';
+    }
+
+    private getFieldLabel(fieldName: string): string {
+        const labels: { [key: string]: string } = {
+            categoryId: 'Category',
+            make: 'Make',
+            model: 'Model',
+            year: 'Year',
+            licensePlate: 'License Plate',
+            color: 'Color',
+            fuelType: 'Fuel Type',
+            fuelCapacity: 'Fuel Capacity',
+            currentMileage: 'Current Mileage',
+            status: 'Status',
+            fuelLevel: 'Fuel Level',
+            registrationExpiry: 'Registration Expiry',
+            insuranceExpiry: 'Insurance Expiry',
+            insurancePolicy: 'Insurance Policy',
+            purchaseDate: 'Purchase Date',
+            purchasePrice: 'Purchase Price',
+            currentDriverId: 'Assigned Driver'
+        };
+
+        return labels[fieldName] || fieldName;
+    }
+
+    private getPatternErrorMessage(fieldName: string): string {
+        const messages: { [key: string]: string } = {
+            make: 'Make should only contain letters, spaces, and hyphens',
+            model: 'Model should only contain letters, numbers, spaces, and hyphens',
+            licensePlate: 'License plate should only contain uppercase letters, numbers, and hyphens'
+        };
+
+        return messages[fieldName] || 'Invalid format';
+    }
+
+    // ========== HELPER METHODS FOR HTML ==========
+    getFieldError(form: FormGroup, fieldName: string): string {
+        return this.getFieldErrorMessage(form, fieldName);
+    }
+
+    isFieldInvalid(form: FormGroup, fieldName: string): boolean {
+        const field = form.get(fieldName);
+        return !!(field && field.invalid && field.touched);
+    }
+
+    // ========== CRUD OPERATIONS ==========
     loadVehicles(): void {
         this.isLoading = true;
         this.vehicleService.getAllVehicles().subscribe({
@@ -109,7 +290,6 @@ export class FleetManagementComponent implements OnInit {
         });
     }
 
-    // ✅ NEW: Get only available vehicles (not in maintenance, out of service, or retired)
     get availableVehicles(): Vehicle[] {
         return this.vehicles.filter(v =>
             v.status !== 'Maintenance' &&
@@ -129,71 +309,22 @@ export class FleetManagementComponent implements OnInit {
         });
     }
 
-    applyFilters(): void {
-        this.filteredVehicles = this.vehicles.filter(vehicle => {
-            const matchesSearch = this.searchText === '' ||
-                vehicle.make.toLowerCase().includes(this.searchText.toLowerCase()) ||
-                vehicle.model.toLowerCase().includes(this.searchText.toLowerCase()) ||
-                vehicle.licensePlate.toLowerCase().includes(this.searchText.toLowerCase());
-
-            const matchesStatus = this.statusFilter === '' || vehicle.status === this.statusFilter;
-            const matchesCategory = this.categoryFilter === '' || vehicle.categoryId === this.categoryFilter;
-            const matchesFuelType = this.fuelTypeFilter === '' || vehicle.fuelType === this.fuelTypeFilter;
-
-            return matchesSearch && matchesStatus && matchesCategory && matchesFuelType;
-        });
-    }
-
-    onSearchChange(): void {
-        this.applyFilters();
-    }
-
-    onStatusFilterChange(): void {
-        this.applyFilters();
-    }
-
-    onCategoryFilterChange(): void {
-        this.applyFilters();
-    }
-
-    onFuelTypeFilterChange(): void {
-        this.applyFilters();
-    }
-
-    clearFilters(): void {
-        this.searchText = '';
-        this.statusFilter = '';
-        this.categoryFilter = '';
-        this.fuelTypeFilter = '';
-        this.applyFilters();
-    }
-
-    showAddVehicleForm(): void {
-        this.showAddForm = true;
-        this.vehicleForm.reset();
-        this.vehicleForm.patchValue({
-            categoryId: '1',
-            status: 'Ready',
-            fuelType: 'Gasoline',
-            fuelLevel: 100,
-            year: new Date().getFullYear(),
-            currentMileage: 0,
-            fuelCapacity: 0,
-            purchasePrice: 0
-        });
-        this.clearMessages();
-    }
-
-    hideAddVehicleForm(): void {
-        this.showAddForm = false;
-        this.vehicleForm.reset();
-        this.clearMessages();
-    }
-
     onSubmitAdd(): void {
+        this.markFormGroupTouched(this.vehicleForm);
+
         if (this.vehicleForm.invalid) {
-            this.markFormGroupTouched(this.vehicleForm);
-            this.errorMessage = 'Please fill out all required fields correctly.';
+            const errors: string[] = [];
+            Object.keys(this.vehicleForm.controls).forEach(key => {
+                const control = this.vehicleForm.get(key);
+                if (control && control.invalid) {
+                    const message = this.getFieldErrorMessage(this.vehicleForm, key);
+                    if (message) {
+                        errors.push(message);
+                    }
+                }
+            });
+
+            this.errorMessage = errors.length > 0 ? errors.join('. ') : 'Please fill out all required fields correctly.';
             return;
         }
 
@@ -261,9 +392,21 @@ export class FleetManagementComponent implements OnInit {
     }
 
     onSubmitEdit(): void {
+        this.markFormGroupTouched(this.editForm);
+
         if (this.editForm.invalid || !this.editingVehicleId) {
-            this.markFormGroupTouched(this.editForm);
-            this.errorMessage = 'Please fill out all required fields correctly.';
+            const errors: string[] = [];
+            Object.keys(this.editForm.controls).forEach(key => {
+                const control = this.editForm.get(key);
+                if (control && control.invalid) {
+                    const message = this.getFieldErrorMessage(this.editForm, key);
+                    if (message) {
+                        errors.push(message);
+                    }
+                }
+            });
+
+            this.errorMessage = errors.length > 0 ? errors.join('. ') : 'Please fill out all required fields correctly.';
             return;
         }
 
@@ -288,17 +431,17 @@ export class FleetManagementComponent implements OnInit {
             insurancePolicy: formData.insurancePolicy,
             purchaseDate: formData.purchaseDate ? new Date(formData.purchaseDate) : undefined,
             purchasePrice: formData.purchasePrice,
-            currentDriverId: formData.currentDriverId,
+            currentDriverId: formData.currentDriverId || null,
             vin: '',
             createdAt: new Date(),
             updatedAt: new Date()
         };
 
-        this.vehicleService.updateVehicle(this.editingVehicleId, updatedVehicle).subscribe({
-            next: (response) => {
+        this.vehicleService.updateVehicle(this.editingVehicleId, updatedVehicle as any).subscribe({
+            next: () => {
                 this.successMessage = 'Vehicle updated successfully!';
                 this.loadVehicles();
-                this.hideEditForm();
+                this.cancelEdit();
                 this.clearMessages();
             },
             error: (err) => {
@@ -309,30 +452,95 @@ export class FleetManagementComponent implements OnInit {
         });
     }
 
-    hideEditForm(): void {
+    cancelEdit(): void {
         this.showEditForm = false;
         this.editingVehicleId = null;
         this.editForm.reset();
         this.clearMessages();
     }
 
-    deleteVehicle(vehicle: Vehicle): void {
-        if (confirm(`Are you sure you want to delete vehicle ${vehicle.make} ${vehicle.model} (${vehicle.licensePlate})?`)) {
-            this.isLoading = true;
+    hideEditForm(): void {
+        this.cancelEdit();
+    }
 
-            this.vehicleService.deleteVehicle(vehicle.id).subscribe({
-                next: () => {
-                    this.successMessage = 'Vehicle deleted successfully!';
-                    this.loadVehicles();
-                    this.clearMessages();
-                },
-                error: (error) => {
-                    this.errorMessage = 'Failed to delete vehicle';
-                    this.isLoading = false;
-                    this.clearMessages();
-                }
-            });
+    deleteVehicle(vehicle: Vehicle): void {
+        if (!confirm(`Are you sure you want to delete ${vehicle.make} ${vehicle.model}?`)) {
+            return;
         }
+
+        this.vehicleService.deleteVehicle(vehicle.id).subscribe({
+            next: () => {
+                this.successMessage = 'Vehicle deleted successfully!';
+                this.loadVehicles();
+                this.clearMessages();
+            },
+            error: (err) => {
+                this.errorMessage = 'Failed to delete vehicle.';
+                this.clearMessages();
+            }
+        });
+    }
+
+    // ========== FILTERS & DISPLAY ==========
+    applyFilters(): void {
+        this.filteredVehicles = this.vehicles.filter(vehicle => {
+            const matchesSearch = !this.searchText ||
+                vehicle.make.toLowerCase().includes(this.searchText.toLowerCase()) ||
+                vehicle.model.toLowerCase().includes(this.searchText.toLowerCase()) ||
+                vehicle.licensePlate.toLowerCase().includes(this.searchText.toLowerCase());
+
+            const matchesStatus = !this.statusFilter || vehicle.status === this.statusFilter;
+            const matchesCategory = !this.categoryFilter || vehicle.categoryId === this.categoryFilter;
+            const matchesFuelType = !this.fuelTypeFilter || vehicle.fuelType === this.fuelTypeFilter;
+
+            return matchesSearch && matchesStatus && matchesCategory && matchesFuelType;
+        });
+    }
+
+    onSearchChange(): void {
+        this.applyFilters();
+    }
+
+    onStatusFilterChange(): void {
+        this.applyFilters();
+    }
+
+    onCategoryFilterChange(): void {
+        this.applyFilters();
+    }
+
+    onFuelTypeFilterChange(): void {
+        this.applyFilters();
+    }
+
+    clearFilters(): void {
+        this.searchText = '';
+        this.statusFilter = '';
+        this.categoryFilter = '';
+        this.fuelTypeFilter = '';
+        this.applyFilters();
+    }
+
+    showAddVehicleForm(): void {
+        this.showAddForm = true;
+        this.vehicleForm.reset();
+        this.vehicleForm.patchValue({
+            categoryId: '1',
+            status: 'Ready',
+            fuelType: 'Gasoline',
+            fuelLevel: 100,
+            year: new Date().getFullYear(),
+            currentMileage: 0,
+            fuelCapacity: 0,
+            purchasePrice: 0
+        });
+        this.clearMessages();
+    }
+
+    hideAddVehicleForm(): void {
+        this.showAddForm = false;
+        this.vehicleForm.reset();
+        this.clearMessages();
     }
 
     getCategoryName(categoryId: string): string {
@@ -341,10 +549,18 @@ export class FleetManagementComponent implements OnInit {
     }
 
     getStatusBadgeClass(status: string): string {
-        return status.toLowerCase().replace(/\s+/g, '-');
+        const statusMap: { [key: string]: string } = {
+            'Ready': 'status-ready',
+            'Active': 'status-active',
+            'Maintenance': 'status-maintenance',
+            'Inactive': 'status-inactive',
+            'InRoute': 'status-in-route',
+            'Retired': 'status-retired'
+        };
+        return statusMap[status] || 'status-default';
     }
 
-    getDriverName(driverId?: string): string {
+    getDriverName(driverId: string | null | undefined): string {
         if (!driverId) return 'Unassigned';
         const driver = this.availableDrivers.find(d => d.id === driverId);
         return driver ? driver.name : 'Unknown Driver';
@@ -402,22 +618,7 @@ export class FleetManagementComponent implements OnInit {
         window.URL.revokeObjectURL(url);
     }
 
-    getFieldError(form: FormGroup, fieldName: string): string {
-        const field = form.get(fieldName);
-        if (field && field.invalid && field.touched) {
-            if (field.errors?.['required']) return `${fieldName} is required`;
-            if (field.errors?.['minlength']) return `${fieldName} is too short`;
-            if (field.errors?.['min']) return `${fieldName} must be greater than ${field.errors['min'].min}`;
-            if (field.errors?.['max']) return `${fieldName} must be less than ${field.errors['max'].max}`;
-        }
-        return '';
-    }
-
-    isFieldInvalid(form: FormGroup, fieldName: string): boolean {
-        const field = form.get(fieldName);
-        return !!(field && field.invalid && field.touched);
-    }
-
+    // ========== PRIVATE HELPERS ==========
     private formatDateForInput(date: string | Date | undefined): string {
         if (!date) return '';
         const d = new Date(date);
@@ -433,8 +634,8 @@ export class FleetManagementComponent implements OnInit {
 
     private clearMessages(): void {
         setTimeout(() => {
-            this.successMessage = '';
-            this.errorMessage = '';
-        }, 3000);
+            this.successMessage = null;
+            this.errorMessage = null;
+        }, 5000);
     }
 }

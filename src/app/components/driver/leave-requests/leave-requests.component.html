@@ -20,13 +20,19 @@
         <span>Loading...</span>
     </div>
 
+    <!-- Success Alert -->
     <div *ngIf="successMessage" class="alert alert-success">
+        <span class="alert-icon">✓</span>
         {{ successMessage }}
     </div>
+
+    <!-- Error Alert -->
     <div *ngIf="errorMessage" class="alert alert-error">
+        <span class="alert-icon">⚠</span>
         {{ errorMessage }}
     </div>
 
+    <!-- Leave Balance Section -->
     <div *ngIf="!isAdminOrManager() && leaveBalance" class="leave-balance-section">
         <h3>Leave Balance</h3>
         <div class="balance-cards">
@@ -86,6 +92,7 @@
         </div>
     </div>
 
+    <!-- ENHANCED CREATE FORM WITH VALIDATION -->
     <div *ngIf="showCreateForm" class="form-overlay">
         <div class="form-container">
             <div class="form-header">
@@ -95,9 +102,14 @@
 
             <form [formGroup]="createLeaveForm" (ngSubmit)="submitLeaveRequest()">
                 <div class="form-grid">
+                    <!-- Leave Type -->
                     <div class="form-group">
                         <label for="leaveType">Leave Type *</label>
-                        <select formControlName="leaveType" id="leaveType" class="form-control">
+                        <select formControlName="leaveType"
+                                id="leaveType"
+                                class="form-control"
+                                [class.invalid]="isFieldInvalid(createLeaveForm, 'leaveType')"
+                                [class.valid]="createLeaveForm.get('leaveType')?.valid && createLeaveForm.get('leaveType')?.touched">
                             <option [value]="LeaveType.Annual">Annual Leave</option>
                             <option [value]="LeaveType.Sick">Sick Leave</option>
                             <option [value]="LeaveType.Personal">Personal Leave</option>
@@ -106,52 +118,70 @@
                             <option [value]="LeaveType.Paternity">Paternity Leave</option>
                             <option [value]="LeaveType.Bereavement">Bereavement Leave</option>
                         </select>
+                        <div *ngIf="isFieldInvalid(createLeaveForm, 'leaveType')" class="error-text">
+                            {{ getFieldErrorMessage(createLeaveForm, 'leaveType') }}
+                        </div>
                     </div>
 
+                    <!-- Start Date -->
                     <div class="form-group">
                         <label for="startDate">Start Date *</label>
                         <input formControlName="startDate"
                                type="date"
                                id="startDate"
                                class="form-control"
+                               [class.invalid]="isFieldInvalid(createLeaveForm, 'startDate')"
+                               [class.valid]="createLeaveForm.get('startDate')?.valid && createLeaveForm.get('startDate')?.touched"
                                (change)="calculateDays()">
-                        <div *ngIf="createLeaveForm.get('startDate')?.invalid && createLeaveForm.get('startDate')?.touched"
-                             class="error-text">
-                            Start date is required
+                        <div *ngIf="isFieldInvalid(createLeaveForm, 'startDate')" class="error-text">
+                            {{ getFieldErrorMessage(createLeaveForm, 'startDate') }}
                         </div>
+                        <div class="field-hint">Must be today or a future date</div>
                     </div>
 
+                    <!-- End Date -->
                     <div class="form-group">
                         <label for="endDate">End Date *</label>
                         <input formControlName="endDate"
                                type="date"
                                id="endDate"
                                class="form-control"
+                               [class.invalid]="isFieldInvalid(createLeaveForm, 'endDate')"
+                               [class.valid]="createLeaveForm.get('endDate')?.valid && createLeaveForm.get('endDate')?.touched"
                                (change)="calculateDays()">
-                        <div *ngIf="createLeaveForm.get('endDate')?.invalid && createLeaveForm.get('endDate')?.touched"
-                             class="error-text">
-                            End date is required
+                        <div *ngIf="isFieldInvalid(createLeaveForm, 'endDate')" class="error-text">
+                            {{ getFieldErrorMessage(createLeaveForm, 'endDate') }}
                         </div>
+                        <div class="field-hint">Must be on or after start date</div>
                     </div>
 
+                    <!-- Reason -->
                     <div class="form-group full-width">
                         <label for="reason">Reason *</label>
                         <textarea formControlName="reason"
                                   id="reason"
                                   class="form-control"
+                                  [class.invalid]="isFieldInvalid(createLeaveForm, 'reason')"
+                                  [class.valid]="createLeaveForm.get('reason')?.valid && createLeaveForm.get('reason')?.touched"
                                   rows="4"
-                                  placeholder="Please provide a detailed reason for your leave request (minimum 10 characters)">
+                                  placeholder="Please provide a detailed reason for your leave request">
                         </textarea>
-                        <div *ngIf="createLeaveForm.get('reason')?.invalid && createLeaveForm.get('reason')?.touched"
-                             class="error-text">
-                            Please provide a detailed reason (minimum 10 characters)
+                        <div *ngIf="isFieldInvalid(createLeaveForm, 'reason')" class="error-text">
+                            {{ getFieldErrorMessage(createLeaveForm, 'reason') }}
                         </div>
+                        <div class="field-hint">10-500 characters required</div>
                     </div>
+                </div>
+
+                <!-- Form Level Errors -->
+                <div *ngIf="getFormErrorMessage(createLeaveForm)" class="alert alert-error">
+                    <span class="alert-icon">⚠</span>
+                    {{ getFormErrorMessage(createLeaveForm) }}
                 </div>
 
                 <div class="form-actions">
                     <button type="submit"
-                            [disabled]="createLeaveForm.invalid || loading"
+                            [disabled]="loading"
                             class="btn btn-primary">
                         {{ loading ? 'Submitting...' : 'Submit Request' }}
                     </button>
@@ -165,6 +195,7 @@
         </div>
     </div>
 
+    <!-- Filters Section -->
     <div class="filters-section">
         <div class="search-filters">
             <input [(ngModel)]="searchText"
@@ -194,6 +225,7 @@
         </div>
     </div>
 
+    <!-- Requests Table -->
     <div class="requests-section">
         <div class="table-container">
             <table class="requests-table">
@@ -270,6 +302,7 @@
         </div>
     </div>
 
+    <!-- ENHANCED APPROVAL MODAL WITH VALIDATION -->
     <div *ngIf="showApprovalModal" class="modal-overlay">
         <div class="modal">
             <div class="modal-header">
@@ -292,9 +325,15 @@
                         <textarea formControlName="notes"
                                   id="approvalNotes"
                                   class="form-control"
+                                  [class.invalid]="isFieldInvalid(approvalForm, 'notes')"
+                                  [class.valid]="approvalForm.get('notes')?.valid && approvalForm.get('notes')?.touched"
                                   rows="3"
                                   placeholder="Add any notes about this approval...">
                         </textarea>
+                        <div *ngIf="isFieldInvalid(approvalForm, 'notes')" class="error-text">
+                            {{ getFieldErrorMessage(approvalForm, 'notes') }}
+                        </div>
+                        <div class="field-hint">Optional - Max 500 characters</div>
                     </div>
 
                     <div class="modal-actions">
@@ -314,6 +353,7 @@
         </div>
     </div>
 
+    <!-- ENHANCED REJECTION MODAL WITH VALIDATION -->
     <div *ngIf="showRejectionModal" class="modal-overlay">
         <div class="modal">
             <div class="modal-header">
@@ -336,18 +376,20 @@
                         <textarea formControlName="rejectionReason"
                                   id="rejectionReason"
                                   class="form-control"
+                                  [class.invalid]="isFieldInvalid(rejectionForm, 'rejectionReason')"
+                                  [class.valid]="rejectionForm.get('rejectionReason')?.valid && rejectionForm.get('rejectionReason')?.touched"
                                   rows="4"
-                                  placeholder="Please provide a detailed reason for rejecting this request (minimum 10 characters)...">
+                                  placeholder="Please provide a detailed reason for rejecting this request">
                         </textarea>
-                        <div *ngIf="rejectionForm.get('rejectionReason')?.invalid && rejectionForm.get('rejectionReason')?.touched"
-                             class="error-text">
-                            Please provide a detailed rejection reason (minimum 10 characters)
+                        <div *ngIf="isFieldInvalid(rejectionForm, 'rejectionReason')" class="error-text">
+                            {{ getFieldErrorMessage(rejectionForm, 'rejectionReason') }}
                         </div>
+                        <div class="field-hint">10-500 characters required</div>
                     </div>
 
                     <div class="modal-actions">
                         <button type="submit"
-                                [disabled]="rejectionForm.invalid || loading"
+                                [disabled]="loading"
                                 class="btn btn-danger">
                             {{ loading ? 'Rejecting...' : 'Reject Request' }}
                         </button>

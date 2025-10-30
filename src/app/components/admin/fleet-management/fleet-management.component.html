@@ -82,41 +82,61 @@
 
                         <div class="form-group">
                             <label for="category">Category *</label>
-                            <select formControlName="categoryId" id="category" class="form-control"
-                                    [class.error]="isFieldInvalid(vehicleForm, 'categoryId')">
+                            <select formControlName="categoryId"
+                                    id="category"
+                                    class="form-control"
+                                    [class.invalid]="isFieldInvalid(vehicleForm, 'categoryId')"
+                                    [class.valid]="vehicleForm.get('categoryId')?.valid && vehicleForm.get('categoryId')?.touched">
                                 <option value="">Select Category</option>
                                 <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
                             </select>
-                            <div *ngIf="isFieldInvalid(vehicleForm, 'categoryId')" class="error-message">
-                                {{ getFieldError(vehicleForm, 'categoryId') }}
+                            <div *ngIf="isFieldInvalid(vehicleForm, 'categoryId')" class="error-text">
+                                {{ getFieldErrorMessage(vehicleForm, 'categoryId') }}
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="make">Make *</label>
-                                <input type="text" formControlName="make" id="make" class="form-control"
-                                       [class.error]="isFieldInvalid(vehicleForm, 'make')" placeholder="Toyota">
-                                <div *ngIf="isFieldInvalid(vehicleForm, 'make')" class="error-message">
-                                    {{ getFieldError(vehicleForm, 'make') }}
+                                <input type="text"
+                                       formControlName="make"
+                                       id="make"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(vehicleForm, 'make')"
+                                       [class.valid]="vehicleForm.get('make')?.valid && vehicleForm.get('make')?.touched"
+                                       placeholder="Toyota">
+                                <div *ngIf="isFieldInvalid(vehicleForm, 'make')" class="error-text">
+                                    {{ getFieldErrorMessage(vehicleForm, 'make') }}
                                 </div>
+                                <div class="field-hint">Letters, spaces, and hyphens only</div>
                             </div>
 
                             <div class="form-group">
                                 <label for="model">Model *</label>
-                                <input type="text" formControlName="model" id="model" class="form-control"
-                                       [class.error]="isFieldInvalid(vehicleForm, 'model')" placeholder="Camry">
-                                <div *ngIf="isFieldInvalid(vehicleForm, 'model')" class="error-message">
-                                    {{ getFieldError(vehicleForm, 'model') }}
+                                <input type="text"
+                                       formControlName="model"
+                                       id="model"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(vehicleForm, 'model')"
+                                       [class.valid]="vehicleForm.get('model')?.valid && vehicleForm.get('model')?.touched"
+                                       placeholder="Camry">
+                                <div *ngIf="isFieldInvalid(vehicleForm, 'model')" class="error-text">
+                                    {{ getFieldErrorMessage(vehicleForm, 'model') }}
                                 </div>
+                                <div class="field-hint">Letters, numbers, spaces, and hyphens only</div>
                             </div>
 
                             <div class="form-group">
                                 <label for="year">Year *</label>
-                                <input type="number" formControlName="year" id="year" class="form-control"
-                                       [class.error]="isFieldInvalid(vehicleForm, 'year')" placeholder="2024">
-                                <div *ngIf="isFieldInvalid(vehicleForm, 'year')" class="error-message">
-                                    {{ getFieldError(vehicleForm, 'year') }}
+                                <input type="number"
+                                       formControlName="year"
+                                       id="year"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(vehicleForm, 'year')"
+                                       [class.valid]="vehicleForm.get('year')?.valid && vehicleForm.get('year')?.touched"
+                                       placeholder="2024">
+                                <div *ngIf="isFieldInvalid(vehicleForm, 'year')" class="error-text">
+                                    {{ getFieldErrorMessage(vehicleForm, 'year') }}
                                 </div>
                             </div>
                         </div>
@@ -124,16 +144,26 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="licensePlate">License Plate *</label>
-                                <input type="text" formControlName="licensePlate" id="licensePlate" class="form-control"
-                                       [class.error]="isFieldInvalid(vehicleForm, 'licensePlate')" placeholder="ABC-123">
-                                <div *ngIf="isFieldInvalid(vehicleForm, 'licensePlate')" class="error-message">
-                                    {{ getFieldError(vehicleForm, 'licensePlate') }}
+                                <input type="text"
+                                       formControlName="licensePlate"
+                                       id="licensePlate"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(vehicleForm, 'licensePlate')"
+                                       [class.valid]="vehicleForm.get('licensePlate')?.valid && vehicleForm.get('licensePlate')?.touched"
+                                       placeholder="ABC-123">
+                                <div *ngIf="isFieldInvalid(vehicleForm, 'licensePlate')" class="error-text">
+                                    {{ getFieldErrorMessage(vehicleForm, 'licensePlate') }}
                                 </div>
+                                <div class="field-hint">Uppercase letters, numbers, and hyphens only (3-15 chars)</div>
                             </div>
 
                             <div class="form-group">
                                 <label for="color">Color</label>
-                                <input type="text" formControlName="color" id="color" class="form-control" placeholder="White">
+                                <input type="text"
+                                       formControlName="color"
+                                       id="color"
+                                       class="form-control"
+                                       placeholder="White">
                             </div>
                         </div>
                     </div>
@@ -152,27 +182,49 @@
 
                             <div class="form-group">
                                 <label for="fuelCapacity">Fuel Capacity (L)</label>
-                                <input type="number" formControlName="fuelCapacity" id="fuelCapacity" class="form-control"
-                                       placeholder="50" step="0.01">
+                                <input type="number"
+                                       formControlName="fuelCapacity"
+                                       id="fuelCapacity"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(vehicleForm, 'fuelCapacity')"
+                                       [class.valid]="vehicleForm.get('fuelCapacity')?.valid && vehicleForm.get('fuelCapacity')?.touched"
+                                       placeholder="50"
+                                       step="0.01">
+                                <div *ngIf="isFieldInvalid(vehicleForm, 'fuelCapacity')" class="error-text">
+                                    {{ getFieldErrorMessage(vehicleForm, 'fuelCapacity') }}
+                                </div>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="currentMileage">Current Mileage *</label>
-                                <input type="number" formControlName="currentMileage" id="currentMileage" class="form-control"
-                                       [class.error]="isFieldInvalid(vehicleForm, 'currentMileage')" placeholder="0" step="0.01">
-                                <div *ngIf="isFieldInvalid(vehicleForm, 'currentMileage')" class="error-message">
-                                    {{ getFieldError(vehicleForm, 'currentMileage') }}
+                                <input type="number"
+                                       formControlName="currentMileage"
+                                       id="currentMileage"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(vehicleForm, 'currentMileage')"
+                                       [class.valid]="vehicleForm.get('currentMileage')?.valid && vehicleForm.get('currentMileage')?.touched"
+                                       placeholder="0"
+                                       step="0.01">
+                                <div *ngIf="isFieldInvalid(vehicleForm, 'currentMileage')" class="error-text">
+                                    {{ getFieldErrorMessage(vehicleForm, 'currentMileage') }}
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label for="fuelLevel">Fuel Level (%) *</label>
-                                <input type="number" formControlName="fuelLevel" id="fuelLevel" class="form-control"
-                                       [class.error]="isFieldInvalid(vehicleForm, 'fuelLevel')" placeholder="100" min="0" max="100">
-                                <div *ngIf="isFieldInvalid(vehicleForm, 'fuelLevel')" class="error-message">
-                                    {{ getFieldError(vehicleForm, 'fuelLevel') }}
+                                <input type="number"
+                                       formControlName="fuelLevel"
+                                       id="fuelLevel"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(vehicleForm, 'fuelLevel')"
+                                       [class.valid]="vehicleForm.get('fuelLevel')?.valid && vehicleForm.get('fuelLevel')?.touched"
+                                       placeholder="100"
+                                       min="0"
+                                       max="100">
+                                <div *ngIf="isFieldInvalid(vehicleForm, 'fuelLevel')" class="error-text">
+                                    {{ getFieldErrorMessage(vehicleForm, 'fuelLevel') }}
                                 </div>
                             </div>
                         </div>
@@ -192,27 +244,45 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="registrationExpiry">Registration Expiry *</label>
-                                <input type="date" formControlName="registrationExpiry" id="registrationExpiry" class="form-control"
-                                       [class.error]="isFieldInvalid(vehicleForm, 'registrationExpiry')">
-                                <div *ngIf="isFieldInvalid(vehicleForm, 'registrationExpiry')" class="error-message">
-                                    {{ getFieldError(vehicleForm, 'registrationExpiry') }}
+                                <input type="date"
+                                       formControlName="registrationExpiry"
+                                       id="registrationExpiry"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(vehicleForm, 'registrationExpiry')"
+                                       [class.valid]="vehicleForm.get('registrationExpiry')?.valid && vehicleForm.get('registrationExpiry')?.touched">
+                                <div *ngIf="isFieldInvalid(vehicleForm, 'registrationExpiry')" class="error-text">
+                                    {{ getFieldErrorMessage(vehicleForm, 'registrationExpiry') }}
                                 </div>
+                                <div class="field-hint">Must be a future date</div>
                             </div>
 
                             <div class="form-group">
                                 <label for="insuranceExpiry">Insurance Expiry *</label>
-                                <input type="date" formControlName="insuranceExpiry" id="insuranceExpiry" class="form-control"
-                                       [class.error]="isFieldInvalid(vehicleForm, 'insuranceExpiry')">
-                                <div *ngIf="isFieldInvalid(vehicleForm, 'insuranceExpiry')" class="error-message">
-                                    {{ getFieldError(vehicleForm, 'insuranceExpiry') }}
+                                <input type="date"
+                                       formControlName="insuranceExpiry"
+                                       id="insuranceExpiry"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(vehicleForm, 'insuranceExpiry')"
+                                       [class.valid]="vehicleForm.get('insuranceExpiry')?.valid && vehicleForm.get('insuranceExpiry')?.touched">
+                                <div *ngIf="isFieldInvalid(vehicleForm, 'insuranceExpiry')" class="error-text">
+                                    {{ getFieldErrorMessage(vehicleForm, 'insuranceExpiry') }}
                                 </div>
+                                <div class="field-hint">Must be a future date</div>
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="insurancePolicy">Insurance Policy Number</label>
-                            <input type="text" formControlName="insurancePolicy" id="insurancePolicy" class="form-control"
+                            <input type="text"
+                                   formControlName="insurancePolicy"
+                                   id="insurancePolicy"
+                                   class="form-control"
+                                   [class.invalid]="isFieldInvalid(vehicleForm, 'insurancePolicy')"
+                                   [class.valid]="vehicleForm.get('insurancePolicy')?.valid && vehicleForm.get('insurancePolicy')?.touched"
                                    placeholder="Policy number">
+                            <div *ngIf="isFieldInvalid(vehicleForm, 'insurancePolicy')" class="error-text">
+                                {{ getFieldErrorMessage(vehicleForm, 'insurancePolicy') }}
+                            </div>
                         </div>
 
                         <div class="form-row">
@@ -223,8 +293,17 @@
 
                             <div class="form-group">
                                 <label for="purchasePrice">Purchase Price</label>
-                                <input type="number" formControlName="purchasePrice" id="purchasePrice" class="form-control"
-                                       placeholder="25000" step="0.01">
+                                <input type="number"
+                                       formControlName="purchasePrice"
+                                       id="purchasePrice"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(vehicleForm, 'purchasePrice')"
+                                       [class.valid]="vehicleForm.get('purchasePrice')?.valid && vehicleForm.get('purchasePrice')?.touched"
+                                       placeholder="25000"
+                                       step="0.01">
+                                <div *ngIf="isFieldInvalid(vehicleForm, 'purchasePrice')" class="error-text">
+                                    {{ getFieldErrorMessage(vehicleForm, 'purchasePrice') }}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -256,33 +335,72 @@
 
                         <div class="form-group">
                             <label for="editCategory">Category *</label>
-                            <select formControlName="categoryId" id="editCategory" class="form-control">
+                            <select formControlName="categoryId"
+                                    id="editCategory"
+                                    class="form-control"
+                                    [class.invalid]="isFieldInvalid(editForm, 'categoryId')"
+                                    [class.valid]="editForm.get('categoryId')?.valid && editForm.get('categoryId')?.touched">
                                 <option value="">Select Category</option>
                                 <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
                             </select>
+                            <div *ngIf="isFieldInvalid(editForm, 'categoryId')" class="error-text">
+                                {{ getFieldErrorMessage(editForm, 'categoryId') }}
+                            </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="editMake">Make *</label>
-                                <input type="text" formControlName="make" id="editMake" class="form-control">
+                                <input type="text"
+                                       formControlName="make"
+                                       id="editMake"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(editForm, 'make')"
+                                       [class.valid]="editForm.get('make')?.valid && editForm.get('make')?.touched">
+                                <div *ngIf="isFieldInvalid(editForm, 'make')" class="error-text">
+                                    {{ getFieldErrorMessage(editForm, 'make') }}
+                                </div>
                             </div>
 
                             <div class="form-group">
                                 <label for="editModel">Model *</label>
-                                <input type="text" formControlName="model" id="editModel" class="form-control">
+                                <input type="text"
+                                       formControlName="model"
+                                       id="editModel"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(editForm, 'model')"
+                                       [class.valid]="editForm.get('model')?.valid && editForm.get('model')?.touched">
+                                <div *ngIf="isFieldInvalid(editForm, 'model')" class="error-text">
+                                    {{ getFieldErrorMessage(editForm, 'model') }}
+                                </div>
                             </div>
 
                             <div class="form-group">
                                 <label for="editYear">Year *</label>
-                                <input type="number" formControlName="year" id="editYear" class="form-control">
+                                <input type="number"
+                                       formControlName="year"
+                                       id="editYear"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(editForm, 'year')"
+                                       [class.valid]="editForm.get('year')?.valid && editForm.get('year')?.touched">
+                                <div *ngIf="isFieldInvalid(editForm, 'year')" class="error-text">
+                                    {{ getFieldErrorMessage(editForm, 'year') }}
+                                </div>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="editLicensePlate">License Plate *</label>
-                                <input type="text" formControlName="licensePlate" id="editLicensePlate" class="form-control">
+                                <input type="text"
+                                       formControlName="licensePlate"
+                                       id="editLicensePlate"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(editForm, 'licensePlate')"
+                                       [class.valid]="editForm.get('licensePlate')?.valid && editForm.get('licensePlate')?.touched">
+                                <div *ngIf="isFieldInvalid(editForm, 'licensePlate')" class="error-text">
+                                    {{ getFieldErrorMessage(editForm, 'licensePlate') }}
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -305,11 +423,12 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="editDriver">Assigned Driver</label>
+                                <label for="editDriver">Assigned Driver (Optional)</label>
                                 <select formControlName="currentDriverId" id="editDriver" class="form-control">
                                     <option value="">Unassigned</option>
                                     <option *ngFor="let driver of availableDrivers" [value]="driver.id">{{ driver.name }}</option>
                                 </select>
+                                <div class="field-hint">Driver assignment is optional</div>
                             </div>
                         </div>
                     </div>
@@ -328,19 +447,47 @@
 
                             <div class="form-group">
                                 <label for="editFuelCapacity">Fuel Capacity (L)</label>
-                                <input type="number" formControlName="fuelCapacity" id="editFuelCapacity" class="form-control" step="0.01">
+                                <input type="number"
+                                       formControlName="fuelCapacity"
+                                       id="editFuelCapacity"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(editForm, 'fuelCapacity')"
+                                       [class.valid]="editForm.get('fuelCapacity')?.valid && editForm.get('fuelCapacity')?.touched"
+                                       step="0.01">
+                                <div *ngIf="isFieldInvalid(editForm, 'fuelCapacity')" class="error-text">
+                                    {{ getFieldErrorMessage(editForm, 'fuelCapacity') }}
+                                </div>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="editCurrentMileage">Current Mileage *</label>
-                                <input type="number" formControlName="currentMileage" id="editCurrentMileage" class="form-control" step="0.01">
+                                <input type="number"
+                                       formControlName="currentMileage"
+                                       id="editCurrentMileage"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(editForm, 'currentMileage')"
+                                       [class.valid]="editForm.get('currentMileage')?.valid && editForm.get('currentMileage')?.touched"
+                                       step="0.01">
+                                <div *ngIf="isFieldInvalid(editForm, 'currentMileage')" class="error-text">
+                                    {{ getFieldErrorMessage(editForm, 'currentMileage') }}
+                                </div>
                             </div>
 
                             <div class="form-group">
                                 <label for="editFuelLevel">Fuel Level (%) *</label>
-                                <input type="number" formControlName="fuelLevel" id="editFuelLevel" class="form-control" min="0" max="100">
+                                <input type="number"
+                                       formControlName="fuelLevel"
+                                       id="editFuelLevel"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(editForm, 'fuelLevel')"
+                                       [class.valid]="editForm.get('fuelLevel')?.valid && editForm.get('fuelLevel')?.touched"
+                                       min="0"
+                                       max="100">
+                                <div *ngIf="isFieldInvalid(editForm, 'fuelLevel')" class="error-text">
+                                    {{ getFieldErrorMessage(editForm, 'fuelLevel') }}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -352,18 +499,42 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="editRegistrationExpiry">Registration Expiry *</label>
-                                <input type="date" formControlName="registrationExpiry" id="editRegistrationExpiry" class="form-control">
+                                <input type="date"
+                                       formControlName="registrationExpiry"
+                                       id="editRegistrationExpiry"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(editForm, 'registrationExpiry')"
+                                       [class.valid]="editForm.get('registrationExpiry')?.valid && editForm.get('registrationExpiry')?.touched">
+                                <div *ngIf="isFieldInvalid(editForm, 'registrationExpiry')" class="error-text">
+                                    {{ getFieldErrorMessage(editForm, 'registrationExpiry') }}
+                                </div>
                             </div>
 
                             <div class="form-group">
                                 <label for="editInsuranceExpiry">Insurance Expiry *</label>
-                                <input type="date" formControlName="insuranceExpiry" id="editInsuranceExpiry" class="form-control">
+                                <input type="date"
+                                       formControlName="insuranceExpiry"
+                                       id="editInsuranceExpiry"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(editForm, 'insuranceExpiry')"
+                                       [class.valid]="editForm.get('insuranceExpiry')?.valid && editForm.get('insuranceExpiry')?.touched">
+                                <div *ngIf="isFieldInvalid(editForm, 'insuranceExpiry')" class="error-text">
+                                    {{ getFieldErrorMessage(editForm, 'insuranceExpiry') }}
+                                </div>
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="editInsurancePolicy">Insurance Policy Number</label>
-                            <input type="text" formControlName="insurancePolicy" id="editInsurancePolicy" class="form-control">
+                            <input type="text"
+                                   formControlName="insurancePolicy"
+                                   id="editInsurancePolicy"
+                                   class="form-control"
+                                   [class.invalid]="isFieldInvalid(editForm, 'insurancePolicy')"
+                                   [class.valid]="editForm.get('insurancePolicy')?.valid && editForm.get('insurancePolicy')?.touched">
+                            <div *ngIf="isFieldInvalid(editForm, 'insurancePolicy')" class="error-text">
+                                {{ getFieldErrorMessage(editForm, 'insurancePolicy') }}
+                            </div>
                         </div>
 
                         <div class="form-row">
@@ -374,7 +545,16 @@
 
                             <div class="form-group">
                                 <label for="editPurchasePrice">Purchase Price</label>
-                                <input type="number" formControlName="purchasePrice" id="editPurchasePrice" class="form-control" step="0.01">
+                                <input type="number"
+                                       formControlName="purchasePrice"
+                                       id="editPurchasePrice"
+                                       class="form-control"
+                                       [class.invalid]="isFieldInvalid(editForm, 'purchasePrice')"
+                                       [class.valid]="editForm.get('purchasePrice')?.valid && editForm.get('purchasePrice')?.touched"
+                                       step="0.01">
+                                <div *ngIf="isFieldInvalid(editForm, 'purchasePrice')" class="error-text">
+                                    {{ getFieldErrorMessage(editForm, 'purchasePrice') }}
+                                </div>
                             </div>
                         </div>
                     </div>

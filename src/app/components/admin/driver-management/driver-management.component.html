@@ -31,43 +31,81 @@
         </div>
         <form [formGroup]="registrationForm" (ngSubmit)="addDriver()">
             <div class="form-grid">
+                <!-- Full Name -->
                 <div class="form-group">
                     <label>Full Name *</label>
-                    <input formControlName="name" placeholder="Enter full name" required />
-                    <div *ngIf="registrationForm.get('name')?.invalid && registrationForm.get('name')?.touched" class="error-text">
-                        Name is required
+                    <input formControlName="name"
+                           placeholder="Enter full name"
+                           [class.invalid]="registrationForm.get('name')?.invalid && registrationForm.get('name')?.touched"
+                           [class.valid]="registrationForm.get('name')?.valid && registrationForm.get('name')?.touched" />
+                    <div *ngIf="registrationForm.get('name')?.invalid && registrationForm.get('name')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'name') }}
                     </div>
                 </div>
 
+                <!-- Email -->
                 <div class="form-group">
                     <label>Email *</label>
-                    <input formControlName="email" type="email" placeholder="Enter email address" required />
-                    <div *ngIf="registrationForm.get('email')?.invalid && registrationForm.get('email')?.touched" class="error-text">
-                        Valid email is required
+                    <input formControlName="email"
+                           type="email"
+                           placeholder="Enter email address"
+                           [class.invalid]="registrationForm.get('email')?.invalid && registrationForm.get('email')?.touched"
+                           [class.valid]="registrationForm.get('email')?.valid && registrationForm.get('email')?.touched" />
+                    <div *ngIf="registrationForm.get('email')?.invalid && registrationForm.get('email')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'email') }}
                     </div>
                 </div>
 
+                <!-- Password -->
                 <div class="form-group">
                     <label>Password *</label>
-                    <input formControlName="password" type="password" placeholder="Enter password" required />
-                    <div *ngIf="registrationForm.get('password')?.invalid && registrationForm.get('password')?.touched" class="error-text">
-                        Password must be at least 6 characters
+                    <input formControlName="password"
+                           type="password"
+                           placeholder="Enter password"
+                           [class.invalid]="registrationForm.get('password')?.invalid && registrationForm.get('password')?.touched"
+                           [class.valid]="registrationForm.get('password')?.valid && registrationForm.get('password')?.touched" />
+                    <div *ngIf="registrationForm.get('password')?.invalid && registrationForm.get('password')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'password') }}
                     </div>
+                    <div class="field-hint">Must be 8+ characters with uppercase, lowercase, number, and special character</div>
                 </div>
 
+                <!-- Phone -->
                 <div class="form-group">
-                    <label>Phone</label>
-                    <input formControlName="phone" placeholder="Enter phone number" />
+                    <label>Phone *</label>
+                    <input formControlName="phone"
+                           placeholder="Enter phone number"
+                           [class.invalid]="registrationForm.get('phone')?.invalid && registrationForm.get('phone')?.touched"
+                           [class.valid]="registrationForm.get('phone')?.valid && registrationForm.get('phone')?.touched" />
+                    <div *ngIf="registrationForm.get('phone')?.invalid && registrationForm.get('phone')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'phone') }}
+                    </div>
+                    <div class="field-hint">Example: 09171234567</div>
                 </div>
 
+                <!-- License Number -->
                 <div class="form-group">
-                    <label>License Number</label>
-                    <input formControlName="licenseNumber" placeholder="Enter license number" />
+                    <label>License Number *</label>
+                    <input formControlName="licenseNumber"
+                           placeholder="Enter license number"
+                           [class.invalid]="registrationForm.get('licenseNumber')?.invalid && registrationForm.get('licenseNumber')?.touched"
+                           [class.valid]="registrationForm.get('licenseNumber')?.valid && registrationForm.get('licenseNumber')?.touched" />
+                    <div *ngIf="registrationForm.get('licenseNumber')?.invalid && registrationForm.get('licenseNumber')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'licenseNumber') }}
+                    </div>
+                    <div class="field-hint">5-20 characters, uppercase letters/numbers/hyphens only</div>
                 </div>
 
+                <!-- License Classes -->
                 <div class="form-group full-width">
                     <label>License Classes * (Select at least one)</label>
-                    <div class="checkbox-group">
+                    <div class="checkbox-group"
+                         [class.invalid]="registrationLicenseClasses.invalid && registrationLicenseClasses.touched">
                         <div class="checkbox-item" *ngFor="let licenseClass of availableLicenseClasses">
                             <input type="checkbox"
                                    [id]="'reg-' + licenseClass.code"
@@ -78,38 +116,86 @@
                             </label>
                         </div>
                     </div>
-                    <div *ngIf="registrationForm.get('licenseClasses')?.invalid && registrationForm.get('licenseClasses')?.touched" class="error-text">
+                    <div *ngIf="registrationLicenseClasses.invalid && registrationLicenseClasses.touched"
+                         class="error-text">
                         Please select at least one license class
                     </div>
                 </div>
 
+                <!-- License Expiry -->
                 <div class="form-group">
-                    <label>License Expiry</label>
-                    <input formControlName="licenseExpiry" type="date" />
+                    <label>License Expiry *</label>
+                    <input formControlName="licenseExpiry"
+                           type="date"
+                           [class.invalid]="registrationForm.get('licenseExpiry')?.invalid && registrationForm.get('licenseExpiry')?.touched"
+                           [class.valid]="registrationForm.get('licenseExpiry')?.valid && registrationForm.get('licenseExpiry')?.touched" />
+                    <div *ngIf="registrationForm.get('licenseExpiry')?.invalid && registrationForm.get('licenseExpiry')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'licenseExpiry') }}
+                    </div>
                 </div>
 
+                <!-- Experience Years -->
                 <div class="form-group">
-                    <label>Experience Years</label>
-                    <input formControlName="experienceYears" type="number" min="0" placeholder="Years of experience" />
+                    <label>Experience Years *</label>
+                    <input formControlName="experienceYears"
+                           type="number"
+                           min="0"
+                           max="50"
+                           placeholder="Years of experience"
+                           [class.invalid]="registrationForm.get('experienceYears')?.invalid && registrationForm.get('experienceYears')?.touched"
+                           [class.valid]="registrationForm.get('experienceYears')?.valid && registrationForm.get('experienceYears')?.touched" />
+                    <div *ngIf="registrationForm.get('experienceYears')?.invalid && registrationForm.get('experienceYears')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'experienceYears') }}
+                    </div>
                 </div>
 
+                <!-- Address -->
                 <div class="form-group">
                     <label>Address</label>
-                    <textarea formControlName="address" placeholder="Enter address" rows="3"></textarea>
+                    <textarea formControlName="address"
+                              placeholder="Enter address"
+                              rows="3"
+                              [class.invalid]="registrationForm.get('address')?.invalid && registrationForm.get('address')?.touched"
+                              [class.valid]="registrationForm.get('address')?.valid && registrationForm.get('address')?.touched"></textarea>
+                    <div *ngIf="registrationForm.get('address')?.invalid && registrationForm.get('address')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'address') }}
+                    </div>
                 </div>
 
+                <!-- Date of Birth -->
                 <div class="form-group">
-                    <label>Date of Birth</label>
-                    <input formControlName="dateOfBirth" type="date" />
+                    <label>Date of Birth *</label>
+                    <input formControlName="dateOfBirth"
+                           type="date"
+                           [class.invalid]="registrationForm.get('dateOfBirth')?.invalid && registrationForm.get('dateOfBirth')?.touched"
+                           [class.valid]="registrationForm.get('dateOfBirth')?.valid && registrationForm.get('dateOfBirth')?.touched" />
+                    <div *ngIf="registrationForm.get('dateOfBirth')?.invalid && registrationForm.get('dateOfBirth')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'dateOfBirth') }}
+                    </div>
+                    <div class="field-hint">Driver must be 18-70 years old</div>
                 </div>
 
+                <!-- Emergency Contact -->
                 <div class="form-group">
-                    <label>Emergency Contact</label>
-                    <input formControlName="emergencyContact" placeholder="Emergency contact info" />
+                    <label>Emergency Contact *</label>
+                    <input formControlName="emergencyContact"
+                           placeholder="Emergency contact info"
+                           [class.invalid]="registrationForm.get('emergencyContact')?.invalid && registrationForm.get('emergencyContact')?.touched"
+                           [class.valid]="registrationForm.get('emergencyContact')?.valid && registrationForm.get('emergencyContact')?.touched" />
+                    <div *ngIf="registrationForm.get('emergencyContact')?.invalid && registrationForm.get('emergencyContact')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'emergencyContact') }}
+                    </div>
+                    <div class="field-hint">Example: 09171234567</div>
                 </div>
 
+                <!-- Status -->
                 <div class="form-group">
-                    <label>Status</label>
+                    <label>Status *</label>
                     <select formControlName="status" class="form-control">
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
@@ -117,14 +203,26 @@
                     </select>
                 </div>
 
+                <!-- Safety Rating -->
                 <div class="form-group">
-                    <label>Safety Rating</label>
-                    <input formControlName="safetyRating" type="number" min="0" max="5" step="0.1" placeholder="0.0 - 5.0" />
+                    <label>Safety Rating *</label>
+                    <input formControlName="safetyRating"
+                           type="number"
+                           min="0"
+                           max="5"
+                           step="0.1"
+                           placeholder="0.0 - 5.0"
+                           [class.invalid]="registrationForm.get('safetyRating')?.invalid && registrationForm.get('safetyRating')?.touched"
+                           [class.valid]="registrationForm.get('safetyRating')?.valid && registrationForm.get('safetyRating')?.touched" />
+                    <div *ngIf="registrationForm.get('safetyRating')?.invalid && registrationForm.get('safetyRating')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(registrationForm, 'safetyRating') }}
+                    </div>
                 </div>
             </div>
 
             <div class="form-actions">
-                <button type="submit" [disabled]="registrationForm.invalid" class="btn-primary">Save Driver</button>
+                <button type="submit" class="btn-primary">Save Driver</button>
                 <button type="button" (click)="cancelForm()" class="btn-secondary">Cancel</button>
             </div>
         </form>
@@ -138,29 +236,49 @@
         </div>
         <form [formGroup]="editForm" (ngSubmit)="updateDriver()">
             <div class="form-grid">
+                <!-- Full Name -->
                 <div class="form-group">
                     <label>Full Name *</label>
-                    <input formControlName="name" placeholder="Enter full name" required />
-                    <div *ngIf="editForm.get('name')?.invalid && editForm.get('name')?.touched" class="error-text">
-                        Name is required
+                    <input formControlName="name"
+                           placeholder="Enter full name"
+                           [class.invalid]="editForm.get('name')?.invalid && editForm.get('name')?.touched"
+                           [class.valid]="editForm.get('name')?.valid && editForm.get('name')?.touched" />
+                    <div *ngIf="editForm.get('name')?.invalid && editForm.get('name')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'name') }}
                     </div>
                 </div>
 
+                <!-- Email -->
                 <div class="form-group">
                     <label>Email *</label>
-                    <input formControlName="email" type="email" placeholder="Enter email address" required />
-                    <div *ngIf="editForm.get('email')?.invalid && editForm.get('email')?.touched" class="error-text">
-                        Valid email is required
+                    <input formControlName="email"
+                           type="email"
+                           placeholder="Enter email address"
+                           [class.invalid]="editForm.get('email')?.invalid && editForm.get('email')?.touched"
+                           [class.valid]="editForm.get('email')?.valid && editForm.get('email')?.touched" />
+                    <div *ngIf="editForm.get('email')?.invalid && editForm.get('email')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'email') }}
                     </div>
                 </div>
 
+                <!-- Phone -->
                 <div class="form-group">
-                    <label>Phone</label>
-                    <input formControlName="phone" placeholder="Enter phone number" />
+                    <label>Phone *</label>
+                    <input formControlName="phone"
+                           placeholder="Enter phone number"
+                           [class.invalid]="editForm.get('phone')?.invalid && editForm.get('phone')?.touched"
+                           [class.valid]="editForm.get('phone')?.valid && editForm.get('phone')?.touched" />
+                    <div *ngIf="editForm.get('phone')?.invalid && editForm.get('phone')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'phone') }}
+                    </div>
                 </div>
 
+                <!-- Status -->
                 <div class="form-group">
-                    <label>Status</label>
+                    <label>Status *</label>
                     <select formControlName="status">
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
@@ -168,14 +286,24 @@
                     </select>
                 </div>
 
+                <!-- License Number -->
                 <div class="form-group">
-                    <label>License Number</label>
-                    <input formControlName="licenseNumber" placeholder="Enter license number" />
+                    <label>License Number *</label>
+                    <input formControlName="licenseNumber"
+                           placeholder="Enter license number"
+                           [class.invalid]="editForm.get('licenseNumber')?.invalid && editForm.get('licenseNumber')?.touched"
+                           [class.valid]="editForm.get('licenseNumber')?.valid && editForm.get('licenseNumber')?.touched" />
+                    <div *ngIf="editForm.get('licenseNumber')?.invalid && editForm.get('licenseNumber')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'licenseNumber') }}
+                    </div>
                 </div>
 
+                <!-- License Classes -->
                 <div class="form-group full-width">
                     <label>License Classes * (Select at least one)</label>
-                    <div class="checkbox-group">
+                    <div class="checkbox-group"
+                         [class.invalid]="editLicenseClasses.invalid && editLicenseClasses.touched">
                         <div class="checkbox-item" *ngFor="let licenseClass of availableLicenseClasses">
                             <input type="checkbox"
                                    [id]="'edit-' + licenseClass.code"
@@ -186,46 +314,114 @@
                             </label>
                         </div>
                     </div>
-                    <div *ngIf="editForm.get('licenseClasses')?.invalid && editForm.get('licenseClasses')?.touched" class="error-text">
+                    <div *ngIf="editLicenseClasses.invalid && editLicenseClasses.touched"
+                         class="error-text">
                         Please select at least one license class
                     </div>
                 </div>
 
+                <!-- License Expiry -->
                 <div class="form-group">
-                    <label>License Expiry</label>
-                    <input formControlName="licenseExpiry" type="date" />
+                    <label>License Expiry *</label>
+                    <input formControlName="licenseExpiry"
+                           type="date"
+                           [class.invalid]="editForm.get('licenseExpiry')?.invalid && editForm.get('licenseExpiry')?.touched"
+                           [class.valid]="editForm.get('licenseExpiry')?.valid && editForm.get('licenseExpiry')?.touched" />
+                    <div *ngIf="editForm.get('licenseExpiry')?.invalid && editForm.get('licenseExpiry')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'licenseExpiry') }}
+                    </div>
                 </div>
 
+                <!-- Experience Years -->
                 <div class="form-group">
-                    <label>Experience Years</label>
-                    <input formControlName="experienceYears" type="number" min="0" placeholder="Years of experience" />
+                    <label>Experience Years *</label>
+                    <input formControlName="experienceYears"
+                           type="number"
+                           min="0"
+                           max="50"
+                           placeholder="Years of experience"
+                           [class.invalid]="editForm.get('experienceYears')?.invalid && editForm.get('experienceYears')?.touched"
+                           [class.valid]="editForm.get('experienceYears')?.valid && editForm.get('experienceYears')?.touched" />
+                    <div *ngIf="editForm.get('experienceYears')?.invalid && editForm.get('experienceYears')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'experienceYears') }}
+                    </div>
                 </div>
 
+                <!-- Address -->
                 <div class="form-group">
                     <label>Address</label>
-                    <textarea formControlName="address" placeholder="Enter address" rows="3"></textarea>
+                    <textarea formControlName="address"
+                              placeholder="Enter address"
+                              rows="3"
+                              [class.invalid]="editForm.get('address')?.invalid && editForm.get('address')?.touched"
+                              [class.valid]="editForm.get('address')?.valid && editForm.get('address')?.touched"></textarea>
+                    <div *ngIf="editForm.get('address')?.invalid && editForm.get('address')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'address') }}
+                    </div>
                 </div>
 
+                <!-- Date of Birth -->
                 <div class="form-group">
                     <label>Date of Birth</label>
-                    <input formControlName="dateOfBirth" type="date" />
+                    <input formControlName="dateOfBirth"
+                           type="date"
+                           [class.invalid]="editForm.get('dateOfBirth')?.invalid && editForm.get('dateOfBirth')?.touched"
+                           [class.valid]="editForm.get('dateOfBirth')?.valid && editForm.get('dateOfBirth')?.touched" />
+                    <div *ngIf="editForm.get('dateOfBirth')?.invalid && editForm.get('dateOfBirth')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'dateOfBirth') }}
+                    </div>
                 </div>
 
+                <!-- Emergency Contact -->
                 <div class="form-group">
-                    <label>Emergency Contact</label>
-                    <input formControlName="emergencyContact" placeholder="Emergency contact info" />
+                    <label>Emergency Contact *</label>
+                    <input formControlName="emergencyContact"
+                           placeholder="Emergency contact info"
+                           [class.invalid]="editForm.get('emergencyContact')?.invalid && editForm.get('emergencyContact')?.touched"
+                           [class.valid]="editForm.get('emergencyContact')?.valid && editForm.get('emergencyContact')?.touched" />
+                    <div *ngIf="editForm.get('emergencyContact')?.invalid && editForm.get('emergencyContact')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'emergencyContact') }}
+                    </div>
                 </div>
 
+                <!-- Safety Rating -->
                 <div class="form-group">
-                    <label>Safety Rating</label>
-                    <input formControlName="safetyRating" type="number" min="0" max="5" step="0.1" placeholder="0.0 - 5.0" />
+                    <label>Safety Rating *</label>
+                    <input formControlName="safetyRating"
+                           type="number"
+                           min="0"
+                           max="5"
+                           step="0.1"
+                           placeholder="0.0 - 5.0"
+                           [class.invalid]="editForm.get('safetyRating')?.invalid && editForm.get('safetyRating')?.touched"
+                           [class.valid]="editForm.get('safetyRating')?.valid && editForm.get('safetyRating')?.touched" />
+                    <div *ngIf="editForm.get('safetyRating')?.invalid && editForm.get('safetyRating')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'safetyRating') }}
+                    </div>
                 </div>
 
+                <!-- Total Miles Driven -->
                 <div class="form-group">
                     <label>Total Miles Driven</label>
-                    <input formControlName="totalMilesDriven" type="number" min="0" placeholder="Total miles" />
+                    <input formControlName="totalMilesDriven"
+                           type="number"
+                           min="0"
+                           placeholder="Total miles"
+                           [class.invalid]="editForm.get('totalMilesDriven')?.invalid && editForm.get('totalMilesDriven')?.touched"
+                           [class.valid]="editForm.get('totalMilesDriven')?.valid && editForm.get('totalMilesDriven')?.touched" />
+                    <div *ngIf="editForm.get('totalMilesDriven')?.invalid && editForm.get('totalMilesDriven')?.touched"
+                         class="error-text">
+                        {{ getFieldErrorMessage(editForm, 'totalMilesDriven') }}
+                    </div>
                 </div>
 
+                <!-- Available -->
                 <div class="form-group">
                     <label>Available</label>
                     <select formControlName="isAvailable">
@@ -234,6 +430,7 @@
                     </select>
                 </div>
 
+                <!-- Has Helper -->
                 <div class="form-group">
                     <label>Has Helper</label>
                     <select formControlName="hasHelper">
@@ -244,7 +441,7 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" [disabled]="editForm.invalid" class="btn-primary">Update Driver</button>
+                <button type="submit" class="btn-primary">Update Driver</button>
                 <button type="button" (click)="cancelEdit()" class="btn-secondary">Cancel</button>
             </div>
         </form>
@@ -323,7 +520,6 @@
                             <button (click)="confirmDelete(driver)" class="btn-delete" title="Delete">
                                 <i class="icon-delete">🗑️</i>
                             </button>
-                            <!-- ===== NEW WARNING/SUSPENSION BUTTONS ===== -->
                             <button (click)="openWarningModal(driver)" class="btn-warning" title="Issue Warning">
                                 ⚠️
                             </button>
@@ -357,7 +553,7 @@
         </div>
     </div>
 
-    <!-- ===== WARNING MODAL ===== -->
+    <!-- Warning Modal -->
     <div class="modal-overlay" *ngIf="showWarningModal">
         <div class="modal">
             <h3>Issue Warning to {{ selectedDriver?.name }}</h3>
@@ -369,7 +565,7 @@
         </div>
     </div>
 
-    <!-- ===== WARNING HISTORY MODAL ===== -->
+    <!-- Warning History Modal -->
     <div class="modal-overlay" *ngIf="showWarningHistoryModal">
         <div class="modal">
             <h3>Warning History for {{ selectedDriver?.name }}</h3>
@@ -388,7 +584,7 @@
         </div>
     </div>
 
-    <!-- ===== SUSPENSION HISTORY MODAL ===== -->
+    <!-- Suspension History Modal -->
     <div class="modal-overlay" *ngIf="showSuspensionHistoryModal">
         <div class="modal">
             <h3>Suspension History for {{ selectedDriver?.name }}</h3>
