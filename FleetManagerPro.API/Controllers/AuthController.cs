@@ -174,7 +174,7 @@ namespace FleetManager.Controllers
                     {
                         message = "Invalid email address",
                         error = domainMessage,
-                        details = "Please use a valid email address from a registered domain (e.g., Gmail, Yahoo, Outlook, etc.)"
+                        details = "Please use a valid email address from a registered domain (e.g., Gmail, Yahoo, etc.)"
                     });
                 }
 
@@ -280,7 +280,6 @@ namespace FleetManager.Controllers
             });
         }
 
-        // TEST ENDPOINT - Para ma-test mo ang email validation
         [HttpPost("validate-email")]
         [AllowAnonymous]
         public async Task<IActionResult> ValidateEmail([FromBody] EmailValidationRequest request)

@@ -192,6 +192,7 @@ export class DriverService {
             case 'Active': return 'Active';
             case 'Inactive': return 'Inactive';
             case 'Suspended': return 'Suspended';
+            case 'Archived': return 'Archived';
             default: return 'Unknown';
         }
     }
