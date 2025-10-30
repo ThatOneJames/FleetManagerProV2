@@ -11,7 +11,7 @@ namespace FleetManagerPro.API.DTOs
         public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Password is required")]
-        [MinLength(8, ErrorMessage = "Password must be at least 8 characters")]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
         public string Password { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Email is required")]
