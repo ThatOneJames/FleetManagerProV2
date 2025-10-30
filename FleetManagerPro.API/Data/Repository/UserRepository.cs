@@ -63,6 +63,23 @@ namespace FleetManagerPro.API.Data.Repository
             return user;
         }
 
+        public async Task AddDriverWarningAsync(DriverWarning warning)
+        {
+            _context.DriverWarnings.Add(warning);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<int> GetDriverWarningCountAsync(string driverId)
+        {
+            return await _context.DriverWarnings.CountAsync(w => w.DriverId == driverId);
+        }
+
+        public async Task AddDriverSuspensionAsync(DriverSuspension suspension)
+        {
+            _context.DriverSuspensionHistories.Add(suspension);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<bool> UpdateAsync(User user)
         {
             _context.Users.Update(user);

@@ -107,8 +107,15 @@ export class LoginComponent implements OnInit {
             },
             error: (error: any) => {
                 this.loading = false;
-
-                if (error.status === 401) {
+                if (
+                    error.status === 401 &&
+                    error.error?.message?.toLowerCase().includes('suspend') ||
+                    error.error?.message?.toLowerCase().includes('archiv') ||
+                    error.error?.message?.toLowerCase().includes('inactive')
+                ) {
+                    this.errorMessage = error.error?.message || 'Your account is not active. Please contact admin.';
+                } 
+                else if (error.status === 401) {
                     this.errorMessage = 'Invalid email or password.';
                 } else if (error.status === 500) {
                     this.errorMessage = 'Server error. Please try again later.';

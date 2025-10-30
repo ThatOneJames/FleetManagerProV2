@@ -589,6 +589,37 @@ namespace FleetManagerPro.API.Controllers
             }
         }
 
+        [HttpGet("{driverId}/warnings")]
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<IActionResult> GetDriverWarnings(string driverId)
+        {
+            var warnings = await _context.DriverWarnings
+                .Where(w => w.DriverId == driverId)
+                .OrderByDescending(w => w.DateIssued)
+                .ToListAsync();
+
+            if (warnings == null || warnings.Count == 0)
+                return NotFound(new { message = "No warnings found for the specified driver" });
+
+            return Ok(warnings);
+        }
+
+        [HttpGet("{driverId}/suspensions")]
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<IActionResult> GetDriverSuspensions(string driverId)
+        {
+            var suspensions = await _context.DriverSuspensionHistories
+                .Where(s => s.DriverId == driverId)
+                .OrderByDescending(s => s.DateSuspended)
+                .ToListAsync();
+
+            if (suspensions == null || suspensions.Count == 0)
+                return NotFound(new { message = "No suspensions found for the specified driver" });
+
+            return Ok(suspensions);
+        }
+
+
         private string HashPassword(string password)
         {
             using (var sha256 = SHA256.Create())

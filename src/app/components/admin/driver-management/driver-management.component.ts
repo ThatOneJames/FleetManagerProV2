@@ -1,6 +1,9 @@
 ﻿import { Component, OnInit } from '@angular/core';
 import { DriverService } from '../../../services/driver.service';
 import { User, UserStatus, UserRole } from '../../../models/user.model';
+import { DriverWarning } from '../../../models/driver-warning.model';
+import { DriverSuspension } from '../../../models/driver-suspension.model';
+import { AuthService } from '../../../services/auth.service';
 import { FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
@@ -42,10 +45,20 @@ export class DriverManagementComponent implements OnInit {
         { code: 'CE', name: 'Articulated Trucks' }
     ];
 
+    // ===== WARNINGS & SUSPENSIONS =====
+    selectedDriver: User | null = null;
+    showWarningModal = false;
+    warningReason = '';
+    warningHistory: DriverWarning[] = [];
+    showWarningHistoryModal = false;
+    suspensionHistory: DriverSuspension[] = [];
+    showSuspensionHistoryModal = false;
+
     private readonly apiUrl = 'https://fleetmanagerprov2-production.up.railway.app/api';
 
     constructor(
         private driverService: DriverService,
+        private authService: AuthService,
         private fb: FormBuilder,
         private http: HttpClient
     ) {
@@ -815,4 +828,48 @@ export class DriverManagementComponent implements OnInit {
         if (!rating) return '';
         return '⭐'.repeat(Math.round(rating));
     }
+
+    // ========== WARNING & SUSPENSION METHODS ==========
+    openWarningModal(driver: User) {
+        this.selectedDriver = driver;
+        this.warningReason = '';
+        this.showWarningModal = true;
+    }
+
+    submitWarning() {
+        if (this.selectedDriver && this.warningReason.trim()) {
+            const issuedBy = this.authService.getCurrentUserSync()?.name || 'Admin';
+            this.driverService.addWarning(this.selectedDriver.id, this.warningReason, issuedBy).subscribe({
+                next: () => {
+                    this.showWarningModal = false;
+                    this.successMessage = 'Warning issued successfully!';
+                    this.hideMessages();
+                },
+                error: (err) => {
+                    this.errorMessage = 'Failed to issue warning.';
+                    console.error(err);
+                }
+            });
+        }
+    }
+
+    openWarningHistory(driver: User) {
+        this.selectedDriver = driver;
+        this.driverService.getWarnings(driver.id).subscribe(history => {
+            this.warningHistory = history;
+            this.showWarningHistoryModal = true;
+        });
+    }
+
+    openSuspensionHistory(driver: User) {
+        this.selectedDriver = driver;
+        this.driverService.getSuspensionHistory(driver.id).subscribe(history => {
+            this.suspensionHistory = history;
+            this.showSuspensionHistoryModal = true;
+        });
+    }
+
+    closeWarningModal() { this.showWarningModal = false; }
+    closeWarningHistoryModal() { this.showWarningHistoryModal = false; }
+    closeSuspensionHistoryModal() { this.showSuspensionHistoryModal = false; }
 }

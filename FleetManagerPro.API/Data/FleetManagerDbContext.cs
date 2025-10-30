@@ -27,6 +27,8 @@ namespace FleetManagerPro.API.Data
         public DbSet<MaintenanceRequest> MaintenanceRequests { get; set; } = null!;
         public DbSet<Notification> Notifications { get; set; } = null!;
         public DbSet<NotificationRule> NotificationRules { get; set; } = null!;
+        public DbSet<DriverWarning> DriverWarnings { get; set; }
+        public DbSet<DriverSuspension> DriverSuspensionHistories { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

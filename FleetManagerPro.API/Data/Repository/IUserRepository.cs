@@ -13,5 +13,9 @@ namespace FleetManagerPro.API.Data.Repository
         Task<User> CreateAsync(User user);
         Task<bool> UpdateAsync(User user);
         Task<IEnumerable<User>> GetAllDriversAsync();
+
+        Task AddDriverWarningAsync(DriverWarning warning);
+        Task<int> GetDriverWarningCountAsync(string driverId);
+        Task AddDriverSuspensionAsync(DriverSuspension suspension);
     }
 }

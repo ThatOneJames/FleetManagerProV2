@@ -294,7 +294,6 @@
                                 {{ getStringStatus(driver.status) }}
                             </span>
                         </td>
-                        <!-- ✅ FIXED: Use getAvailabilityClass instead of hasDriverClockedInToday -->
                         <td>
                             <div *ngIf="!isLoadingAttendance" class="clock-in-status">
                                 <span class="availability-badge"
@@ -324,6 +323,16 @@
                             <button (click)="confirmDelete(driver)" class="btn-delete" title="Delete">
                                 <i class="icon-delete">🗑️</i>
                             </button>
+                            <!-- ===== NEW WARNING/SUSPENSION BUTTONS ===== -->
+                            <button (click)="openWarningModal(driver)" class="btn-warning" title="Issue Warning">
+                                ⚠️
+                            </button>
+                            <button (click)="openWarningHistory(driver)" class="btn-info" title="View Warning History">
+                                🗂️
+                            </button>
+                            <button (click)="openSuspensionHistory(driver)" class="btn-danger" title="View Suspension History">
+                                🚫
+                            </button>
                         </td>
                     </tr>
                 </tbody>
@@ -344,6 +353,57 @@
             <div class="modal-actions">
                 <button (click)="deleteDriver()" class="btn-danger">Delete</button>
                 <button (click)="cancelDelete()" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== WARNING MODAL ===== -->
+    <div class="modal-overlay" *ngIf="showWarningModal">
+        <div class="modal">
+            <h3>Issue Warning to {{ selectedDriver?.name }}</h3>
+            <textarea [(ngModel)]="warningReason" rows="4" placeholder="Enter warning reason" class="warning-textarea"></textarea>
+            <div class="modal-actions">
+                <button (click)="submitWarning()" class="btn-primary">Submit Warning</button>
+                <button (click)="closeWarningModal()" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== WARNING HISTORY MODAL ===== -->
+    <div class="modal-overlay" *ngIf="showWarningHistoryModal">
+        <div class="modal">
+            <h3>Warning History for {{ selectedDriver?.name }}</h3>
+            <ul class="history-list">
+                <li *ngFor="let warn of warningHistory" class="history-item">
+                    <strong>{{ warn.dateIssued | date:'medium' }}</strong> - {{ warn.reason }}
+                    <span class="issued-by">by {{ warn.issuedBy }}</span>
+                </li>
+            </ul>
+            <div *ngIf="warningHistory.length === 0" class="no-data">
+                <p>No warnings recorded for this driver.</p>
+            </div>
+            <div class="modal-actions">
+                <button (click)="closeWarningHistoryModal()" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SUSPENSION HISTORY MODAL ===== -->
+    <div class="modal-overlay" *ngIf="showSuspensionHistoryModal">
+        <div class="modal">
+            <h3>Suspension History for {{ selectedDriver?.name }}</h3>
+            <ul class="history-list">
+                <li *ngFor="let susp of suspensionHistory" class="history-item">
+                    <strong>{{ susp.dateSuspended | date:'medium' }}</strong> - {{ susp.reason }}
+                    <span class="issued-by">by {{ susp.issuedBy }}</span>
+                    <span class="auto-badge" *ngIf="susp.autoSuspended">(auto)</span>
+                </li>
+            </ul>
+            <div *ngIf="suspensionHistory.length === 0" class="no-data">
+                <p>No suspensions recorded for this driver.</p>
+            </div>
+            <div class="modal-actions">
+                <button (click)="closeSuspensionHistoryModal()" class="btn-secondary">Close</button>
             </div>
         </div>
     </div>

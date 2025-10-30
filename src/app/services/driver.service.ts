@@ -4,6 +4,8 @@ import { Observable, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { User, UserRole } from '../models/user.model';
 import { environment } from '../../environments/environment';
+import { DriverWarning } from '../models/driver-warning.model';
+import { DriverSuspension } from '../models/driver-suspension.model';
 
 export interface CreateDriverDto {
     name: string;
@@ -244,5 +246,15 @@ export class DriverService {
 
         console.error('DriverService Error:', errorMessage);
         return throwError(() => new Error(errorMessage));
+    }
+    addWarning(driverId: string, reason: string, issuedBy: string): Observable<any> {
+        return this.http.post(`${this.apiUrl}/drivers/${driverId}/warnings`, { reason, issuedBy });
+    }
+
+    getWarnings(driverId: string): Observable<DriverWarning[]> {
+        return this.http.get<DriverWarning[]>(`${this.apiUrl}/drivers/${driverId}/warnings`);
+    }
+    getSuspensionHistory(driverId: string): Observable<DriverSuspension[]> {
+        return this.http.get<DriverSuspension[]>(`${this.apiUrl}/drivers/${driverId}/suspensions`);
     }
 }
