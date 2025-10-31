@@ -218,7 +218,94 @@ namespace FleetManager.Controllers
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] RegisterWithCodeDto dto)
+        public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+        {
+            try
+            {
+                Console.WriteLine($"[AUTH] Register endpoint called");
+
+                if (dto == null || string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Password) || string.IsNullOrEmpty(dto.Name))
+                {
+                    Console.WriteLine("[AUTH] Missing required fields");
+                    return BadRequest(new { message = "Email, name, and password are required" });
+                }
+
+                // ✅ CHECK IF VERIFICATION CODE PROVIDED
+                if (!string.IsNullOrEmpty(dto.VerificationCode))
+                {
+                    Console.WriteLine($"[AUTH] Verification code provided - using verified registration flow");
+                    return await RegisterWithVerificationCode(dto);
+                }
+
+                // ✅ NO VERIFICATION CODE - DIRECT ADMIN REGISTRATION
+                Console.WriteLine($"[AUTH] No verification code - direct registration (admin creating user)");
+
+                string email = dto.Email.ToLower().Trim();
+
+                if (await _context.Users.AnyAsync(u => u.Email == email))
+                {
+                    Console.WriteLine($"[AUTH] Email already registered: {email}");
+                    return BadRequest(new { message = "Email already registered" });
+                }
+
+                var hashedPassword = await _authService.HashPassword(dto.Password);
+                var nextEmployeeId = await GenerateNextEmployeeId();
+
+                var user = new User
+                {
+                    Id = nextEmployeeId,
+                    Email = email,
+                    Name = dto.Name.Trim(),
+                    PasswordHash = hashedPassword,
+                    Role = dto.Role ?? "Driver",
+                    Status = "Active",
+                    IsEmailVerified = true,
+                    EmailVerifiedAt = DateTime.UtcNow,
+                    Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim(),
+                    Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim(),
+                    DateOfBirth = dto.DateOfBirth,
+                    HireDate = dto.HireDate ?? DateTime.UtcNow,
+                    EmergencyContact = string.IsNullOrWhiteSpace(dto.EmergencyContact) ? null : dto.EmergencyContact.Trim(),
+                    ProfileImageUrl = string.IsNullOrWhiteSpace(dto.ProfileImageUrl) ? null : dto.ProfileImageUrl,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                if (user.Role == "Driver")
+                {
+                    user.LicenseNumber = string.IsNullOrWhiteSpace(dto.LicenseNumber) ? null : dto.LicenseNumber.Trim();
+                    user.LicenseClass = string.IsNullOrWhiteSpace(dto.LicenseClass) ? null : dto.LicenseClass.Trim();
+                    user.LicenseExpiry = dto.LicenseExpiry;
+                    user.ExperienceYears = dto.ExperienceYears;
+                    user.SafetyRating = dto.SafetyRating;
+                    user.TotalMilesDriven = dto.TotalMilesDriven;
+                    user.IsAvailable = dto.IsAvailable;
+                    user.HasHelper = dto.HasHelper;
+                }
+
+                await _context.Users.AddAsync(user);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"[AUTH] User registered successfully: {user.Email} with ID: {user.Id}");
+
+                return Ok(new
+                {
+                    message = "User created successfully!",
+                    userId = user.Id,
+                    email = user.Email,
+                    name = user.Name,
+                    role = user.Role
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AUTH] Registration error: {ex.Message}");
+                Console.WriteLine($"[AUTH] Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { message = "Error creating user", error = ex.Message });
+            }
+        }
+
+        private async Task<IActionResult> RegisterWithVerificationCode(RegisterDto dto)
         {
             try
             {
@@ -417,14 +504,38 @@ namespace FleetManager.Controllers
         }
     }
 
+    // ✅ BASE DTO - CORRECTED TYPES
+    public class RegisterDto
+    {
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string? Role { get; set; }
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+        public DateTime? DateOfBirth { get; set; }
+        public DateTime? HireDate { get; set; }
+        public string? EmergencyContact { get; set; }
+        public string? ProfileImageUrl { get; set; }
+        public string? LicenseNumber { get; set; }
+        public string? LicenseClass { get; set; }
+        public DateTime? LicenseExpiry { get; set; }
+        public int? ExperienceYears { get; set; }
+        public decimal? SafetyRating { get; set; }
+        public decimal? TotalMilesDriven { get; set; }
+        public bool IsAvailable { get; set; } = true;
+        public bool HasHelper { get; set; } = false;
+        public string? VerificationCode { get; set; }
+    }
+
+    public class RegisterWithCodeDto : RegisterDto
+    {
+        // Inherits everything from base class
+    }
+
     public class RequestCodeDto
     {
         public string Email { get; set; } = "";
-    }
-
-    public class RegisterWithCodeDto : UserDto
-    {
-        public string VerificationCode { get; set; } = "";
     }
 
     public class VerifyEmailDto

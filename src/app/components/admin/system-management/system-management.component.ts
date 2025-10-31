@@ -67,7 +67,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         this.refreshSubscription?.unsubscribe();
     }
 
-    // ========== ENHANCED FORM INITIALIZATION WITH VALIDATION ==========
     private initializeForms(): void {
         this.userForm = this.fb.group({
             name: ['', [
@@ -144,7 +143,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         });
     }
 
-    // ========== CUSTOM VALIDATORS ==========
     private passwordStrengthValidator(): ValidatorFn {
         return (control: AbstractControl): ValidationErrors | null => {
             if (!control.value) {
@@ -188,7 +186,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         rolesControl?.updateValueAndValidity();
     }
 
-    // ========== ERROR MESSAGE HANDLER ==========
     getFieldErrorMessage(form: FormGroup, fieldName: string): string {
         const control = form.get(fieldName);
 
@@ -262,7 +259,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         return !!(field && field.invalid && field.touched);
     }
 
-    // ========== DATA LOADING ==========
     private async loadAllData(): Promise<void> {
         this.loading = true;
         try {
@@ -323,7 +319,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         });
     }
 
-    // ========== USER MANAGEMENT WITH VALIDATION ==========
     toggleUserForm(): void {
         this.showUserForm = !this.showUserForm;
         if (!this.showUserForm) {
@@ -337,6 +332,22 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             ]);
             this.userForm.get('password')?.updateValueAndValidity();
         }
+    }
+
+    editUser(user: User): void {
+        console.log('[SYSTEM-MGMT] Editing user:', user);
+        this.editingUser = user;
+        this.showUserForm = true;
+        this.userForm.patchValue({
+            name: user.name,
+            email: user.email,
+            phone: user.phone || '',
+            address: user.address || '',
+            role: user.role,
+            status: user.status
+        });
+        this.userForm.get('password')?.clearValidators();
+        this.userForm.get('password')?.updateValueAndValidity();
     }
 
     async saveUser(): Promise<void> {
@@ -362,15 +373,39 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         this.savingUser = true;
         try {
             if (this.editingUser) {
-                const updateData: UpdateDriverDto = {
+                console.log('[SYSTEM-MGMT] Updating user:', this.editingUser.id);
+                console.log('[SYSTEM-MGMT] Form data:', this.userForm.value);
+
+                const token = this.authService.getToken();
+                const headers = new HttpHeaders({
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                });
+
+                const updateData = {
                     name: this.userForm.get('name')?.value,
                     email: this.userForm.get('email')?.value,
                     phone: this.userForm.get('phone')?.value || '',
                     address: this.userForm.get('address')?.value || '',
+                    role: this.userForm.get('role')?.value,
                     status: this.userForm.get('status')?.value
                 };
-                await this.driverService.updateDriver(this.editingUser.id, updateData).toPromise();
+
+                console.log('[SYSTEM-MGMT] Sending to API:', updateData);
+
+                const response = await this.http.put(
+                    `${environment.apiUrl}/users/${this.editingUser.id}`,
+                    updateData,
+                    { headers }
+                ).toPromise();
+
+                console.log('[SYSTEM-MGMT] API response:', response);
                 this.showSnackbar('User updated successfully', 'success');
+
+                this.userForm.reset({ role: 'Driver', status: 'Active' });
+                this.editingUser = null;
+                this.showUserForm = false;
+                await this.loadUsers();
             } else {
                 const password = this.userForm.get('password')?.value;
                 if (!password) {
@@ -393,13 +428,12 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
                 };
                 await this.driverService.createDriver(createData).toPromise();
                 this.showSnackbar('User created successfully', 'success');
+                this.userForm.reset({ role: 'Driver', status: 'Active' });
+                this.showUserForm = false;
+                await this.loadUsers();
             }
-            this.userForm.reset({ role: 'Driver', status: 'Active' });
-            this.editingUser = null;
-            this.showUserForm = false;
-            await this.loadUsers();
         } catch (error: any) {
-            console.error('Error saving user:', error);
+            console.error('[SYSTEM-MGMT] Error saving user:', error);
             const errorMessage = error?.error?.message || error?.message || 'Error saving user';
             this.showSnackbar(errorMessage, 'error');
         } finally {
@@ -407,30 +441,28 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         }
     }
 
-    editUser(user: User): void {
-        this.editingUser = user;
-        this.showUserForm = true;
-        this.userForm.patchValue({
-            name: user.name,
-            email: user.email,
-            phone: user.phone || '',
-            address: user.address || '',
-            role: user.role,
-            status: user.status
-        });
-        this.userForm.get('password')?.clearValidators();
-        this.userForm.get('password')?.updateValueAndValidity();
-    }
-
     async toggleUserStatus(user: User): Promise<void> {
         try {
+            console.log('[SYSTEM-MGMT] Toggling user status:', user.id);
             const newStatus = user.status === 'Active' ? 'Inactive' : 'Active';
-            await this.driverService.updateDriverStatus(user.id, newStatus).toPromise();
+
+            const token = this.authService.getToken();
+            const headers = new HttpHeaders({
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            });
+
+            await this.http.patch(
+                `${environment.apiUrl}/users/${user.id}/status`,
+                { status: newStatus },
+                { headers }
+            ).toPromise();
+
             user.status = newStatus;
             this.showSnackbar(`User ${newStatus.toLowerCase()}`, 'success');
             await this.loadUsers();
         } catch (error) {
-            console.error('Error updating user status:', error);
+            console.error('[SYSTEM-MGMT] Error updating user status:', error);
             this.showSnackbar('Error updating user status', 'error');
         }
     }
@@ -438,11 +470,12 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
     async deleteUser(user: User): Promise<void> {
         if (!confirm(`Delete user "${user.name}"? This action cannot be undone.`)) return;
         try {
+            console.log('[SYSTEM-MGMT] Deleting user:', user.id);
             await this.driverService.deleteDriver(user.id).toPromise();
             this.showSnackbar('User deleted successfully', 'success');
             await this.loadUsers();
         } catch (error) {
-            console.error('Error deleting user:', error);
+            console.error('[SYSTEM-MGMT] Error deleting user:', error);
             this.showSnackbar('Error deleting user', 'error');
         }
     }
@@ -460,7 +493,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         this.userForm.get('password')?.updateValueAndValidity();
     }
 
-    // ========== CHANGE PASSWORD WITH VALIDATION ==========
     openChangePasswordModal(user: User): void {
         this.selectedUserForPasswordChange = user;
         this.showChangePasswordModal = true;
@@ -515,15 +547,14 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             this.showSnackbar('Password changed successfully', 'success');
             this.closeChangePasswordModal();
         } catch (error) {
-            console.error('Error changing password:', error);
+            console.error('[SYSTEM-MGMT] Error changing password:', error);
             this.showSnackbar('Error changing password', 'error');
         }
     }
 
-    // ========== NOTIFICATIONS ==========
     private async loadNotifications(): Promise<void> {
         return new Promise((resolve) => {
-            console.log('🔄 Loading notifications...');
+            console.log('[SYSTEM-MGMT] Loading notifications...');
             const token = this.authService.getToken();
             const headers = new HttpHeaders({
                 'Authorization': `Bearer ${token}`
@@ -531,15 +562,14 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
 
             this.http.get<any[]>(`${environment.apiUrl}/notifications`, { headers }).subscribe({
                 next: (data) => {
-                    console.log('✅ Notifications loaded:', data);
+                    console.log('[SYSTEM-MGMT] Notifications loaded:', data.length);
                     this.notifications = data.sort((a, b) =>
                         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                     ).slice(0, 100);
-                    console.log('📊 Notifications array:', this.notifications);
                     resolve();
                 },
                 error: (error) => {
-                    console.error('❌ Error loading notifications:', error);
+                    console.error('[SYSTEM-MGMT] Error loading notifications:', error);
                     resolve();
                 }
             });
@@ -559,7 +589,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             this.showSnackbar('Notification marked as read', 'success');
             await this.loadNotifications();
         } catch (error) {
-            console.error('Error marking notification as read:', error);
+            console.error('[SYSTEM-MGMT] Error marking notification as read:', error);
             this.showSnackbar('Error updating notification', 'error');
         }
     }
@@ -596,7 +626,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             });
             await this.loadNotifications();
         } catch (error) {
-            console.error('Error sending notification:', error);
+            console.error('[SYSTEM-MGMT] Error sending notification:', error);
             this.showSnackbar('Error sending notification', 'error');
         } finally {
             this.sendingNotification = false;
@@ -614,7 +644,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         return [];
     }
 
-    // ========== REPORTS (UNCHANGED) ==========
     private async loadReports(): Promise<void> {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -658,7 +687,7 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
                                 });
                             }
                         } catch (error) {
-                            console.error(`Error loading attendance for ${driver.name}:`, error);
+                            console.error(`[SYSTEM-MGMT] Error loading attendance for ${driver.name}:`, error);
                         }
                     }
 
@@ -699,13 +728,13 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
                         this.reports = [...attendanceReports, ...tripReports].sort((a, b) => b.monthKey.localeCompare(a.monthKey));
                     },
                     error: (err) => {
-                        console.error('Error loading trip reports:', err);
+                        console.error('[SYSTEM-MGMT] Error loading trip reports:', err);
                         this.reports = attendanceReports;
                     }
                 });
             },
             error: (err) => {
-                console.error('Error loading reports:', err);
+                console.error('[SYSTEM-MGMT] Error loading reports:', err);
                 this.reports = [];
             }
         });
@@ -827,7 +856,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
             .join('\n');
     }
 
-    // ========== DISPLAY HELPERS ==========
     getUserName(userId: string): string {
         const user = this.users.find(u => u.id === userId);
         return user ? user.name : 'Unknown';
@@ -861,7 +889,6 @@ export class SystemManagementComponent implements OnInit, OnDestroy {
         return `role-${role?.toLowerCase() || 'unknown'}`;
     }
 
-    // ========== PRIVATE HELPER METHODS ==========
     private markFormGroupTouched(formGroup: FormGroup): void {
         Object.keys(formGroup.controls).forEach(field => {
             const control = formGroup.get(field);
