@@ -227,12 +227,30 @@ namespace FleetManager.Controllers
 
                 try
                 {
-                    await SendVerificationEmail(user.Email, user.Name, verificationToken);
-                    Console.WriteLine($"[AUTH] Verification email sent to: {user.Email}");
+                    var appUrl = _config["AppUrl"] ?? "http://localhost:4200";
+                    var verificationLink = $"{appUrl}/verify-email?email={Uri.EscapeDataString(user.Email)}&token={verificationToken}";
+
+                    var notification = new Notification
+                    {
+                        Title = "Verify Your Email",
+                        Message = $"Please verify your email by clicking: {verificationLink}",
+                        Type = "EmailVerification",
+                        Category = "Verification",
+                        UserId = user.Id,
+                        SendEmail = true,
+                        SendSms = false,
+                        IsSent = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await _context.Notifications.AddAsync(notification);
+                    await _context.SaveChangesAsync();
+
+                    Console.WriteLine($"[AUTH] Verification notification created for: {user.Email}");
                 }
-                catch (Exception emailEx)
+                catch (Exception notificationEx)
                 {
-                    Console.WriteLine($"[AUTH] Warning: Email sending failed: {emailEx.Message}");
+                    Console.WriteLine($"[AUTH] Warning: Notification creation failed: {notificationEx.Message}");
                 }
 
                 Console.WriteLine($"[AUTH] User registered successfully: {user.Email}");
@@ -290,65 +308,6 @@ namespace FleetManager.Controllers
             }
         }
 
-        private async Task SendVerificationEmail(string email, string name, string token)
-        {
-            try
-            {
-                var appUrl = _config["AppUrl"] ?? "http://localhost:4200";
-                var verificationLink = $"{appUrl}/verify-email?email={Uri.EscapeDataString(email)}&token={token}";
-
-                var subject = "Verify Your FleetManagerPro Account";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <body style='font-family: Arial, sans-serif;'>
-                        <div style='max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;'>
-                            <div style='background-color: #007bff; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;'>
-                                <h2>FleetManagerPro</h2>
-                            </div>
-                            <div style='padding: 20px;'>
-                                <h3>Welcome, {name}!</h3>
-                                <p>Thank you for registering with FleetManagerPro. Please verify your email address to activate your account.</p>
-                                <p>Click the button below to verify your email:</p>
-                                <p style='margin: 30px 0;'>
-                                    <a href='{verificationLink}' style='background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;'>Verify Email</a>
-                                </p>
-                                <p style='margin-top: 20px; font-size: 12px; color: #666;'>
-                                    Or copy and paste this link in your browser:<br/>
-                                    <small>{verificationLink}</small>
-                                </p>
-                                <p style='margin-top: 20px; font-size: 12px; color: #999;'>This link expires in 24 hours.</p>
-                            </div>
-                            <div style='padding: 20px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd;'>
-                                <p>&copy; 2025 FleetManagerPro. All rights reserved.</p>
-                            </div>
-                        </div>
-                    </body>
-                    </html>
-                ";
-
-                var sendGridKey = _config["SendGrid:ApiKey"];
-                if (!string.IsNullOrEmpty(sendGridKey))
-                {
-                    var client = new SendGrid.SendGridClient(sendGridKey);
-                    var from = new SendGrid.Helpers.Mail.EmailAddress("noreply@fleetmanagerpro.com", "FleetManagerPro");
-                    var to = new SendGrid.Helpers.Mail.EmailAddress(email, name);
-                    var msg = SendGrid.Helpers.Mail.MailHelper.CreateSingleEmail(from, to, subject, body, body);
-                    var response = await client.SendEmailAsync(msg);
-                    Console.WriteLine($"[AUTH] Email sent with status: {response.StatusCode}");
-                }
-                else
-                {
-                    Console.WriteLine("[AUTH] ERROR: SendGrid API key not configured!");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[AUTH] Error sending verification email: {ex.Message}");
-                throw;
-            }
-        }
-
         private async Task<string> GenerateNextEmployeeId()
         {
             var existingIds = await _context.Users
@@ -384,8 +343,7 @@ namespace FleetManager.Controllers
                     issuer = _config["Jwt:Issuer"],
                     audience = _config["Jwt:Audience"],
                     keyExists = !string.IsNullOrEmpty(_config["Jwt:Key"])
-                },
-                sendGridConfigured = !string.IsNullOrEmpty(_config["SendGrid:ApiKey"])
+                }
             });
         }
 
