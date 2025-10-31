@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FleetManagerPro.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+745b1c9c6e991903503f57a0deda76bfd35abc2b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+16dd2c2b7503e6e0d02b9c78906fc45f7b1f6904")]
 [assembly: System.Reflection.AssemblyProductAttribute("FleetManagerPro.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FleetManagerPro.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

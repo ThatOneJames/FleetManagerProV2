@@ -62,7 +62,6 @@ namespace FleetManager.Controllers
                     return Unauthorized("Invalid email or password");
                 }
 
-                // ✅ Check if email is verified
                 if (!user.IsEmailVerified)
                 {
                     return Unauthorized(new { message = "Please verify your email before logging in. Check your inbox for verification link." });
@@ -335,7 +334,12 @@ namespace FleetManager.Controllers
                     var from = new SendGrid.Helpers.Mail.EmailAddress("noreply@fleetmanagerpro.com", "FleetManagerPro");
                     var to = new SendGrid.Helpers.Mail.EmailAddress(email, name);
                     var msg = SendGrid.Helpers.Mail.MailHelper.CreateSingleEmail(from, to, subject, body, body);
-                    await client.SendEmailAsync(msg);
+                    var response = await client.SendEmailAsync(msg);
+                    Console.WriteLine($"[AUTH] Email sent with status: {response.StatusCode}");
+                }
+                else
+                {
+                    Console.WriteLine("[AUTH] ERROR: SendGrid API key not configured!");
                 }
             }
             catch (Exception ex)
@@ -380,7 +384,8 @@ namespace FleetManager.Controllers
                     issuer = _config["Jwt:Issuer"],
                     audience = _config["Jwt:Audience"],
                     keyExists = !string.IsNullOrEmpty(_config["Jwt:Key"])
-                }
+                },
+                sendGridConfigured = !string.IsNullOrEmpty(_config["SendGrid:ApiKey"])
             });
         }
 
