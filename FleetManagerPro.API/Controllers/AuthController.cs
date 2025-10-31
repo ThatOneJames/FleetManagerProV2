@@ -162,19 +162,30 @@ namespace FleetManager.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(dto?.Email))
-                    return BadRequest(new { message = "Email required" });
+                if (dto == null || string.IsNullOrEmpty(dto.Email))
+                {
+                    Console.WriteLine("[AUTH] Email is null or empty");
+                    return BadRequest(new { message = "Email is required" });
+                }
 
-                Console.WriteLine($"[AUTH] Requesting verification code for: {dto.Email}");
+                string email = dto.Email.ToLower().Trim();
+                Console.WriteLine($"[AUTH] Requesting verification code for: {email}");
 
-                var (isValidDomain, domainMessage) = await _emailDomainValidator.ValidateEmailDomain(dto.Email);
+                var (isValidDomain, domainMessage) = await _emailDomainValidator.ValidateEmailDomain(email);
                 if (!isValidDomain)
+                {
+                    Console.WriteLine($"[AUTH] Invalid email domain: {domainMessage}");
                     return BadRequest(new { message = "Invalid email domain", error = domainMessage });
+                }
 
-                if (await _context.Users.AnyAsync(u => u.Email == dto.Email.ToLower().Trim()))
+                if (await _context.Users.AnyAsync(u => u.Email == email))
+                {
+                    Console.WriteLine($"[AUTH] Email already registered: {email}");
                     return BadRequest(new { message = "Email already registered" });
+                }
 
                 var verificationCode = new Random().Next(100000, 999999).ToString();
+                Console.WriteLine($"[AUTH] Generated code: {verificationCode}");
 
                 var notification = new Notification
                 {
@@ -187,24 +198,25 @@ namespace FleetManager.Controllers
                     IsSent = false,
                     CreatedAt = DateTime.UtcNow,
                     RelatedEntityType = "VerificationCode",
-                    RelatedEntityId = dto.Email
+                    RelatedEntityId = email
                 };
 
                 await _context.Notifications.AddAsync(notification);
                 await _context.SaveChangesAsync();
 
                 // Store code in session (5 minute expiry)
-                HttpContext.Session.SetString($"verify_code_{dto.Email}", verificationCode);
-                HttpContext.Session.SetString($"verify_code_expiry_{dto.Email}", DateTime.UtcNow.AddMinutes(5).Ticks.ToString());
+                HttpContext.Session.SetString($"verify_code_{email}", verificationCode);
+                HttpContext.Session.SetString($"verify_code_expiry_{email}", DateTime.UtcNow.AddMinutes(5).Ticks.ToString());
 
-                Console.WriteLine($"[AUTH] Verification code requested for: {dto.Email}");
+                Console.WriteLine($"[AUTH] Verification code created and stored for: {email}");
 
-                return Ok(new { message = "Verification code sent to email", email = dto.Email });
+                return Ok(new { message = "Verification code sent to email", email = email });
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[AUTH] Error requesting code: {ex.Message}");
-                return StatusCode(500, new { message = "Error requesting code" });
+                Console.WriteLine($"[AUTH] Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { message = "Error requesting code", error = ex.Message });
             }
         }
 
@@ -216,38 +228,55 @@ namespace FleetManager.Controllers
             {
                 if (dto == null || string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.VerificationCode) || string.IsNullOrEmpty(dto.Password))
                 {
-                    return BadRequest(new { message = "Email, verification code, and password required" });
+                    Console.WriteLine("[AUTH] Missing required fields");
+                    return BadRequest(new { message = "Email, verification code, name, and password required" });
                 }
 
-                Console.WriteLine($"[AUTH] Register attempt with code for: {dto.Email}");
+                string email = dto.Email.ToLower().Trim();
+                Console.WriteLine($"[AUTH] Register attempt with code for: {email}");
 
                 // Verify code
-                var codeKey = $"verify_code_{dto.Email}";
-                var expiryKey = $"verify_code_expiry_{dto.Email}";
+                var codeKey = $"verify_code_{email}";
+                var expiryKey = $"verify_code_expiry_{email}";
 
                 if (!HttpContext.Session.TryGetValue(codeKey, out var storedCodeBytes))
+                {
+                    Console.WriteLine($"[AUTH] No verification code found in session for: {email}");
                     return BadRequest(new { message = "No verification code found. Request a new one." });
+                }
 
                 var storedCode = Encoding.UTF8.GetString(storedCodeBytes);
                 if (storedCode != dto.VerificationCode)
+                {
+                    Console.WriteLine($"[AUTH] Invalid verification code. Expected: {storedCode}, Got: {dto.VerificationCode}");
                     return BadRequest(new { message = "Invalid verification code" });
+                }
 
                 // Check expiry
                 if (HttpContext.Session.TryGetValue(expiryKey, out var expiryBytes))
                 {
                     var expiryTicks = long.Parse(Encoding.UTF8.GetString(expiryBytes));
                     if (DateTime.UtcNow.Ticks > expiryTicks)
+                    {
+                        Console.WriteLine($"[AUTH] Verification code expired for: {email}");
                         return BadRequest(new { message = "Verification code expired. Request a new one." });
+                    }
                 }
 
                 // Validate domain
-                var (isValidDomain, domainMessage) = await _emailDomainValidator.ValidateEmailDomain(dto.Email);
+                var (isValidDomain, domainMessage) = await _emailDomainValidator.ValidateEmailDomain(email);
                 if (!isValidDomain)
+                {
+                    Console.WriteLine($"[AUTH] Invalid email domain: {domainMessage}");
                     return BadRequest(new { message = "Invalid email domain", error = domainMessage });
+                }
 
                 // Check email not already registered
-                if (await _context.Users.AnyAsync(u => u.Email == dto.Email.ToLower().Trim()))
+                if (await _context.Users.AnyAsync(u => u.Email == email))
+                {
+                    Console.WriteLine($"[AUTH] Email already registered: {email}");
                     return BadRequest(new { message = "Email already registered" });
+                }
 
                 // Code valid - proceed with registration
                 var hashedPassword = await _authService.HashPassword(dto.Password);
@@ -256,7 +285,7 @@ namespace FleetManager.Controllers
                 var user = new User
                 {
                     Id = nextEmployeeId,
-                    Email = dto.Email.ToLower().Trim(),
+                    Email = email,
                     Name = dto.Name.Trim(),
                     PasswordHash = hashedPassword,
                     Role = dto.Role ?? "Driver",
@@ -292,7 +321,7 @@ namespace FleetManager.Controllers
                 HttpContext.Session.Remove(codeKey);
                 HttpContext.Session.Remove(expiryKey);
 
-                Console.WriteLine($"[AUTH] User registered successfully: {user.Email}");
+                Console.WriteLine($"[AUTH] User registered successfully: {user.Email} with ID: {user.Id}");
 
                 return Ok(new
                 {
@@ -304,6 +333,7 @@ namespace FleetManager.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"[AUTH] Registration error: {ex.Message}");
+                Console.WriteLine($"[AUTH] Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }
