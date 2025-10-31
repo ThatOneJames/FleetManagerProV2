@@ -52,4 +52,8 @@ export class VerifyEmailComponent implements OnInit {
             });
         });
     }
+
+    goToLogin(): void {
+        this.router.navigate(['/login']);
+    }
 }

@@ -227,7 +227,10 @@ namespace FleetManager.Controllers
 
                 try
                 {
-                    var appUrl = _config["AppUrl"] ?? "http://localhost:4200";
+                    var appUrl = Environment.GetEnvironmentVariable("AppUrl")
+                                ?? _config["AppUrl"]
+                                ?? "http://localhost:4200";
+
                     var verificationLink = $"{appUrl}/verify-email?email={Uri.EscapeDataString(user.Email)}&token={verificationToken}";
 
                     var notification = new Notification

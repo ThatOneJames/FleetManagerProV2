@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { LoginComponent } from './components/auth/login/login.component';
 import { UserComponent } from './components/user/user.component';
+import { VerifyEmailComponent } from './components/auth/verify-email/verify-email.component';
 
 // Admin Component imports
 import { AdminDashboardComponent } from './components/admin/dashboard/dashboard.component';
@@ -32,7 +33,8 @@ const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   
   // Authentication routes
-  { path: 'login', component: LoginComponent },
+    { path: 'login', component: LoginComponent },
+    { path: 'verify-email', component: VerifyEmailComponent },
   
   // Admin routes (protected by AuthGuard and AdminGuard)
   {

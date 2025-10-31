@@ -35,6 +35,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
+import { VerifyEmailComponent } from './components/auth/verify-email/verify-email.component';
 
 import { LoginComponent } from './components/auth/login/login.component';
 import { DriverDashboardComponent } from './components/driver/dashboard/dashboard.component';
@@ -92,6 +93,7 @@ export function initializeRecaptcha(): () => Promise<void> {
         DriverProfileComponent,
         PreTripInspectionComponent,
         MaintenanceRequestComponent,
+        VerifyEmailComponent,
         SystemManagementComponent
     ],
     imports: [
