@@ -75,6 +75,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error retrieving users: {ex.Message}");
                 _logger.LogError(ex, "Error retrieving users");
                 return StatusCode(500, new { message = "Error retrieving users", error = ex.Message });
             }
@@ -123,6 +124,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error retrieving current user: {ex.Message}");
                 _logger.LogError(ex, "Error retrieving current user");
                 return StatusCode(500, new { message = "Error retrieving current user", error = ex.Message });
             }
@@ -169,6 +171,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error retrieving user {id}: {ex.Message}");
                 _logger.LogError(ex, "Error retrieving user {Id}", id);
                 return StatusCode(500, new { message = "Error retrieving user", error = ex.Message });
             }
@@ -202,6 +205,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error retrieving drivers: {ex.Message}");
                 _logger.LogError(ex, "Error retrieving drivers");
                 return StatusCode(500, new { message = "Error retrieving drivers", error = ex.Message });
             }
@@ -236,7 +240,6 @@ namespace FleetManagerPro.API.Controllers
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                // ✅ AUDIT LOG - REGISTER
                 await _auditService.LogActionAsync(
                     userId,
                     "CREATE",
@@ -260,6 +263,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error creating user: {ex.Message}");
                 _logger.LogError(ex, "Error creating user");
                 return StatusCode(500, new { message = "Error creating user", error = ex.Message });
             }
@@ -282,7 +286,6 @@ namespace FleetManagerPro.API.Controllers
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
-                // ✅ AUDIT LOG - ARCHIVE
                 await _auditService.LogActionAsync(
                     GetUserId(),
                     "DELETE",
@@ -297,6 +300,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error archiving user {id}: {ex.Message}");
                 _logger.LogError(ex, "Error archiving user {Id}", id);
                 return StatusCode(500, new { message = "Error archiving user", error = ex.Message });
             }
@@ -331,6 +335,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error retrieving user statistics: {ex.Message}");
                 _logger.LogError(ex, "Error retrieving user statistics");
                 return StatusCode(500, new { message = "Error retrieving user statistics", error = ex.Message });
             }
@@ -342,17 +347,24 @@ namespace FleetManagerPro.API.Controllers
         {
             try
             {
+                Console.WriteLine($"[USERS] UpdateUserStatus called for ID: {id}, Status: {dto.Status}");
+
                 var user = await _context.Users.FindAsync(id);
                 if (user == null)
+                {
+                    Console.WriteLine($"[USERS] User not found: {id}");
                     return NotFound(new { message = "User not found" });
+                }
 
                 var oldStatus = user.Status;
                 user.Status = dto.Status;
                 user.UpdatedAt = DateTime.UtcNow;
 
+                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
-                // ✅ AUDIT LOG - UPDATE STATUS
+                Console.WriteLine($"[USERS] Status updated from {oldStatus} to {dto.Status}");
+
                 await _auditService.LogActionAsync(
                     GetUserId(),
                     "UPDATE",
@@ -378,6 +390,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error updating user status {id}: {ex.Message}");
                 _logger.LogError(ex, "Error updating user status {Id}", id);
                 return StatusCode(500, new { message = "Error updating user status", error = ex.Message });
             }
@@ -389,9 +402,14 @@ namespace FleetManagerPro.API.Controllers
         {
             try
             {
+                Console.WriteLine($"[USERS] UpdateUserRole called for ID: {id}, Role: {dto.Role}");
+
                 var user = await _context.Users.FindAsync(id);
                 if (user == null)
+                {
+                    Console.WriteLine($"[USERS] User not found: {id}");
                     return NotFound(new { message = "User not found" });
+                }
 
                 var validRoles = new[] { "Admin", "Manager", "Driver" };
                 if (!validRoles.Contains(dto.Role))
@@ -401,9 +419,13 @@ namespace FleetManagerPro.API.Controllers
                 user.Role = dto.Role;
                 user.UpdatedAt = DateTime.UtcNow;
 
+                Console.WriteLine($"[USERS] Setting role from {oldRole} to {dto.Role}");
+
+                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
-                // ✅ AUDIT LOG - UPDATE ROLE
+                Console.WriteLine($"[USERS] Role updated successfully");
+
                 await _auditService.LogActionAsync(
                     GetUserId(),
                     "UPDATE",
@@ -429,6 +451,8 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error updating user role {id}: {ex.Message}");
+                Console.WriteLine($"[USERS] Stack: {ex.StackTrace}");
                 _logger.LogError(ex, "Error updating user role {Id}", id);
                 return StatusCode(500, new { message = "Error updating user role", error = ex.Message });
             }
@@ -440,44 +464,100 @@ namespace FleetManagerPro.API.Controllers
         {
             try
             {
+                Console.WriteLine($"[USERS] UpdateUser called for ID: {id}");
+                Console.WriteLine($"[USERS] Received DTO: {System.Text.Json.JsonSerializer.Serialize(dto)}");
+
                 var user = await _context.Users.FindAsync(id);
                 if (user == null)
+                {
+                    Console.WriteLine($"[USERS] User not found: {id}");
                     return NotFound(new { message = "User not found" });
+                }
 
-                // Capture old values
                 var oldValue = new
                 {
                     user.Name,
                     user.Email,
                     user.Phone,
                     user.Address,
+                    user.Role,
                     user.Status
                 };
 
-                if (!string.IsNullOrEmpty(dto.Name))
-                    user.Name = dto.Name;
+                bool changed = false;
 
-                if (!string.IsNullOrEmpty(dto.Email))
+                if (!string.IsNullOrEmpty(dto.Name) && dto.Name != user.Name)
+                {
+                    user.Name = dto.Name;
+                    changed = true;
+                    Console.WriteLine($"[USERS] Name changed to {dto.Name}");
+                }
+
+                if (!string.IsNullOrEmpty(dto.Email) && dto.Email != user.Email)
                 {
                     if (await _context.Users.AnyAsync(u => u.Email == dto.Email && u.Id != id))
                         return BadRequest(new { message = "Email already in use" });
                     user.Email = dto.Email;
+                    changed = true;
+                    Console.WriteLine($"[USERS] Email changed to {dto.Email}");
                 }
 
-                if (!string.IsNullOrEmpty(dto.Phone))
+                if (!string.IsNullOrEmpty(dto.Phone) && dto.Phone != user.Phone)
+                {
                     user.Phone = dto.Phone;
+                    changed = true;
+                    Console.WriteLine($"[USERS] Phone changed to {dto.Phone}");
+                }
 
-                if (!string.IsNullOrEmpty(dto.Address))
+                if (!string.IsNullOrEmpty(dto.Address) && dto.Address != user.Address)
+                {
                     user.Address = dto.Address;
+                    changed = true;
+                    Console.WriteLine($"[USERS] Address changed");
+                }
 
-                if (!string.IsNullOrEmpty(dto.Status))
+                if (!string.IsNullOrEmpty(dto.Role) && dto.Role != user.Role)
+                {
+                    var validRoles = new[] { "Admin", "Manager", "Driver" };
+                    if (!validRoles.Contains(dto.Role))
+                        return BadRequest(new { message = "Invalid role. Must be Admin, Manager, or Driver" });
+                    user.Role = dto.Role;
+                    changed = true;
+                    Console.WriteLine($"[USERS] Role changed from {oldValue.Role} to {dto.Role}");
+                }
+
+                if (!string.IsNullOrEmpty(dto.Status) && dto.Status != user.Status)
+                {
                     user.Status = dto.Status;
+                    changed = true;
+                    Console.WriteLine($"[USERS] Status changed from {oldValue.Status} to {dto.Status}");
+                }
+
+                if (!changed)
+                {
+                    Console.WriteLine($"[USERS] No changes detected");
+                    return Ok(new
+                    {
+                        message = "No changes made",
+                        user = new
+                        {
+                            user.Id,
+                            user.Name,
+                            user.Email,
+                            user.Role,
+                            user.Status,
+                            user.UpdatedAt
+                        }
+                    });
+                }
 
                 user.UpdatedAt = DateTime.UtcNow;
 
+                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
-                // ✅ AUDIT LOG - UPDATE
+                Console.WriteLine($"[USERS] User {id} updated successfully");
+
                 await _auditService.LogActionAsync(
                     GetUserId(),
                     "UPDATE",
@@ -485,7 +565,7 @@ namespace FleetManagerPro.API.Controllers
                     id,
                     $"Updated user details: {user.Name}",
                     oldValue,
-                    new { user.Name, user.Email, user.Phone, user.Address, user.Status }
+                    new { user.Name, user.Email, user.Phone, user.Address, user.Role, user.Status }
                 );
 
                 return Ok(new
@@ -506,6 +586,8 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error updating user {id}: {ex.Message}");
+                Console.WriteLine($"[USERS] Stack: {ex.StackTrace}");
                 _logger.LogError(ex, "Error updating user {Id}", id);
                 return StatusCode(500, new { message = "Error updating user", error = ex.Message });
             }
@@ -517,6 +599,8 @@ namespace FleetManagerPro.API.Controllers
         {
             try
             {
+                Console.WriteLine($"[USERS] UpdateOwnProfile called");
+
                 var userId = GetUserId();
 
                 if (string.IsNullOrEmpty(userId))
@@ -526,7 +610,6 @@ namespace FleetManagerPro.API.Controllers
                 if (user == null)
                     return NotFound(new { message = "User not found" });
 
-                // Capture old values
                 var oldValue = new
                 {
                     user.Name,
@@ -572,9 +655,11 @@ namespace FleetManagerPro.API.Controllers
 
                 user.UpdatedAt = DateTime.UtcNow;
 
+                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
-                // ✅ AUDIT LOG - UPDATE PROFILE
+                Console.WriteLine($"[USERS] Profile updated successfully");
+
                 await _auditService.LogActionAsync(
                     userId,
                     "UPDATE",
@@ -609,6 +694,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error updating profile: {ex.Message}");
                 _logger.LogError(ex, "Error updating profile");
                 return StatusCode(500, new { message = "Error updating profile", error = ex.Message });
             }
@@ -620,6 +706,8 @@ namespace FleetManagerPro.API.Controllers
         {
             try
             {
+                Console.WriteLine($"[USERS] ChangePassword called");
+
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
@@ -641,7 +729,8 @@ namespace FleetManagerPro.API.Controllers
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
-                // ✅ AUDIT LOG - CHANGE PASSWORD
+                Console.WriteLine($"[USERS] Password changed successfully");
+
                 await _auditService.LogActionAsync(
                     userId,
                     "UPDATE",
@@ -656,6 +745,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error changing password: {ex.Message}");
                 _logger.LogError(ex, "Error changing password");
                 return StatusCode(500, new { message = "Error changing password", error = ex.Message });
             }
@@ -667,6 +757,8 @@ namespace FleetManagerPro.API.Controllers
         {
             try
             {
+                Console.WriteLine($"[USERS] ChangeUserPassword called for ID: {id}");
+
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
@@ -680,7 +772,8 @@ namespace FleetManagerPro.API.Controllers
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
-                // ✅ AUDIT LOG - ADMIN CHANGE PASSWORD
+                Console.WriteLine($"[USERS] Password changed for user {id}");
+
                 await _auditService.LogActionAsync(
                     GetUserId(),
                     "UPDATE",
@@ -695,12 +788,11 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error changing user password {id}: {ex.Message}");
                 _logger.LogError(ex, "Error changing user password {Id}", id);
                 return StatusCode(500, new { message = "Error changing password", error = ex.Message });
             }
         }
-
-        // ---- Warnings and Suspensions ----
 
         [HttpGet("{driverId}/warnings")]
         [Authorize(Roles = "Admin")]
@@ -716,6 +808,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error retrieving warnings for driver {driverId}: {ex.Message}");
                 _logger.LogError(ex, "Error retrieving warnings for driver {DriverId}", driverId);
                 return StatusCode(500, new { message = "Error retrieving warnings", error = ex.Message });
             }
@@ -729,7 +822,6 @@ namespace FleetManagerPro.API.Controllers
             {
                 var warning = await _disciplinaryService.AddWarningAsync(driverId, dto.Reason, dto.IssuedBy);
 
-                // ✅ AUDIT LOG - ADD WARNING
                 await _auditService.LogActionAsync(
                     GetUserId(),
                     "CREATE",
@@ -744,6 +836,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error adding warning for driver {driverId}: {ex.Message}");
                 _logger.LogError(ex, "Error adding warning for driver {DriverId}", driverId);
                 return StatusCode(500, new { message = "Error adding warning", error = ex.Message });
             }
@@ -763,6 +856,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error retrieving suspensions for driver {driverId}: {ex.Message}");
                 _logger.LogError(ex, "Error retrieving suspensions for driver {DriverId}", driverId);
                 return StatusCode(500, new { message = "Error retrieving suspensions", error = ex.Message });
             }
@@ -776,7 +870,6 @@ namespace FleetManagerPro.API.Controllers
             {
                 var suspension = await _disciplinaryService.AddSuspensionAsync(driverId, dto.Reason, dto.IssuedBy, dto.AutoSuspended);
 
-                // ✅ AUDIT LOG - ADD SUSPENSION
                 await _auditService.LogActionAsync(
                     GetUserId(),
                     "CREATE",
@@ -791,6 +884,7 @@ namespace FleetManagerPro.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[USERS] Error adding suspension for driver {driverId}: {ex.Message}");
                 _logger.LogError(ex, "Error adding suspension for driver {DriverId}", driverId);
                 return StatusCode(500, new { message = "Error adding suspension", error = ex.Message });
             }
@@ -846,6 +940,7 @@ namespace FleetManagerPro.API.Controllers
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string? Address { get; set; }
+        public string? Role { get; set; }
         public string? Status { get; set; }
     }
 
@@ -861,5 +956,16 @@ namespace FleetManagerPro.API.Controllers
         public DateTime? LicenseExpiry { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public int? ExperienceYears { get; set; }
+    }
+
+    public class ChangePasswordDto
+    {
+        public string CurrentPassword { get; set; } = "";
+        public string NewPassword { get; set; } = "";
+    }
+
+    public class ChangeUserPasswordDto
+    {
+        public string NewPassword { get; set; } = "";
     }
 }
