@@ -228,3 +228,151 @@ input {
     font-size: 0.875rem;
     text-align: center;
 }
+.step-info {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #edf2f7;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #2d3748;
+    line-height: 1.6;
+}
+
+.code-timer {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #ed8936;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+    .code-timer strong {
+        font-weight: 600;
+        color: #dd6b20;
+    }
+
+.button-group {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+.btn-back {
+    width: 100%;
+    padding: 0.875rem;
+    background: #e2e8f0;
+    color: #2d3748;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+    .btn-back:hover {
+        background: #cbd5e0;
+        transform: translateY(-2px);
+    }
+
+.completion-step {
+    text-align: center;
+}
+
+.step-header {
+    margin-bottom: 1.5rem;
+}
+
+.check-icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.step-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #2d3748;
+}
+
+.step-header p {
+    margin: 0.5rem 0 0;
+    color: #718096;
+    font-size: 0.9rem;
+}
+
+.details-summary {
+    background: #f7fafc;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-row .label {
+        font-weight: 600;
+        color: #718096;
+        font-size: 0.9rem;
+    }
+
+    .detail-row .value {
+        color: #2d3748;
+        font-weight: 500;
+    }
+
+.code-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+    .code-row input {
+        flex: 1;
+    }
+
+.btn-send-code {
+    padding: 0.875rem 1rem;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+    .btn-send-code:hover:not(:disabled) {
+        background: #764ba2;
+        transform: translateY(-2px);
+    }
+
+    .btn-send-code:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+.code-timer {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #ed8936;
+    margin-top: 0.5rem;
+}
+
+    .code-timer strong {
+        font-weight: 600;
+    }
+

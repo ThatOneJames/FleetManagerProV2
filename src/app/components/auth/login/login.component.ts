@@ -18,9 +18,12 @@ export class LoginComponent implements OnInit {
     successMessage: string | null = null;
     emailValidationError: string = '';
     loading = false;
+    codeSending = false;
     showPassword = false;
     showRegisterPassword = false;
     isRegisterMode = false;
+    codeRequested = false;
+    codeCountdown = 0;
 
     constructor(
         private fb: FormBuilder,
@@ -36,6 +39,7 @@ export class LoginComponent implements OnInit {
         this.registerForm = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]],
+            verificationCode: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(6)]],
             password: ['', [Validators.required, Validators.minLength(6)]]
         });
     }
@@ -52,6 +56,8 @@ export class LoginComponent implements OnInit {
         this.errorMessage = null;
         this.successMessage = null;
         this.emailValidationError = '';
+        this.codeRequested = false;
+        this.codeCountdown = 0;
         this.loginForm.reset();
         this.registerForm.reset();
     }
@@ -118,6 +124,43 @@ export class LoginComponent implements OnInit {
         });
     }
 
+    async sendVerificationCode(): Promise<void> {
+        const email = this.registerForm.get('email')?.value;
+
+        if (!email || this.registerForm.get('email')?.invalid) {
+            this.errorMessage = 'Please enter a valid email address';
+            return;
+        }
+
+        if (this.emailValidationError) {
+            this.errorMessage = 'Please provide a valid email address from a registered domain';
+            return;
+        }
+
+        this.codeSending = true;
+        this.errorMessage = null;
+        this.successMessage = null;
+
+        this.http.post(`${environment.apiUrl}/auth/request-verification-code`, { email }).subscribe({
+            next: (response: any) => {
+                this.codeSending = false;
+                this.successMessage = 'Verification code sent to your email!';
+                this.codeRequested = true;
+                this.startCodeCountdown();
+            },
+            error: (error: any) => {
+                this.codeSending = false;
+                if (error.status === 400) {
+                    this.errorMessage = error.error?.message || 'Email already registered';
+                } else if (error.status === 500) {
+                    this.errorMessage = 'Server error. Please try again later.';
+                } else {
+                    this.errorMessage = error.error?.message || 'Failed to send code. Try again.';
+                }
+            }
+        });
+    }
+
     async onRegister(): Promise<void> {
         if (this.registerForm.invalid) {
             this.markFormGroupTouched(this.registerForm);
@@ -129,11 +172,16 @@ export class LoginComponent implements OnInit {
             return;
         }
 
+        if (!this.codeRequested) {
+            this.errorMessage = 'Please send verification code first';
+            return;
+        }
+
         this.loading = true;
         this.errorMessage = null;
         this.successMessage = null;
 
-        const { name, email, password } = this.registerForm.value;
+        const { name, email, password, verificationCode } = this.registerForm.value;
 
         try {
             console.log('Starting registration process...');
@@ -142,6 +190,7 @@ export class LoginComponent implements OnInit {
                 name,
                 email: email.toLowerCase().trim(),
                 password,
+                verificationCode,
                 role: 'Driver',
                 status: 'Active',
                 phone: '',
@@ -165,13 +214,16 @@ export class LoginComponent implements OnInit {
                 next: (response: any) => {
                     this.loading = false;
                     console.log('Registration successful:', response);
-                    this.successMessage = 'Registration successful! Check your email to verify your account.';
+                    this.successMessage = 'Registration successful! Redirecting to login...';
                     this.registerForm.reset();
 
                     setTimeout(() => {
                         this.isRegisterMode = false;
                         this.successMessage = null;
-                    }, 3000);
+                        this.codeRequested = false;
+                        this.codeCountdown = 0;
+                        this.errorMessage = null;
+                    }, 2000);
                 },
                 error: (error: any) => {
                     this.loading = false;
@@ -181,7 +233,7 @@ export class LoginComponent implements OnInit {
                         this.emailValidationError = error.error.error;
                         this.errorMessage = error.error.message || 'Invalid email address';
                     } else if (error.status === 400) {
-                        this.errorMessage = error.error?.message || 'Email already exists.';
+                        this.errorMessage = error.error?.message || 'Registration failed. Invalid code or email.';
                     } else if (error.status === 500) {
                         this.errorMessage = 'Server error. Please try again later.';
                     } else {
@@ -194,6 +246,23 @@ export class LoginComponent implements OnInit {
             console.error('Registration error:', error);
             this.errorMessage = 'Registration failed. Please try again.';
         }
+    }
+
+    startCodeCountdown(): void {
+        this.codeCountdown = 300; // 5 minutes
+        const interval = setInterval(() => {
+            this.codeCountdown--;
+            if (this.codeCountdown <= 0) {
+                clearInterval(interval);
+                this.codeRequested = false;
+            }
+        }, 1000);
+    }
+
+    getCountdownDisplay(): string {
+        const mins = Math.floor(this.codeCountdown / 60);
+        const secs = this.codeCountdown % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
     private redirectBasedOnRole(role: string | null): void {
@@ -236,6 +305,10 @@ export class LoginComponent implements OnInit {
 
     get registerEmail() {
         return this.registerForm.get('email');
+    }
+
+    get verificationCode() {
+        return this.registerForm.get('verificationCode');
     }
 
     get registerPassword() {
