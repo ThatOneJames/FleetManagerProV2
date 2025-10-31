@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+﻿import { Component, OnInit, ViewChild } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { User } from './models/user.model';
@@ -19,7 +19,6 @@ export class AppComponent implements OnInit {
     sidebarOpen = true;
     isMobile = false;
 
-    // Admin navigation
     adminNavigationItems = [
         {
             title: 'Overview',
@@ -39,6 +38,7 @@ export class AppComponent implements OnInit {
             title: 'System',
             items: [
                 { title: 'System Management', icon: 'build', route: '/admin/system-management' },
+                { title: 'Audit Logs', icon: 'security', route: '/admin/audit-logs' }  // ← ADD THIS
             ]
         },
     ];

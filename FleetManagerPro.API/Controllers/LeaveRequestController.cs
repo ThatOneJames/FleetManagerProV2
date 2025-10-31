@@ -1,10 +1,11 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using FleetManagerPro.API.Services;
 using FleetManagerPro.API.Models;
 using FleetManagerPro.API.DTOs;
 using FleetManagerPro.API.Data;
+using System.Security.Claims;
 
 namespace FleetManagerPro.API.Controllers
 {
@@ -16,16 +17,21 @@ namespace FleetManagerPro.API.Controllers
         private readonly ILeaveRequestService _leaveRequestService;
         private readonly ILogger<LeaveRequestsController> _logger;
         private readonly FleetManagerDbContext _context;
+        private readonly IAuditService _auditService;
 
         public LeaveRequestsController(
             ILeaveRequestService leaveRequestService,
             ILogger<LeaveRequestsController> logger,
-            FleetManagerDbContext context)
+            FleetManagerDbContext context,
+            IAuditService auditService)
         {
             _leaveRequestService = leaveRequestService;
             _logger = logger;
             _context = context;
+            _auditService = auditService;
         }
+
+        private string GetUserId() => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
 
         [HttpGet]
         public async Task<IActionResult> GetAllLeaveRequests()
@@ -127,6 +133,17 @@ namespace FleetManagerPro.API.Controllers
 
                 var leaveRequest = await _leaveRequestService.CreateLeaveRequestAsync(dto);
 
+                // ✅ AUDIT LOG - CREATE
+                await _auditService.LogActionAsync(
+                    GetUserId(),
+                    "CREATE",
+                    "LeaveRequest",
+                    leaveRequest.Id,
+                    $"Created leave request from {leaveRequest.StartDate:MMM dd, yyyy} to {leaveRequest.EndDate:MMM dd, yyyy}",
+                    null,
+                    new { leaveRequest.StartDate, leaveRequest.EndDate, dto.Reason, leaveRequest.Status }
+                );
+
                 try
                 {
                     var driver = await _context.Users.FindAsync(dto.DriverId);
@@ -210,11 +227,27 @@ namespace FleetManagerPro.API.Controllers
         {
             try
             {
+                var existingRequest = await _leaveRequestService.GetLeaveRequestByIdAsync(id);
+                if (existingRequest == null)
+                    return NotFound(new { message = "Leave request not found" });
+
                 var leaveRequest = await _leaveRequestService.ApproveLeaveRequestAsync(id, dto.ApprovedBy, dto.Notes);
                 if (leaveRequest == null)
                 {
                     return NotFound(new { message = "Leave request not found" });
                 }
+
+                // ✅ AUDIT LOG - APPROVE
+                await _auditService.LogActionAsync(
+                    GetUserId(),
+                    "UPDATE",
+                    "LeaveRequest",
+                    id,
+                    $"Approved leave request - Notes: {dto.Notes}",
+                    new { Status = existingRequest.Status },
+                    new { Status = leaveRequest.Status, ApprovedBy = dto.ApprovedBy }
+                );
+
                 return Ok(leaveRequest);
             }
             catch (InvalidOperationException ex)
@@ -239,11 +272,27 @@ namespace FleetManagerPro.API.Controllers
                     return BadRequest(new { message = "Rejection reason is required" });
                 }
 
+                var existingRequest = await _leaveRequestService.GetLeaveRequestByIdAsync(id);
+                if (existingRequest == null)
+                    return NotFound(new { message = "Leave request not found" });
+
                 var leaveRequest = await _leaveRequestService.RejectLeaveRequestAsync(id, dto.RejectedBy, dto.RejectionReason);
                 if (leaveRequest == null)
                 {
                     return NotFound(new { message = "Leave request not found" });
                 }
+
+                // ✅ AUDIT LOG - REJECT
+                await _auditService.LogActionAsync(
+                    GetUserId(),
+                    "UPDATE",
+                    "LeaveRequest",
+                    id,
+                    $"Rejected leave request - Reason: {dto.RejectionReason}",
+                    new { Status = existingRequest.Status },
+                    new { Status = leaveRequest.Status, RejectionReason = dto.RejectionReason }
+                );
+
                 return Ok(leaveRequest);
             }
             catch (InvalidOperationException ex)
@@ -262,11 +311,27 @@ namespace FleetManagerPro.API.Controllers
         {
             try
             {
+                var leaveRequest = await _leaveRequestService.GetLeaveRequestByIdAsync(id);
+                if (leaveRequest == null)
+                    return NotFound(new { message = "Leave request not found" });
+
                 var success = await _leaveRequestService.DeleteLeaveRequestAsync(id);
                 if (!success)
                 {
                     return NotFound(new { message = "Leave request not found" });
                 }
+
+                // ✅ AUDIT LOG - DELETE
+                await _auditService.LogActionAsync(
+                    GetUserId(),
+                    "DELETE",
+                    "LeaveRequest",
+                    id,
+                    $"Deleted leave request from {leaveRequest.StartDate:MMM dd} to {leaveRequest.EndDate:MMM dd}",
+                    new { leaveRequest.StartDate, leaveRequest.EndDate, leaveRequest.Status },
+                    null
+                );
+
                 return NoContent();
             }
             catch (InvalidOperationException ex)

@@ -69,6 +69,8 @@ builder.Services.AddScoped<IRouteEstimationService, RouteEstimationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IEmailDomainValidator, EmailDomainValidator>();
 builder.Services.AddScoped<DriverDisciplinaryService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
+
 
 
 builder.Services.AddHostedService<NotificationBackgroundService>();

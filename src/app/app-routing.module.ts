@@ -10,6 +10,7 @@ import { FleetManagementComponent } from './components/admin/fleet-management/fl
 import { RouteOptimizationComponent } from './components/admin/route-optimization/route-optimization.component';
 import { MaintenanceComponent } from './components/admin/maintenance/maintenance.component';
 import { LeaveManagementComponent } from './components/admin/leave-management/leave-management.component';
+import { AuditViewerComponent } from './components/admin/audit-viewer/audit-viewer.component';
 
 // Driver Component imports
 import { DriverDashboardComponent } from './components/driver/dashboard/dashboard.component';
@@ -45,7 +46,8 @@ const routes: Routes = [
       { path: 'routes', component: RouteOptimizationComponent },
       { path: 'maintenance', component: MaintenanceComponent },
         { path: 'leave-management', component: LeaveManagementComponent },
-        { path: 'system-management', component: SystemManagementComponent }
+        { path: 'system-management', component: SystemManagementComponent },
+        { path: 'audit-logs', component: AuditViewerComponent }
     ]
   },
   

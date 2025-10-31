@@ -1,4 +1,4 @@
-using FleetManagerPro.API.DTOs;
+﻿using FleetManagerPro.API.DTOs;
 using FleetManagerPro.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,13 +12,20 @@ namespace FleetManagerPro.API.Controllers
     public class RoutesController : ControllerBase
     {
         private readonly IRouteService _routeService;
+        private readonly IAuditService _auditService;
         private readonly ILogger<RoutesController> _logger;
 
-        public RoutesController(IRouteService routeService, ILogger<RoutesController> logger)
+        public RoutesController(
+            IRouteService routeService,
+            IAuditService auditService,
+            ILogger<RoutesController> logger)
         {
             _routeService = routeService;
+            _auditService = auditService;
             _logger = logger;
         }
+
+        private string GetUserId() => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RouteDto>>> GetAllRoutes()
@@ -106,8 +113,19 @@ namespace FleetManagerPro.API.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
+                var userId = GetUserId();
                 var route = await _routeService.CreateRouteAsync(createDto, userId);
+
+                // ✅ AUDIT LOG - CREATE
+                await _auditService.LogActionAsync(
+                    userId,
+                    "CREATE",
+                    "Route",
+                    route.Id,
+                    $"Created route: {createDto.Name} - Status: {route.Status}",
+                    null,
+                    new { route.Name, route.Status, route.DriverId }
+                );
 
                 return CreatedAtAction(nameof(GetRouteById), new { id = route.Id }, route);
             }
@@ -126,9 +144,31 @@ namespace FleetManagerPro.API.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
+                var existingRoute = await _routeService.GetRouteByIdAsync(id);
+                if (existingRoute == null)
+                    return NotFound($"Route with ID {id} not found");
+
+                // Capture old values
+                var oldValue = new
+                {
+                    existingRoute.Name,
+                    existingRoute.Status
+                };
+
                 var route = await _routeService.UpdateRouteAsync(id, updateDto);
                 if (route == null)
                     return NotFound($"Route with ID {id} not found");
+
+                // ✅ AUDIT LOG - UPDATE
+                await _auditService.LogActionAsync(
+                    GetUserId(),
+                    "UPDATE",
+                    "Route",
+                    id,
+                    $"Updated route: {updateDto.Name} - Status: {updateDto.Status}",
+                    oldValue,
+                    new { route.Name, route.Status }
+                );
 
                 return Ok(route);
             }
@@ -144,9 +184,24 @@ namespace FleetManagerPro.API.Controllers
         {
             try
             {
+                var existingRoute = await _routeService.GetRouteByIdAsync(id);
+                if (existingRoute == null)
+                    return NotFound($"Route with ID {id} not found");
+
                 var result = await _routeService.DeleteRouteAsync(id);
                 if (!result)
                     return NotFound($"Route with ID {id} not found");
+
+                // ✅ AUDIT LOG - DELETE
+                await _auditService.LogActionAsync(
+                    GetUserId(),
+                    "DELETE",
+                    "Route",
+                    id,
+                    $"Deleted route: {existingRoute.Name}",
+                    new { existingRoute.Name, existingRoute.Status },
+                    null
+                );
 
                 return NoContent();
             }
@@ -166,6 +221,18 @@ namespace FleetManagerPro.API.Controllers
                     return BadRequest(ModelState);
 
                 var stop = await _routeService.UpdateRouteStopStatusAsync(stopId, updateDto);
+
+                // ✅ AUDIT LOG - UPDATE STOP
+                await _auditService.LogActionAsync(
+                    GetUserId(),
+                    "UPDATE",
+                    "RouteStop",
+                    stopId,
+                    $"Updated stop status to: {updateDto.Status}",
+                    null,
+                    new { stop.Status }
+                );
+
                 return Ok(stop);
             }
             catch (KeyNotFoundException ex)
@@ -185,6 +252,18 @@ namespace FleetManagerPro.API.Controllers
             try
             {
                 var route = await _routeService.OptimizeRouteAsync(id);
+
+                // ✅ AUDIT LOG - OPTIMIZE
+                await _auditService.LogActionAsync(
+                    GetUserId(),
+                    "UPDATE",
+                    "Route",
+                    id,
+                    $"Optimized route: {route.Name}",
+                    null,
+                    new { route.Name, route.Status }
+                );
+
                 return Ok(route);
             }
             catch (KeyNotFoundException ex)

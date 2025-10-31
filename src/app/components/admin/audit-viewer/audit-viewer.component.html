@@ -1,0 +1,153 @@
+﻿<div class="audit-viewer-container">
+    <!-- Header -->
+    <div class="header">
+        <h2>📋 Audit Logs</h2>
+        <div class="header-actions">
+            <button (click)="onRefresh()" class="btn btn-secondary" [disabled]="loading">
+                🔄 Refresh
+            </button>
+            <button (click)="exportToCsv()" class="btn btn-secondary" [disabled]="auditLogs.length === 0">
+                📥 Export CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div *ngIf="statistics" class="statistics-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ statistics.totalActions }}</div>
+            <div class="stat-label">Total Actions</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ statistics.totalCreates }}</div>
+            <div class="stat-label">Creates</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ statistics.totalUpdates }}</div>
+            <div class="stat-label">Updates</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ statistics.totalDeletes }}</div>
+            <div class="stat-label">Deletes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ statistics.successRate.toFixed(1) }}%</div>
+            <div class="stat-label">Success Rate</div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <div class="filter-group">
+            <label for="search">Search User:</label>
+            <input #searchInput
+                   id="search"
+                   type="text"
+                   [(ngModel)]="filterUserId"
+                   (keyup)="onSearch(searchInput.value)"
+                   placeholder="Enter user ID or name..."
+                   class="filter-input">
+        </div>
+
+        <div class="filter-group">
+            <label for="entityType">Entity Type:</label>
+            <select id="entityType"
+                    [(ngModel)]="filterEntityType"
+                    (change)="onFilterChange()"
+                    class="filter-input">
+                <option value="">All Types</option>
+                <option value="Route">Route</option>
+                <option value="Vehicle">Vehicle</option>
+                <option value="Driver">Driver</option>
+                <option value="MaintenanceTask">Maintenance Task</option>
+                <option value="LeaveRequest">Leave Request</option>
+                <option value="Notification">Notification</option>
+                <option value="Attendance">Attendance</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label for="actionType">Action:</label>
+            <select id="actionType"
+                    [(ngModel)]="filterActionType"
+                    (change)="onFilterChange()"
+                    class="filter-input">
+                <option value="">All Actions</option>
+                <option value="CREATE">Create</option>
+                <option value="UPDATE">Update</option>
+                <option value="DELETE">Delete</option>
+                <option value="LOGIN">Login</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading">
+        <div class="spinner"></div>
+        Loading audit logs...
+    </div>
+
+    <!-- Audit Logs Table -->
+    <div *ngIf="!loading && auditLogs.length > 0" class="table-container">
+        <table class="audit-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let log of auditLogs" class="log-row">
+                    <td class="timestamp">{{ log.timestamp | date: 'medium' }}</td>
+                    <td class="user">{{ log.userName }}</td>
+                    <td class="action">
+                        <span class="badge" [ngClass]="getActionClass(log.actionType)">
+                            {{ log.actionType }}
+                        </span>
+                    </td>
+                    <td class="entity">
+                        <span class="entity-badge">
+                            {{ getEntityTypeIcon(log.entityType) }}
+                            {{ log.entityType }}
+                        </span>
+                    </td>
+                    <td class="description">{{ log.description || '-' }}</td>
+                    <td class="status">
+                        <span class="badge" [ngClass]="getStatusClass(log.status)">
+                            {{ log.status }}
+                        </span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <button (click)="goToPage(currentPage - 1)"
+                    [disabled]="currentPage === 1"
+                    class="btn btn-sm">
+                ← Previous
+            </button>
+
+            <span class="page-info">
+                Page {{ currentPage }} of {{ getTotalPages() }}
+                ({{ totalLogs }} total)
+            </span>
+
+            <button (click)="goToPage(currentPage + 1)"
+                    [disabled]="currentPage === getTotalPages()"
+                    class="btn btn-sm">
+                Next →
+            </button>
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loading && auditLogs.length === 0" class="empty-state">
+        📭 No audit logs found
+    </div>
+</div>
