@@ -192,7 +192,7 @@ namespace FleetManagerPro.API.Controllers
                     "UPDATE",
                     "MaintenanceTask",
                     id,
-                    $"Updated maintenance task - Status: {dto.Status}, Cost: ${dto.ActualCost}",
+                    $"Updated maintenance task - Status: {oldValue.Status} → {dto.Status}, Cost: ${oldValue.ActualCost} → ${dto.ActualCost}",
                     oldValue,
                     new { existing.Status, existing.Priority, existing.CompletedDate, existing.ActualCost }
                 );

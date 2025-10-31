@@ -164,8 +164,8 @@ namespace FleetManagerPro.API.Controllers
                     GetUserId(),
                     "UPDATE",
                     "Route",
-                    id,
-                    $"Updated route: {updateDto.Name} - Status: {updateDto.Status}",
+                     id,
+                    $"Updated route: {updateDto.Name} - Status: {oldValue.Status} → {updateDto.Status}",
                     oldValue,
                     new { route.Name, route.Status }
                 );

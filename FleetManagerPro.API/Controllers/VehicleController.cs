@@ -143,7 +143,7 @@ namespace FleetManager.Controllers
                     "UPDATE",
                     "Vehicle",
                     id,
-                    $"Updated vehicle: {vehicle.Make} {vehicle.Model} - Status: {vehicle.Status}",
+                    $"Updated vehicle: {vehicle.Make} {vehicle.Model} - Status: {oldValue.Status} → {vehicle.Status}",
                     oldValue,
                     new
                     {
