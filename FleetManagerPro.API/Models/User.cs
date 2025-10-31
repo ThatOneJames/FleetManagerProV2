@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FleetManagerPro.API.Models
@@ -8,7 +8,7 @@ namespace FleetManagerPro.API.Models
     {
         [Key]
         [Column("id")]
-        public string Id { get; set; } = ""; // Empty - will be set in controller
+        public string Id { get; set; } = "";
 
         [Required]
         [Column("name")]
@@ -54,9 +54,19 @@ namespace FleetManagerPro.API.Models
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        // ✅ NEW: Email verification fields
+        [Column("is_email_verified")]
+        public bool IsEmailVerified { get; set; } = false;
+
+        [Column("email_verification_token")]
+        public string? EmailVerificationToken { get; set; }
+
+        [Column("email_verified_at")]
+        public DateTime? EmailVerifiedAt { get; set; }
+
         // Driver-specific fields
         [Column("license_number")]
-        public string? LicenseNumber { get; set; } // Plain text - NO HASHING
+        public string? LicenseNumber { get; set; }
 
         [Column("license_class")]
         public string? LicenseClass { get; set; }

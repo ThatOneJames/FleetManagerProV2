@@ -28,7 +28,6 @@ namespace FleetManager.Controllers
         private readonly IAuthService _authService;
         private readonly IUserRepository _userRepository;
         private readonly IEmailDomainValidator _emailDomainValidator;
-        private readonly HttpClient _httpClient;
         private readonly ILogger<AuthController> _logger;
 
         public AuthController(
@@ -45,10 +44,10 @@ namespace FleetManager.Controllers
             _userRepository = userRepository;
             _emailDomainValidator = emailDomainValidator;
             _logger = logger;
-            _httpClient = new HttpClient();
         }
 
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login(LoginDto loginDto)
         {
             try
@@ -63,6 +62,17 @@ namespace FleetManager.Controllers
                     return Unauthorized("Invalid email or password");
                 }
 
+                // ✅ Check if email is verified
+                if (!user.IsEmailVerified)
+                {
+                    return Unauthorized(new { message = "Please verify your email before logging in. Check your inbox for verification link." });
+                }
+
+                if (user.Status == "Suspended" || user.Status == "Archived" || user.Status == "Inactive")
+                {
+                    return Unauthorized(new { message = "Your account is suspended, archived, or inactive. Please contact the administrator." });
+                }
+
                 Console.WriteLine($"[AUTH] User found: {user.Id}, Role: {user.Role}");
 
                 var claims = new[]
@@ -71,11 +81,6 @@ namespace FleetManager.Controllers
                     new Claim(ClaimTypes.Name, user.Name),
                     new Claim(ClaimTypes.Role, user.Role)
                 };
-
-                if (user.Status == "Suspended" || user.Status == "Archived" || user.Status == "Inactive")
-                {
-                    return Unauthorized(new { message = "Your account is suspended, archived, or inactive. Please contact the administrator." });
-                }
 
                 var jwtKey = _config["Jwt:Key"];
                 var jwtIssuer = _config["Jwt:Issuer"];
@@ -153,33 +158,16 @@ namespace FleetManager.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
+        [AllowAnonymous]
+        public async Task<IActionResult> Register([FromBody] UserDto userDto)
         {
             try
             {
-                // ✅ NEW: Verify reCAPTCHA token
-                if (string.IsNullOrEmpty(request.RecaptchaToken))
-                {
-                    _logger.LogWarning("[AUTH] Registration attempt without reCAPTCHA token");
-                    return BadRequest(new { message = "reCAPTCHA verification required" });
-                }
-
-                var isValidRecaptcha = await VerifyRecaptchaToken(request.RecaptchaToken);
-                if (!isValidRecaptcha)
-                {
-                    _logger.LogWarning("[AUTH] reCAPTCHA verification failed");
-                    return BadRequest(new { message = "reCAPTCHA verification failed. Please try again." });
-                }
-
-                var userDto = request.UserDto;
-
-                // Validate model state (includes basic email validation)
                 if (userDto == null || string.IsNullOrEmpty(userDto.Email) || string.IsNullOrEmpty(userDto.Password))
                 {
                     return BadRequest(new { message = "Missing required fields" });
                 }
 
-                // VALIDATE EMAIL DOMAIN - CHECK IF REAL EMAIL
                 Console.WriteLine($"[AUTH] Validating email domain for: {userDto.Email}");
                 var (isValidDomain, domainMessage) = await _emailDomainValidator.ValidateEmailDomain(userDto.Email);
 
@@ -194,9 +182,6 @@ namespace FleetManager.Controllers
                     });
                 }
 
-                Console.WriteLine($"[AUTH] Email domain validation successful for: {userDto.Email}");
-
-                // Check if email already exists
                 if (await _context.Users.AnyAsync(u => u.Email == userDto.Email))
                 {
                     return BadRequest(new { message = "Email already exists" });
@@ -204,6 +189,7 @@ namespace FleetManager.Controllers
 
                 var hashedPassword = await _authService.HashPassword(userDto.Password);
                 var nextEmployeeId = await GenerateNextEmployeeId();
+                var verificationToken = Guid.NewGuid().ToString();
 
                 var user = new User
                 {
@@ -211,8 +197,10 @@ namespace FleetManager.Controllers
                     Email = userDto.Email.ToLower().Trim(),
                     Name = userDto.Name.Trim(),
                     PasswordHash = hashedPassword,
-                    Role = userDto.Role,
-                    Status = string.IsNullOrWhiteSpace(userDto.Status) ? "Active" : userDto.Status,
+                    Role = userDto.Role ?? "Driver",
+                    Status = "Active",
+                    IsEmailVerified = false,
+                    EmailVerificationToken = verificationToken,
                     Phone = string.IsNullOrWhiteSpace(userDto.Phone) ? null : userDto.Phone.Trim(),
                     Address = string.IsNullOrWhiteSpace(userDto.Address) ? null : userDto.Address.Trim(),
                     DateOfBirth = userDto.DateOfBirth,
@@ -223,7 +211,6 @@ namespace FleetManager.Controllers
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                // Driver-specific fields
                 if (user.Role == "Driver")
                 {
                     user.LicenseNumber = string.IsNullOrWhiteSpace(userDto.LicenseNumber) ? null : userDto.LicenseNumber.Trim();
@@ -239,11 +226,21 @@ namespace FleetManager.Controllers
                 await _context.Users.AddAsync(user);
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"[AUTH] User registered successfully: {user.Email} with ID: {user.Id}");
+                try
+                {
+                    await SendVerificationEmail(user.Email, user.Name, verificationToken);
+                    Console.WriteLine($"[AUTH] Verification email sent to: {user.Email}");
+                }
+                catch (Exception emailEx)
+                {
+                    Console.WriteLine($"[AUTH] Warning: Email sending failed: {emailEx.Message}");
+                }
+
+                Console.WriteLine($"[AUTH] User registered successfully: {user.Email}");
 
                 return Ok(new
                 {
-                    message = "User registered successfully",
+                    message = "Registration successful! Check your email to verify your account.",
                     userId = user.Id,
                     email = user.Email
                 });
@@ -251,50 +248,100 @@ namespace FleetManager.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"[AUTH] Registration error: {ex.Message}");
-                Console.WriteLine($"[AUTH] Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { message = "Internal server error during registration", error = ex.Message });
             }
         }
 
-        // ✅ NEW: Verify reCAPTCHA token
-        private async Task<bool> VerifyRecaptchaToken(string token)
+        [HttpPost("verify-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDto dto)
         {
             try
             {
-                var secretKey = _config["RecaptchaSettings:SecretKey"];
-                if (string.IsNullOrEmpty(secretKey))
+                Console.WriteLine($"[AUTH] Verifying email: {dto.Email}");
+
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == dto.Email.ToLower().Trim() &&
+                                               u.EmailVerificationToken == dto.Token);
+
+                if (user == null)
                 {
-                    _logger.LogError("[AUTH] reCAPTCHA secret key not configured");
-                    return false;
+                    Console.WriteLine($"[AUTH] Verification failed: Invalid email or token");
+                    return BadRequest(new { message = "Invalid verification link or email" });
                 }
 
-                var requestContent = new FormUrlEncodedContent(new[]
-                {
-                    new KeyValuePair<string, string>("secret", secretKey),
-                    new KeyValuePair<string, string>("response", token)
-                });
+                if (user.IsEmailVerified)
+                    return Ok(new { message = "Email already verified. You can now login." });
 
-                var response = await _httpClient.PostAsync(
-                    "https://www.google.com/recaptcha/api/siteverify",
-                    requestContent
-                );
+                user.IsEmailVerified = true;
+                user.EmailVerificationToken = null;
+                user.EmailVerifiedAt = DateTime.UtcNow;
+                user.UpdatedAt = DateTime.UtcNow;
 
-                var jsonContent = await response.Content.ReadAsStringAsync();
-                var jsonElement = JsonSerializer.Deserialize<JsonElement>(jsonContent);
+                await _context.SaveChangesAsync();
 
-                if (jsonElement.TryGetProperty("success", out var successProp))
-                {
-                    var isSuccess = successProp.GetBoolean();
-                    _logger.LogInformation($"[AUTH] reCAPTCHA verification result: {isSuccess}");
-                    return isSuccess;
-                }
+                Console.WriteLine($"[AUTH] Email verified successfully: {user.Email}");
 
-                return false;
+                return Ok(new { message = "Email verified successfully! You can now login." });
             }
             catch (Exception ex)
             {
-                _logger.LogError($"[AUTH] reCAPTCHA verification error: {ex.Message}");
-                return false;
+                Console.WriteLine($"[AUTH] Email verification error: {ex.Message}");
+                return StatusCode(500, new { message = "Error verifying email" });
+            }
+        }
+
+        private async Task SendVerificationEmail(string email, string name, string token)
+        {
+            try
+            {
+                var appUrl = _config["AppUrl"] ?? "http://localhost:4200";
+                var verificationLink = $"{appUrl}/verify-email?email={Uri.EscapeDataString(email)}&token={token}";
+
+                var subject = "Verify Your FleetManagerPro Account";
+                var body = $@"
+                    <!DOCTYPE html>
+                    <html>
+                    <body style='font-family: Arial, sans-serif;'>
+                        <div style='max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;'>
+                            <div style='background-color: #007bff; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;'>
+                                <h2>FleetManagerPro</h2>
+                            </div>
+                            <div style='padding: 20px;'>
+                                <h3>Welcome, {name}!</h3>
+                                <p>Thank you for registering with FleetManagerPro. Please verify your email address to activate your account.</p>
+                                <p>Click the button below to verify your email:</p>
+                                <p style='margin: 30px 0;'>
+                                    <a href='{verificationLink}' style='background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;'>Verify Email</a>
+                                </p>
+                                <p style='margin-top: 20px; font-size: 12px; color: #666;'>
+                                    Or copy and paste this link in your browser:<br/>
+                                    <small>{verificationLink}</small>
+                                </p>
+                                <p style='margin-top: 20px; font-size: 12px; color: #999;'>This link expires in 24 hours.</p>
+                            </div>
+                            <div style='padding: 20px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd;'>
+                                <p>&copy; 2025 FleetManagerPro. All rights reserved.</p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                ";
+
+                var sendGridKey = _config["SendGrid:ApiKey"];
+                if (!string.IsNullOrEmpty(sendGridKey))
+                {
+                    var client = new SendGrid.SendGridClient(sendGridKey);
+                    var from = new SendGrid.Helpers.Mail.EmailAddress("noreply@fleetmanagerpro.com", "FleetManagerPro");
+                    var to = new SendGrid.Helpers.Mail.EmailAddress(email, name);
+                    var msg = SendGrid.Helpers.Mail.MailHelper.CreateSingleEmail(from, to, subject, body, body);
+                    await client.SendEmailAsync(msg);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AUTH] Error sending verification email: {ex.Message}");
+                throw;
             }
         }
 
@@ -351,11 +398,10 @@ namespace FleetManager.Controllers
         }
     }
 
-    // ✅ NEW: DTO for register request with reCAPTCHA token
-    public class RegisterRequestDto
+    public class VerifyEmailDto
     {
-        public UserDto UserDto { get; set; } = new();
-        public string RecaptchaToken { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Token { get; set; } = "";
     }
 
     public class EmailValidationRequest

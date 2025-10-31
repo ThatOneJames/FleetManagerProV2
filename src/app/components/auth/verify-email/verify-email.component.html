@@ -1,0 +1,23 @@
+﻿<div class="verify-email-container">
+    <div class="verify-email-card">
+        <div *ngIf="loading" class="loading-state">
+            <div class="spinner"></div>
+            <h2>Verifying your email...</h2>
+            <p>Please wait while we verify your email address.</p>
+        </div>
+
+        <div *ngIf="success && !loading" class="success-state">
+            <div class="success-icon">✅</div>
+            <h2>Email Verified!</h2>
+            <p>{{ message }}</p>
+            <p class="redirect-text">Redirecting to login in 3 seconds...</p>
+        </div>
+
+        <div *ngIf="error && !loading" class="error-state">
+            <div class="error-icon">❌</div>
+            <h2>Verification Failed</h2>
+            <p>{{ error }}</p>
+            <button (click)="router.navigate(['/login'])" class="btn-back">Return to Login</button>
+        </div>
+    </div>
+</div>

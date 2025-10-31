@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
@@ -107,16 +107,8 @@ export class LoginComponent implements OnInit {
             },
             error: (error: any) => {
                 this.loading = false;
-                if (
-                    error.status === 401 &&
-                    error.error?.message?.toLowerCase().includes('suspend') ||
-                    error.error?.message?.toLowerCase().includes('archiv') ||
-                    error.error?.message?.toLowerCase().includes('inactive')
-                ) {
-                    this.errorMessage = error.error?.message || 'Your account is not active. Please contact admin.';
-                } 
-                else if (error.status === 401) {
-                    this.errorMessage = 'Invalid email or password.';
+                if (error.status === 401) {
+                    this.errorMessage = error.error?.message || 'Invalid email or password.';
                 } else if (error.status === 500) {
                     this.errorMessage = 'Server error. Please try again later.';
                 } else {
@@ -145,32 +137,27 @@ export class LoginComponent implements OnInit {
 
         try {
             console.log('Starting registration process...');
-            const recaptchaToken = await this.getRecaptchaToken();
-            console.log('reCAPTCHA token obtained:', recaptchaToken.substring(0, 20) + '...');
 
             const registerPayload = {
-                userDto: {
-                    name,
-                    email: email.toLowerCase().trim(),
-                    password,
-                    role: 'Driver',
-                    status: 'Active',
-                    phone: '',
-                    address: '',
-                    dateOfBirth: null,
-                    hireDate: new Date(),
-                    emergencyContact: '',
-                    profileImageUrl: '',
-                    licenseNumber: '',
-                    licenseClass: '',
-                    licenseExpiry: null,
-                    experienceYears: 0,
-                    safetyRating: 0.0,
-                    totalMilesDriven: 0.0,
-                    isAvailable: true,
-                    hasHelper: false
-                },
-                recaptchaToken: recaptchaToken
+                name,
+                email: email.toLowerCase().trim(),
+                password,
+                role: 'Driver',
+                status: 'Active',
+                phone: '',
+                address: '',
+                dateOfBirth: null,
+                hireDate: new Date(),
+                emergencyContact: '',
+                profileImageUrl: '',
+                licenseNumber: '',
+                licenseClass: '',
+                licenseExpiry: null,
+                experienceYears: 0,
+                safetyRating: 0.0,
+                totalMilesDriven: 0.0,
+                isAvailable: true,
+                hasHelper: false
             };
 
             console.log('Sending registration payload...');
@@ -178,7 +165,7 @@ export class LoginComponent implements OnInit {
                 next: (response: any) => {
                     this.loading = false;
                     console.log('Registration successful:', response);
-                    this.successMessage = 'Registration successful! You can now sign in.';
+                    this.successMessage = 'Registration successful! Check your email to verify your account.';
                     this.registerForm.reset();
 
                     setTimeout(() => {
@@ -204,39 +191,9 @@ export class LoginComponent implements OnInit {
             });
         } catch (error) {
             this.loading = false;
-            console.error('reCAPTCHA error:', error);
-            this.errorMessage = 'reCAPTCHA verification failed. Please try again.';
+            console.error('Registration error:', error);
+            this.errorMessage = 'Registration failed. Please try again.';
         }
-    }
-
-    private getRecaptchaToken(): Promise<string> {
-        return new Promise((resolve, reject) => {
-            try {
-                const grecaptcha = (window as any).grecaptcha;
-
-                if (!grecaptcha) {
-                    console.error('reCAPTCHA script not loaded');
-                    reject('reCAPTCHA not loaded. Please refresh the page.');
-                    return;
-                }
-
-                console.log('Executing reCAPTCHA...');
-                grecaptcha.ready(() => {
-                    grecaptcha.execute(environment.recaptchaSiteKey, { action: 'register' })
-                        .then((token: string) => {
-                            console.log('reCAPTCHA token generated successfully');
-                            resolve(token);
-                        })
-                        .catch((error: any) => {
-                            console.error('reCAPTCHA execution failed:', error);
-                            reject('Failed to generate reCAPTCHA token');
-                        });
-                });
-            } catch (error) {
-                console.error('reCAPTCHA setup error:', error);
-                reject(error);
-            }
-        });
     }
 
     private redirectBasedOnRole(role: string | null): void {
