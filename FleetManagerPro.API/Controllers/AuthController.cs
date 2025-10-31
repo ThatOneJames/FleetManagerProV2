@@ -1,4 +1,4 @@
-using FleetManagerPro.API.Models;
+﻿using FleetManagerPro.API.Models;
 using FleetManagerPro.API.Data;
 using FleetManagerPro.API.DTOs;
 using Microsoft.AspNetCore.Authorization;
@@ -13,6 +13,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json;
 using FleetManagerPro.API.Services;
 using FleetManagerPro.API.Data.Repository;
 
@@ -26,20 +27,25 @@ namespace FleetManager.Controllers
         private readonly IConfiguration _config;
         private readonly IAuthService _authService;
         private readonly IUserRepository _userRepository;
-        private readonly IEmailDomainValidator _emailDomainValidator; // ADD THIS
+        private readonly IEmailDomainValidator _emailDomainValidator;
+        private readonly HttpClient _httpClient;
+        private readonly ILogger<AuthController> _logger;
 
         public AuthController(
             FleetManagerDbContext context,
             IConfiguration config,
             IAuthService authService,
             IUserRepository userRepository,
-            IEmailDomainValidator emailDomainValidator) // ADD THIS
+            IEmailDomainValidator emailDomainValidator,
+            ILogger<AuthController> logger)
         {
             _context = context;
             _config = config;
             _authService = authService;
             _userRepository = userRepository;
-            _emailDomainValidator = emailDomainValidator; // ADD THIS
+            _emailDomainValidator = emailDomainValidator;
+            _logger = logger;
+            _httpClient = new HttpClient();
         }
 
         [HttpPost("login")]
@@ -147,20 +153,30 @@ namespace FleetManager.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] FleetManagerPro.API.DTOs.UserDto userDto)
+        public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
             try
             {
-                // Validate model state (includes basic email validation)
-                if (!ModelState.IsValid)
+                // ✅ NEW: Verify reCAPTCHA token
+                if (string.IsNullOrEmpty(request.RecaptchaToken))
                 {
-                    var errors = ModelState.Values
-                        .SelectMany(v => v.Errors)
-                        .Select(e => e.ErrorMessage)
-                        .ToList();
+                    _logger.LogWarning("[AUTH] Registration attempt without reCAPTCHA token");
+                    return BadRequest(new { message = "reCAPTCHA verification required" });
+                }
 
-                    Console.WriteLine($"[AUTH] Registration validation failed: {string.Join(", ", errors)}");
-                    return BadRequest(new { message = "Validation failed", errors = errors });
+                var isValidRecaptcha = await VerifyRecaptchaToken(request.RecaptchaToken);
+                if (!isValidRecaptcha)
+                {
+                    _logger.LogWarning("[AUTH] reCAPTCHA verification failed");
+                    return BadRequest(new { message = "reCAPTCHA verification failed. Please try again." });
+                }
+
+                var userDto = request.UserDto;
+
+                // Validate model state (includes basic email validation)
+                if (userDto == null || string.IsNullOrEmpty(userDto.Email) || string.IsNullOrEmpty(userDto.Password))
+                {
+                    return BadRequest(new { message = "Missing required fields" });
                 }
 
                 // VALIDATE EMAIL DOMAIN - CHECK IF REAL EMAIL
@@ -192,7 +208,7 @@ namespace FleetManager.Controllers
                 var user = new User
                 {
                     Id = nextEmployeeId,
-                    Email = userDto.Email.ToLower().Trim(), // Normalize email
+                    Email = userDto.Email.ToLower().Trim(),
                     Name = userDto.Name.Trim(),
                     PasswordHash = hashedPassword,
                     Role = userDto.Role,
@@ -207,15 +223,15 @@ namespace FleetManager.Controllers
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                // Driver-specific fields (UserDto has non-nullable types, so direct assignment works)
+                // Driver-specific fields
                 if (user.Role == "Driver")
                 {
                     user.LicenseNumber = string.IsNullOrWhiteSpace(userDto.LicenseNumber) ? null : userDto.LicenseNumber.Trim();
                     user.LicenseClass = string.IsNullOrWhiteSpace(userDto.LicenseClass) ? null : userDto.LicenseClass.Trim();
                     user.LicenseExpiry = userDto.LicenseExpiry;
-                    user.ExperienceYears = userDto.ExperienceYears; // int to int? - OK
-                    user.SafetyRating = userDto.SafetyRating;       // decimal to decimal? - OK
-                    user.TotalMilesDriven = userDto.TotalMilesDriven; // decimal to decimal? - OK
+                    user.ExperienceYears = userDto.ExperienceYears;
+                    user.SafetyRating = userDto.SafetyRating;
+                    user.TotalMilesDriven = userDto.TotalMilesDriven;
                     user.IsAvailable = userDto.IsAvailable;
                     user.HasHelper = userDto.HasHelper;
                 }
@@ -240,6 +256,47 @@ namespace FleetManager.Controllers
             }
         }
 
+        // ✅ NEW: Verify reCAPTCHA token
+        private async Task<bool> VerifyRecaptchaToken(string token)
+        {
+            try
+            {
+                var secretKey = _config["RecaptchaSettings:SecretKey"];
+                if (string.IsNullOrEmpty(secretKey))
+                {
+                    _logger.LogError("[AUTH] reCAPTCHA secret key not configured");
+                    return false;
+                }
+
+                var requestContent = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("secret", secretKey),
+                    new KeyValuePair<string, string>("response", token)
+                });
+
+                var response = await _httpClient.PostAsync(
+                    "https://www.google.com/recaptcha/api/siteverify",
+                    requestContent
+                );
+
+                var jsonContent = await response.Content.ReadAsStringAsync();
+                var jsonElement = JsonSerializer.Deserialize<JsonElement>(jsonContent);
+
+                if (jsonElement.TryGetProperty("success", out var successProp))
+                {
+                    var isSuccess = successProp.GetBoolean();
+                    _logger.LogInformation($"[AUTH] reCAPTCHA verification result: {isSuccess}");
+                    return isSuccess;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"[AUTH] reCAPTCHA verification error: {ex.Message}");
+                return false;
+            }
+        }
 
         private async Task<string> GenerateNextEmployeeId()
         {
@@ -292,6 +349,13 @@ namespace FleetManager.Controllers
                 message = message
             });
         }
+    }
+
+    // ✅ NEW: DTO for register request with reCAPTCHA token
+    public class RegisterRequestDto
+    {
+        public UserDto UserDto { get; set; } = new();
+        public string RecaptchaToken { get; set; } = "";
     }
 
     public class EmailValidationRequest
