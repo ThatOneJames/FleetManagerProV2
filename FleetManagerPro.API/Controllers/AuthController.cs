@@ -204,11 +204,7 @@ namespace FleetManager.Controllers
                 await _context.Notifications.AddAsync(notification);
                 await _context.SaveChangesAsync();
 
-                // Store code in session (5 minute expiry)
-                HttpContext.Session.SetString($"verify_code_{email}", verificationCode);
-                HttpContext.Session.SetString($"verify_code_expiry_{email}", DateTime.UtcNow.AddMinutes(5).Ticks.ToString());
-
-                Console.WriteLine($"[AUTH] Verification code created and stored for: {email}");
+                Console.WriteLine($"[AUTH] Verification code created and notification sent for: {email}");
 
                 return Ok(new { message = "Verification code sent to email", email = email });
             }
@@ -226,42 +222,37 @@ namespace FleetManager.Controllers
         {
             try
             {
-                if (dto == null || string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.VerificationCode) || string.IsNullOrEmpty(dto.Password))
+                if (dto == null || string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.VerificationCode) || string.IsNullOrEmpty(dto.Password) || string.IsNullOrEmpty(dto.Name))
                 {
                     Console.WriteLine("[AUTH] Missing required fields");
-                    return BadRequest(new { message = "Email, verification code, name, and password required" });
+                    return BadRequest(new { message = "Email, verification code, name, and password are required" });
                 }
 
                 string email = dto.Email.ToLower().Trim();
                 Console.WriteLine($"[AUTH] Register attempt with code for: {email}");
 
-                // Verify code
-                var codeKey = $"verify_code_{email}";
-                var expiryKey = $"verify_code_expiry_{email}";
+                // Find the notification with the code
+                var notification = await _context.Notifications
+                    .Where(n => n.RelatedEntityId == email &&
+                                n.RelatedEntityType == "VerificationCode" &&
+                                n.Message.Contains(dto.VerificationCode))
+                    .OrderByDescending(n => n.CreatedAt)
+                    .FirstOrDefaultAsync();
 
-                if (!HttpContext.Session.TryGetValue(codeKey, out var storedCodeBytes))
+                if (notification == null)
                 {
-                    Console.WriteLine($"[AUTH] No verification code found in session for: {email}");
+                    Console.WriteLine($"[AUTH] No verification code found for: {email}");
                     return BadRequest(new { message = "No verification code found. Request a new one." });
                 }
 
-                var storedCode = Encoding.UTF8.GetString(storedCodeBytes);
-                if (storedCode != dto.VerificationCode)
+                // Check if code is expired (5 minutes)
+                if (DateTime.UtcNow > notification.CreatedAt.AddMinutes(5))
                 {
-                    Console.WriteLine($"[AUTH] Invalid verification code. Expected: {storedCode}, Got: {dto.VerificationCode}");
-                    return BadRequest(new { message = "Invalid verification code" });
+                    Console.WriteLine($"[AUTH] Verification code expired for: {email}");
+                    return BadRequest(new { message = "Verification code expired. Request a new one." });
                 }
 
-                // Check expiry
-                if (HttpContext.Session.TryGetValue(expiryKey, out var expiryBytes))
-                {
-                    var expiryTicks = long.Parse(Encoding.UTF8.GetString(expiryBytes));
-                    if (DateTime.UtcNow.Ticks > expiryTicks)
-                    {
-                        Console.WriteLine($"[AUTH] Verification code expired for: {email}");
-                        return BadRequest(new { message = "Verification code expired. Request a new one." });
-                    }
-                }
+                Console.WriteLine($"[AUTH] Code verified for: {email}");
 
                 // Validate domain
                 var (isValidDomain, domainMessage) = await _emailDomainValidator.ValidateEmailDomain(email);
@@ -316,10 +307,6 @@ namespace FleetManager.Controllers
 
                 await _context.Users.AddAsync(user);
                 await _context.SaveChangesAsync();
-
-                // Clear verification code from session
-                HttpContext.Session.Remove(codeKey);
-                HttpContext.Session.Remove(expiryKey);
 
                 Console.WriteLine($"[AUTH] User registered successfully: {user.Email} with ID: {user.Id}");
 
