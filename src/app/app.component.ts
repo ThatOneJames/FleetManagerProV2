@@ -132,13 +132,27 @@ export class AppComponent implements OnInit {
 
     onLogout(): void {
         try {
-            this.authService.logout();
+            this.authService.logout().subscribe({
+                next: () => {
+                    console.log('✅ Logout successful and logged');
+                    this.currentUser = null;
+                    this.router.navigate(['/login']);
+                },
+                error: (error) => {
+                    console.error('⚠️ Logout error (local cleanup still happened):', error);
+                    this.currentUser = null;
+                    // Already navigated in service, but ensure it happens
+                    this.router.navigate(['/login']);
+                }
+            });
+        } catch (error) {
+            console.error('❌ Logout exception:', error);
             this.currentUser = null;
             this.router.navigate(['/login']);
-        } catch (error) {
-            console.error('Logout error:', error);
         }
     }
+
+
 
     isActiveRoute(route: string): boolean {
         return this.router.url === route;

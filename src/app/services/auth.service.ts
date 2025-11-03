@@ -219,15 +219,29 @@ export class AuthService {
     isDriver(): boolean { return this.getUserRole() === 'Driver'; }
     isAdmin(): boolean { return this.getUserRole() === 'Admin'; }
 
-    logout(): void {
-        console.log('🚪 Logging out...');
-        this.clearUser();
-        this.router.navigate(['/login']);
+    logout(): Observable<any> {
+        console.log('🚪 Initiating logout...');
+
+        // Call backend logout endpoint to log the action
+        return this.http.post<any>(`${this.apiUrl}/logout`, {}).pipe(
+            tap(() => {
+                console.log('✅ Backend logout logged successfully');
+                this.clearUser();
+            }),
+            catchError(error => {
+                console.error('⚠️ Backend logout failed, clearing local storage anyway:', error);
+                // Even if backend fails, still log out locally
+                this.clearUser();
+                return throwError(() => error);
+            })
+        );
     }
 
     private clearUser(): void {
+        console.log('🗑️ Clearing local user data...');
         this.clearStorage();
         this.currentUserSubject.next(null);
+        this.router.navigate(['/login']);
     }
 
     private clearStorage(): void {
@@ -237,6 +251,7 @@ export class AuthService {
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('currentUser');
     }
+
 
     refreshCurrentUser(): Observable<User> {
         return this.http.get<any>(`${this.apiUrl}/current`).pipe(

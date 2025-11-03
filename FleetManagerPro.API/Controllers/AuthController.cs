@@ -509,18 +509,17 @@ namespace FleetManager.Controllers
         {
             try
             {
-                // Get user info from JWT claims
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
                 var userName = User.FindFirst(ClaimTypes.Name)?.Value;
 
-                // Prepare log entry using correct AuditLog model fields
+                // ← THIS is the audit logging
                 var auditLog = new AuditLog
                 {
                     UserId = userId,
                     UserRole = userRole,
-                    ActionType = "Logout",
-                    EntityType = "Session",
+                    ActionType = "Logout",     // Use ActionType field from your model!
+                    EntityType = "Session",    // Or "User" – your schema
                     EntityId = userId,
                     Description = $"User {userName} (Role: {userRole}) logged out.",
                     Status = "SUCCESS",
@@ -538,6 +537,7 @@ namespace FleetManager.Controllers
                 return StatusCode(500, new { message = "Error during logout", error = ex.Message });
             }
         }
+
     }
 
     // ✅ BASE DTO - CORRECTED TYPES
