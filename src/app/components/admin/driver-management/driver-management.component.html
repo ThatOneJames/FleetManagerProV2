@@ -557,6 +557,10 @@
     <div class="modal-overlay" *ngIf="showWarningModal">
         <div class="modal">
             <h3>Issue Warning to {{ selectedDriver?.name }}</h3>
+            <label for="warningCategory">Category:</label>
+            <select [(ngModel)]="selectedWarningCategory" id="warningCategory" class="form-control">
+                <option *ngFor="let cat of warningCategories" [value]="cat">{{ cat }}</option>
+            </select>
             <textarea [(ngModel)]="warningReason" rows="4" placeholder="Enter warning reason" class="warning-textarea"></textarea>
             <div class="modal-actions">
                 <button (click)="submitWarning()" class="btn-primary">Submit Warning</button>
@@ -565,13 +569,16 @@
         </div>
     </div>
 
+
     <!-- Warning History Modal -->
     <div class="modal-overlay" *ngIf="showWarningHistoryModal">
         <div class="modal">
             <h3>Warning History for {{ selectedDriver?.name }}</h3>
             <ul class="history-list" *ngIf="warningHistory.length > 0">
                 <li *ngFor="let warn of warningHistory" class="history-item">
-                    <strong>{{ formatDateToLocal(warn.dateIssued) }}</strong> - {{ warn.reason }}
+                    <strong>{{ formatDateToLocal(warn.dateIssued) }}</strong>
+                    <span class="category-badge" *ngIf="warn.category">[{{ warn.category }}]</span>
+                    - {{ warn.reason }}
                     <span class="issued-by">by {{ warn.issuedBy }}</span>
                 </li>
             </ul>
@@ -583,6 +590,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Suspension History Modal -->
     <div class="modal-overlay" *ngIf="showSuspensionHistoryModal">

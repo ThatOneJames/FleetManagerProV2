@@ -767,3 +767,16 @@ input.valid, select.valid, textarea.valid {
         transform: translateY(0);
     }
 }
+/* Category Badge Style */
+.category-badge {
+    background-color: #ff9800;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 600;
+    margin-left: 8px;
+    display: inline-block;
+    letter-spacing: 0.3px;
+}
+

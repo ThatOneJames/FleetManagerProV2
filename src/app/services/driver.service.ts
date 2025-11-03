@@ -163,8 +163,14 @@ export class DriverService {
     }
 
     // Add a warning to a driver
-    addWarning(driverId: string, reason: string, issuedBy: string): Observable<any> {
-        return this.http.post(`${this.apiUrl}/users/${driverId}/warnings`, { reason, issuedBy });
+    addWarning(driverId: string, reason: string, issuedBy: string, category?: string): Observable<any> {
+        const body = {
+            reason: reason,
+            issuedBy: issuedBy,
+            category: category || 'Other'
+        };
+
+        return this.http.post(`${this.apiUrl}/users/${driverId}/warnings`, body);
     }
 
     // Get warning history for a driver

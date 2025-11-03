@@ -21,6 +21,18 @@ export class DriverManagementComponent implements OnInit {
     warningHistoryMessage: string = '';
     suspensionHistoryMessage: string = '';
 
+    warningCategories: string[] = [
+        "Late Arrival",
+        "Absenteeism",
+        "Unsafe Operation",
+        "Misconduct",
+        "Failure to Communicate",
+        "Paperwork Issue",
+        "Other"
+    ];
+
+    selectedWarningCategory: string = 'Other';
+
     formatDateToLocal(dateValue: string | Date): string {
         if (!dateValue) return '';
         const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
@@ -1102,10 +1114,18 @@ export class DriverManagementComponent implements OnInit {
     submitWarning() {
         if (this.selectedDriver && this.warningReason.trim()) {
             const issuedBy = this.authService.getCurrentUserSync()?.name || 'Admin';
-            this.driverService.addWarning(this.selectedDriver.id, this.warningReason, issuedBy).subscribe({
+
+            // Send the warning with category
+            this.driverService.addWarning(
+                this.selectedDriver.id,
+                this.warningReason,
+                issuedBy,
+                this.selectedWarningCategory  // <-- ADD THIS
+            ).subscribe({
                 next: () => {
                     this.showWarningModal = false;
                     this.successMessage = 'Warning issued successfully!';
+                    this.selectedWarningCategory = 'Other'; // Reset category
                     this.hideMessages();
                 },
                 error: (err) => {
@@ -1115,6 +1135,7 @@ export class DriverManagementComponent implements OnInit {
             });
         }
     }
+
 
     openWarningHistory(driver: User) {
         this.selectedDriver = driver;

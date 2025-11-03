@@ -502,6 +502,42 @@ namespace FleetManager.Controllers
                 message = message
             });
         }
+
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            try
+            {
+                // Get user info from JWT claims
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+                var userName = User.FindFirst(ClaimTypes.Name)?.Value;
+
+                // Prepare log entry using correct AuditLog model fields
+                var auditLog = new AuditLog
+                {
+                    UserId = userId,
+                    UserRole = userRole,
+                    ActionType = "Logout",
+                    EntityType = "Session",
+                    EntityId = userId,
+                    Description = $"User {userName} (Role: {userRole}) logged out.",
+                    Status = "SUCCESS",
+                    Timestamp = DateTime.UtcNow
+                };
+
+                await _context.AuditLogs.AddAsync(auditLog);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Logged out and audit logged." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AUTH] Error during logout for user: {UserId}", User?.Identity?.Name);
+                return StatusCode(500, new { message = "Error during logout", error = ex.Message });
+            }
+        }
     }
 
     // ✅ BASE DTO - CORRECTED TYPES

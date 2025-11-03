@@ -4,4 +4,5 @@ export interface DriverWarning {
     reason: string;
     issuedBy: string;
     dateIssued: Date | string;
+    category?: string;
 }
