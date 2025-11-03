@@ -4,6 +4,7 @@ namespace FleetManagerPro.API.DTOs
     {
         public string Reason { get; set; }
         public string IssuedBy { get; set; }
+        public string? Category { get; set; }
     }
 
 }

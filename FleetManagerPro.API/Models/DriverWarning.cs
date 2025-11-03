@@ -19,6 +19,10 @@ namespace FleetManagerPro.API.Models
         [Column("reason")]
         public string Reason { get; set; }
 
+        [Column("category")]
+        [MaxLength(64)]
+        public string? Category { get; set; }   // <-- NEW
+
         [Required]
         [Column("issued_by")]
         public string IssuedBy { get; set; }

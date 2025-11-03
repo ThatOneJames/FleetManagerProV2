@@ -820,27 +820,27 @@ namespace FleetManagerPro.API.Controllers
         {
             try
             {
-                var warning = await _disciplinaryService.AddWarningAsync(driverId, dto.Reason, dto.IssuedBy);
+                var warning = await _disciplinaryService.AddWarningAsync(driverId, dto.Reason, dto.IssuedBy, dto.Category);
 
                 await _auditService.LogActionAsync(
                     GetUserId(),
                     "CREATE",
                     "DriverWarning",
                     driverId,
-                    $"Added warning: {dto.Reason}",
+                    $"Added warning: {dto.Reason} | Category: {dto.Category}",
                     null,
-                    new { driverId, Reason = dto.Reason, IssuedBy = dto.IssuedBy }
+                    new { driverId, dto.Reason, dto.IssuedBy, dto.Category }
                 );
 
                 return Ok(warning);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[USERS] Error adding warning for driver {driverId}: {ex.Message}");
                 _logger.LogError(ex, "Error adding warning for driver {DriverId}", driverId);
                 return StatusCode(500, new { message = "Error adding warning", error = ex.Message });
             }
         }
+
 
         [HttpGet("{driverId}/suspensions")]
         [Authorize(Roles = "Admin")]
@@ -904,6 +904,7 @@ namespace FleetManagerPro.API.Controllers
     {
         public string Reason { get; set; }
         public string IssuedBy { get; set; }
+        public string? Category { get; set; }
     }
 
     public class CreateDriverSuspensionDto

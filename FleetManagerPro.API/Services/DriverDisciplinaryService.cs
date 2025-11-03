@@ -35,14 +35,19 @@ namespace FleetManagerPro.API.Services
                 .ToListAsync();
         }
 
-        // Adds a warning and auto-suspends if necessary
-        public async Task<DriverWarning> AddWarningAsync(string driverId, string reason, string issuedBy)
+        // Adds a warning with category and auto-suspends if necessary
+        public async Task<DriverWarning> AddWarningAsync(
+            string driverId,
+            string reason,
+            string issuedBy,
+            string? category = null)
         {
             var warning = new DriverWarning
             {
                 Id = Guid.NewGuid().ToString(),
                 DriverId = driverId,
                 Reason = reason,
+                Category = category,
                 IssuedBy = issuedBy,
                 DateIssued = GetPhilippinesTime()
             };
