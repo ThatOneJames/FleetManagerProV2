@@ -829,16 +829,26 @@ export class DriverManagementComponent implements OnInit {
             dateOfBirth: formData.dateOfBirth || null
         };
 
-        this.http.put(`${this.apiUrl}/users/${this.editingDriver.id}`, updateData).subscribe({
+        console.log('[DRIVER-MGMT] Update data:', updateData);
+
+        // ✅✅✅ ADD THIS!
+        const token = localStorage.getItem('token');
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        this.http.put(`${this.apiUrl}/users/${this.editingDriver.id}`, updateData, { headers }).subscribe({
             next: (response: any) => {
+                console.log('[DRIVER-MGMT] Driver updated:', response);
                 this.successMessage = 'Driver updated successfully!';
                 this.loadDrivers();
                 this.cancelEdit();
                 this.hideMessages();
             },
             error: (err: any) => {
+                console.error('[DRIVER-MGMT] Error updating driver:', err);
                 this.errorMessage = err.error?.message || 'Failed to update driver. Please try again.';
-                console.error('Error updating driver:', err);
             }
         });
     }

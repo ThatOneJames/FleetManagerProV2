@@ -18,7 +18,7 @@ namespace FleetManagerPro.API.Services
             object? oldValue = null,
             object? newValue = null,
             string status = "SUCCESS",
-            string? affectedUserName = null);  // ✅ NEW: Who was affected
+            string? affectedUserName = null);
     }
 
     public class AuditService : IAuditService
@@ -39,7 +39,7 @@ namespace FleetManagerPro.API.Services
             object? oldValue = null,
             object? newValue = null,
             string status = "SUCCESS",
-            string? affectedUserName = null)  // ✅ NEW: Who was affected
+            string? affectedUserName = null)
         {
             try
             {
@@ -47,7 +47,15 @@ namespace FleetManagerPro.API.Services
                 var philippineTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Singapore Standard Time");
                 var philippineTime = TimeZoneInfo.ConvertTime(DateTime.UtcNow, philippineTimeZone);
 
-                // ✅ NEW: Get affected user name if not provided
+                // ✅ NEW: Get user role from database
+                string? userRole = null;
+                var user = await _context.Users.FindAsync(userId);
+                if (user != null)
+                {
+                    userRole = user.Role;
+                }
+
+                // ✅ Get affected user name if not provided
                 if (string.IsNullOrEmpty(affectedUserName) && entityType == "User")
                 {
                     var affectedUser = await _context.Users.FindAsync(entityId);
@@ -57,7 +65,7 @@ namespace FleetManagerPro.API.Services
                     }
                 }
 
-                // ✅ NEW: Get affected driver name for DriverWarning/DriverSuspension
+                // ✅ Get affected driver name for DriverWarning/DriverSuspension
                 if (string.IsNullOrEmpty(affectedUserName) &&
                     (entityType == "DriverWarning" || entityType == "DriverSuspension"))
                 {
@@ -72,15 +80,16 @@ namespace FleetManagerPro.API.Services
                 {
                     Id = Guid.NewGuid().ToString(),
                     UserId = userId,
+                    UserRole = userRole, // ✅ NEW: Capture user role
                     ActionType = actionType,
                     EntityType = entityType,
                     EntityId = entityId,
                     Description = $"{description}" +
-                        (string.IsNullOrEmpty(affectedUserName) ? "" : $" | Affected: {affectedUserName}"),  // ✅ Show who was affected
+                        (string.IsNullOrEmpty(affectedUserName) ? "" : $" | Affected: {affectedUserName}"),
                     OldValue = oldValue != null ? JsonSerializer.Serialize(oldValue) : null,
                     NewValue = newValue != null ? JsonSerializer.Serialize(newValue) : null,
                     Status = status,
-                    Timestamp = philippineTime  // ✅ Now uses Philippine time
+                    Timestamp = philippineTime
                 };
 
                 _context.AuditLogs.Add(auditLog);

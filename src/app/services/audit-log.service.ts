@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -7,6 +7,7 @@ export interface AuditLog {
     id: string;
     userId: string;
     userName: string;
+    userRole: string; // ✅ NEW: User role field
     actionType: string;
     entityType: string;
     entityId: string;
@@ -24,6 +25,8 @@ export interface AuditStatistics {
     totalDeletes: number;
     totalLogins: number;
     successRate: number;
+    adminActions: number; // ✅ NEW: Admin action count
+    driverActions: number; // ✅ NEW: Driver action count
     topUsers: Array<{ userId: string; count: number }>;
 }
 
@@ -40,6 +43,7 @@ export class AuditLogService {
         userId?: string,
         entityType?: string,
         actionType?: string,
+        userRole?: string, // ✅ NEW: Add role filter
         limit: number = 100,
         skip: number = 0
     ): Observable<AuditLog[]> {
@@ -47,6 +51,7 @@ export class AuditLogService {
         if (userId) params += `&userId=${userId}`;
         if (entityType) params += `&entityType=${entityType}`;
         if (actionType) params += `&actionType=${actionType}`;
+        if (userRole) params += `&userRole=${userRole}`; // ✅ NEW
 
         return this.http.get<AuditLog[]>(`${this.apiUrl}${params}`);
     }
@@ -55,12 +60,14 @@ export class AuditLogService {
     getAuditLogsCount(
         userId?: string,
         entityType?: string,
-        actionType?: string
+        actionType?: string,
+        userRole?: string // ✅ NEW
     ): Observable<{ count: number }> {
         let params = '';
         if (userId) params += `?userId=${userId}`;
         if (entityType) params += `${params ? '&' : '?'}entityType=${entityType}`;
         if (actionType) params += `${params ? '&' : '?'}actionType=${actionType}`;
+        if (userRole) params += `${params ? '&' : '?'}userRole=${userRole}`; // ✅ NEW
 
         return this.http.get<{ count: number }>(`${this.apiUrl}/count${params}`);
     }

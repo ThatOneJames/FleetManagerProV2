@@ -91,6 +91,20 @@
                 </span>
             </div>
 
+            <!-- ✅ ROLE SELECTOR - NEW FIELD -->
+            <div class="form-group">
+                <label for="role">Account Type</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">🎭</span>
+                    <select id="role" formControlName="role" class="role-select">
+                        <option *ngFor="let role of roles" [value]="role.value">
+                            {{ role.icon }} {{ role.label }}
+                        </option>
+                    </select>
+                </div>
+                <span *ngIf="hasError(registerForm, 'role', 'required')" class="error-text">Please select an account type</span>
+            </div>
+
             <!-- Verification Code with Send Button -->
             <div class="form-group">
                 <label for="code">Verification Code</label>

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FleetManagerPro.API.Data;
@@ -12,7 +12,7 @@ namespace FleetManagerPro.API.Controllers
 {
     [ApiController]
     [Route("api/audit-logs")]
-    [Authorize] // Require authentication
+    [Authorize]
     public class AuditLogsController : ControllerBase
     {
         private readonly FleetManagerDbContext _context;
@@ -28,6 +28,7 @@ namespace FleetManagerPro.API.Controllers
             [FromQuery] string? userId = null,
             [FromQuery] string? entityType = null,
             [FromQuery] string? actionType = null,
+            [FromQuery] string? userRole = null, // ✅ NEW: Filter by role
             [FromQuery] int limit = 100,
             [FromQuery] int skip = 0)
         {
@@ -47,6 +48,10 @@ namespace FleetManagerPro.API.Controllers
                 if (!string.IsNullOrEmpty(actionType))
                     query = query.Where(a => a.ActionType == actionType);
 
+                // ✅ NEW: Filter by role
+                if (!string.IsNullOrEmpty(userRole))
+                    query = query.Where(a => a.UserRole == userRole);
+
                 var logs = await query
                     .OrderByDescending(a => a.Timestamp)
                     .Skip(skip)
@@ -56,6 +61,7 @@ namespace FleetManagerPro.API.Controllers
                         a.Id,
                         a.UserId,
                         UserName = a.User != null ? a.User.Name : "Unknown User",
+                        UserRole = a.UserRole ?? "N/A", // ✅ NEW: Include role
                         a.ActionType,
                         a.EntityType,
                         a.EntityId,
@@ -80,7 +86,8 @@ namespace FleetManagerPro.API.Controllers
         public async Task<ActionResult<object>> GetAuditLogsCount(
             [FromQuery] string? userId = null,
             [FromQuery] string? entityType = null,
-            [FromQuery] string? actionType = null)
+            [FromQuery] string? actionType = null,
+            [FromQuery] string? userRole = null) // ✅ NEW
         {
             try
             {
@@ -94,6 +101,10 @@ namespace FleetManagerPro.API.Controllers
 
                 if (!string.IsNullOrEmpty(actionType))
                     query = query.Where(a => a.ActionType == actionType);
+
+                // ✅ NEW: Filter by role
+                if (!string.IsNullOrEmpty(userRole))
+                    query = query.Where(a => a.UserRole == userRole);
 
                 var count = await query.CountAsync();
 
@@ -123,6 +134,7 @@ namespace FleetManagerPro.API.Controllers
                         a.Id,
                         a.UserId,
                         UserName = a.User != null ? a.User.Name : "Unknown User",
+                        UserRole = a.UserRole ?? "N/A", // ✅ NEW
                         a.ActionType,
                         a.EntityType,
                         a.EntityId,
@@ -157,6 +169,7 @@ namespace FleetManagerPro.API.Controllers
                         a.Id,
                         a.UserId,
                         UserName = a.User != null ? a.User.Name : "Unknown User",
+                        UserRole = a.UserRole ?? "N/A", // ✅ NEW
                         a.ActionType,
                         a.Description,
                         a.OldValue,
@@ -198,6 +211,9 @@ namespace FleetManagerPro.API.Controllers
                     TotalDeletes = await query.CountAsync(a => a.ActionType == "DELETE"),
                     TotalLogins = await query.CountAsync(a => a.ActionType == "LOGIN"),
                     SuccessRate = await query.CountAsync(a => a.Status == "SUCCESS") * 100.0 / Math.Max(await query.CountAsync(), 1),
+                    // ✅ NEW: Stats by role
+                    AdminActions = await query.CountAsync(a => a.UserRole == "Admin"),
+                    DriverActions = await query.CountAsync(a => a.UserRole == "Driver"),
                     TopUsers = await query
                         .GroupBy(a => a.UserId)
                         .Select(g => new { UserId = g.Key, Count = g.Count() })
@@ -214,7 +230,7 @@ namespace FleetManagerPro.API.Controllers
             }
         }
 
-        // POST: api/audit-logs (For logging new actions)
+        // POST: api/audit-logs
         [HttpPost]
         public async Task<ActionResult<AuditLog>> CreateAuditLog([FromBody] AuditLog auditLog)
         {
@@ -222,6 +238,16 @@ namespace FleetManagerPro.API.Controllers
             {
                 auditLog.Id = Guid.NewGuid().ToString();
                 auditLog.Timestamp = DateTime.UtcNow;
+
+                // ✅ NEW: Auto-populate role if not provided
+                if (string.IsNullOrEmpty(auditLog.UserRole) && !string.IsNullOrEmpty(auditLog.UserId))
+                {
+                    var user = await _context.Users.FindAsync(auditLog.UserId);
+                    if (user != null)
+                    {
+                        auditLog.UserRole = user.Role;
+                    }
+                }
 
                 _context.AuditLogs.Add(auditLog);
                 await _context.SaveChangesAsync();

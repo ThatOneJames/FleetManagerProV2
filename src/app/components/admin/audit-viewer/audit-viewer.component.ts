@@ -21,6 +21,7 @@ export class AuditViewerComponent implements OnInit, OnDestroy {
     filterUserId = '';
     filterEntityType = '';
     filterActionType = '';
+    filterUserRole = ''; // ✅ NEW: Role filter
 
     // Pagination
     currentPage = 1;
@@ -63,6 +64,7 @@ export class AuditViewerComponent implements OnInit, OnDestroy {
             this.filterUserId || undefined,
             this.filterEntityType || undefined,
             this.filterActionType || undefined,
+            this.filterUserRole || undefined, // ✅ NEW
             this.pageSize,
             skip
         ).pipe(takeUntil(this.destroy$)).subscribe({
@@ -80,7 +82,8 @@ export class AuditViewerComponent implements OnInit, OnDestroy {
         this.auditService.getAuditLogsCount(
             this.filterUserId || undefined,
             this.filterEntityType || undefined,
-            this.filterActionType || undefined
+            this.filterActionType || undefined,
+            this.filterUserRole || undefined // ✅ NEW
         ).pipe(takeUntil(this.destroy$)).subscribe({
             next: (data) => {
                 this.totalLogs = data.count;
@@ -118,6 +121,20 @@ export class AuditViewerComponent implements OnInit, OnDestroy {
 
     getStatusClass(status: string): string {
         return `status-${status.toLowerCase()}`;
+    }
+
+    // ✅ NEW: Get role badge color
+    getRoleClass(role: string): string {
+        return `role-${role.toLowerCase()}`;
+    }
+
+    // ✅ NEW: Get role icon
+    getRoleIcon(role: string): string {
+        const iconMap: { [key: string]: string } = {
+            'Admin': '👨‍💼',
+            'Driver': '🚗'
+        };
+        return iconMap[role] || '👤';
     }
 
     getEntityTypeIcon(entityType: string): string {
@@ -162,10 +179,11 @@ export class AuditViewerComponent implements OnInit, OnDestroy {
     }
 
     private convertToCsv(logs: AuditLog[]): string {
-        const headers = ['Timestamp', 'User', 'Action', 'Entity Type', 'Description', 'Status'];
+        const headers = ['Timestamp', 'Name', 'Role', 'Action', 'Entity Type', 'Description', 'Status']; // ✅ CHANGED: User → Name, Added Role
         const rows = logs.map(log => [
             new Date(log.timestamp).toLocaleString(),
             log.userName,
+            log.userRole, // ✅ NEW
             log.actionType,
             log.entityType,
             log.description || '',

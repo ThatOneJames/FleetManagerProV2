@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -13,6 +13,11 @@ namespace FleetManagerPro.API.Models
 
         [Column("userId")]
         public string? UserId { get; set; }
+
+        // ✅ NEW: User Role Column
+        [Column("userRole")]
+        [MaxLength(20)]
+        public string? UserRole { get; set; }
 
         [Column("actionType")]
         [Required]

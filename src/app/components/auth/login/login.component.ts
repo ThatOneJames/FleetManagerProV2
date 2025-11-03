@@ -25,6 +25,12 @@ export class LoginComponent implements OnInit {
     codeRequested = false;
     codeCountdown = 0;
 
+    // ✅ ROLE OPTIONS
+    roles = [
+        { value: 'Driver', label: 'Driver', icon: '🚗' },
+        { value: 'Admin', label: 'Administrator', icon: '👨‍💼' }
+    ];
+
     constructor(
         private fb: FormBuilder,
         private authService: AuthService,
@@ -39,6 +45,7 @@ export class LoginComponent implements OnInit {
         this.registerForm = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]],
+            role: ['Driver', [Validators.required]], // ✅ ADDED ROLE FIELD with default 'Driver'
             verificationCode: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(6)]],
             password: ['', [Validators.required, Validators.minLength(6)]]
         });
@@ -60,6 +67,8 @@ export class LoginComponent implements OnInit {
         this.codeCountdown = 0;
         this.loginForm.reset();
         this.registerForm.reset();
+        // ✅ RESET ROLE TO DEFAULT
+        this.registerForm.patchValue({ role: 'Driver' });
     }
 
     togglePasswordVisibility(): void {
@@ -181,7 +190,7 @@ export class LoginComponent implements OnInit {
         this.errorMessage = null;
         this.successMessage = null;
 
-        const { name, email, password, verificationCode } = this.registerForm.value;
+        const { name, email, password, verificationCode, role } = this.registerForm.value; // ✅ ADDED ROLE
 
         try {
             console.log('Starting registration process...');
@@ -191,7 +200,7 @@ export class LoginComponent implements OnInit {
                 email: email.toLowerCase().trim(),
                 password,
                 verificationCode,
-                role: 'Driver',
+                role: role || 'Driver', // ✅ USE SELECTED ROLE
                 status: 'Active',
                 phone: '',
                 address: '',
@@ -209,13 +218,14 @@ export class LoginComponent implements OnInit {
                 hasHelper: false
             };
 
-            console.log('Sending registration payload...');
+            console.log('Sending registration payload with role:', role);
             this.http.post(`${environment.apiUrl}/auth/register`, registerPayload).subscribe({
                 next: (response: any) => {
                     this.loading = false;
                     console.log('Registration successful:', response);
                     this.successMessage = 'Registration successful! Redirecting to login...';
                     this.registerForm.reset();
+                    this.registerForm.patchValue({ role: 'Driver' }); // ✅ RESET ROLE
 
                     setTimeout(() => {
                         this.isRegisterMode = false;
@@ -305,6 +315,10 @@ export class LoginComponent implements OnInit {
 
     get registerEmail() {
         return this.registerForm.get('email');
+    }
+
+    get registerRole() {
+        return this.registerForm.get('role'); // ✅ ADDED GETTER
     }
 
     get verificationCode() {

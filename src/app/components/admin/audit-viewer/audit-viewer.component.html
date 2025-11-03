@@ -34,19 +34,41 @@
             <div class="stat-value">{{ statistics.successRate.toFixed(1) }}%</div>
             <div class="stat-label">Success Rate</div>
         </div>
+        <!-- ✅ NEW: Admin/Driver stats -->
+        <div class="stat-card">
+            <div class="stat-value">{{ statistics.adminActions }}</div>
+            <div class="stat-label">Admin Actions</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ statistics.driverActions }}</div>
+            <div class="stat-label">Driver Actions</div>
+        </div>
     </div>
 
     <!-- Filters -->
     <div class="filters-section">
         <div class="filter-group">
-            <label for="search">Search User:</label>
+            <label for="search">Search Name:</label>
             <input #searchInput
                    id="search"
                    type="text"
                    [(ngModel)]="filterUserId"
                    (keyup)="onSearch(searchInput.value)"
-                   placeholder="Enter user ID or name..."
+                   placeholder="Enter user name..."
                    class="filter-input">
+        </div>
+
+        <!-- ✅ NEW: Role filter -->
+        <div class="filter-group">
+            <label for="userRole">User Role:</label>
+            <select id="userRole"
+                    [(ngModel)]="filterUserRole"
+                    (change)="onFilterChange()"
+                    class="filter-input">
+                <option value="">All Roles</option>
+                <option value="Admin">Admin</option>
+                <option value="Driver">Driver</option>
+            </select>
         </div>
 
         <div class="filter-group">
@@ -93,7 +115,8 @@
             <thead>
                 <tr>
                     <th>Timestamp</th>
-                    <th>User</th>
+                    <th>Name</th> <!-- ✅ CHANGED: User → Name -->
+                    <th>Role</th> <!-- ✅ NEW: Role column -->
                     <th>Action</th>
                     <th>Entity</th>
                     <th>Description</th>
@@ -103,7 +126,13 @@
             <tbody>
                 <tr *ngFor="let log of auditLogs" class="log-row">
                     <td class="timestamp">{{ log.timestamp | date: 'medium' }}</td>
-                    <td class="user">{{ log.userName }}</td>
+                    <td class="user">{{ log.userName }}</td> <!-- ✅ CHANGED: userName → display as Name -->
+                    <!-- ✅ NEW: Role badge -->
+                    <td class="role">
+                        <span class="badge role-badge" [ngClass]="getRoleClass(log.userRole)">
+                            {{ getRoleIcon(log.userRole) }} {{ log.userRole }}
+                        </span>
+                    </td>
                     <td class="action">
                         <span class="badge" [ngClass]="getActionClass(log.actionType)">
                             {{ log.actionType }}
@@ -151,4 +180,3 @@
         📭 No audit logs found
     </div>
 </div>
-

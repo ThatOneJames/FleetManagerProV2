@@ -1,4 +1,4 @@
-.audit-viewer-container {
+﻿.audit-viewer-container {
     padding: 2rem;
     background: #f5f5f5;
     border-radius: 8px;
@@ -315,3 +315,29 @@
             padding: 0.5rem;
         }
 }
+
+/* ✅ NEW: Role badge styling */
+.role {
+    text-align: center;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 0.3rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.role-admin {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.role-driver {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
