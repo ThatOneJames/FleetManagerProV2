@@ -29,6 +29,7 @@ namespace FleetManager.Controllers
         private readonly IUserRepository _userRepository;
         private readonly IEmailDomainValidator _emailDomainValidator;
         private readonly ILogger<AuthController> _logger;
+        private readonly IAuditService _auditService;
 
         public AuthController(
             FleetManagerDbContext context,
@@ -36,12 +37,14 @@ namespace FleetManager.Controllers
             IAuthService authService,
             IUserRepository userRepository,
             IEmailDomainValidator emailDomainValidator,
+            IAuditService auditService,
             ILogger<AuthController> logger)
         {
             _context = context;
             _config = config;
             _authService = authService;
             _userRepository = userRepository;
+            _auditService = auditService;
             _emailDomainValidator = emailDomainValidator;
             _logger = logger;
         }
@@ -513,21 +516,14 @@ namespace FleetManager.Controllers
                 var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
                 var userName = User.FindFirst(ClaimTypes.Name)?.Value;
 
-                // ← THIS is the audit logging
-                var auditLog = new AuditLog
-                {
-                    UserId = userId,
-                    UserRole = userRole,
-                    ActionType = "Logout",     // Use ActionType field from your model!
-                    EntityType = "Session",    // Or "User" – your schema
-                    EntityId = userId,
-                    Description = $"User {userName} (Role: {userRole}) logged out.",
-                    Status = "SUCCESS",
-                    Timestamp = DateTime.UtcNow
-                };
-
-                await _context.AuditLogs.AddAsync(auditLog);
-                await _context.SaveChangesAsync();
+                await _auditService.LogActionAsync(
+                    userId: userId,
+                    actionType: "Logout",
+                    entityType: "Session",
+                    entityId: userId ?? string.Empty,
+                    description: $"User {userName} (Role: {userRole}) logged out.",
+                    status: "SUCCESS"
+                );
 
                 return Ok(new { message = "Logged out and audit logged." });
             }
@@ -537,6 +533,7 @@ namespace FleetManager.Controllers
                 return StatusCode(500, new { message = "Error during logout", error = ex.Message });
             }
         }
+
 
     }
 
