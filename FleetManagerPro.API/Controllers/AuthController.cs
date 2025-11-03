@@ -77,12 +77,22 @@ namespace FleetManager.Controllers
 
                 Console.WriteLine($"[AUTH] User found: {user.Id}, Role: {user.Role}");
 
+                // Log the successful login
+                await _auditService.LogActionAsync(
+                    userId: user.Id,
+                    actionType: "Login",
+                    entityType: "User",
+                    entityId: user.Id,
+                    description: $"User {user.Name} logged in successfully.",
+                    status: "SUCCESS");
+
+                // Generate JWT token and return user info (as is your current code)
                 var claims = new[]
                 {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.Name),
-                    new Claim(ClaimTypes.Role, user.Role)
-                };
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Name),
+            new Claim(ClaimTypes.Role, user.Role)
+        };
 
                 var jwtKey = _config["Jwt:Key"];
                 var jwtIssuer = _config["Jwt:Issuer"];
@@ -158,6 +168,7 @@ namespace FleetManager.Controllers
                 return StatusCode(500, new { message = "Internal server error during authentication" });
             }
         }
+
 
         [HttpPost("request-verification-code")]
         [AllowAnonymous]
